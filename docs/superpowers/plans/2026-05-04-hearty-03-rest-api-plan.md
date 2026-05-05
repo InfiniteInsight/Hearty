@@ -769,6 +769,7 @@ When all tasks are done:
     - Returns `application/json` with the full nested structure from spec Section 5.8:
       `exported_at`, `user_id`, `period`, `meals` (with nested symptoms), `wellbeing_snapshots`, `food_triggers`, `health_profile`
     - For the `meals` array, use `MealWithSymptoms` from `app/models/schemas.py` (not `MealResponse`) — it carries `symptoms: List[SymptomResponse]`. Serialize with `.model_dump(mode="json")` or build the response as a plain dict by fetching meals joined with their symptoms via a second Supabase query (same pattern as `GET /api/meals`).
+    - **`food_triggers` source — Phase 6 deviation note:** `TriggerFood.label` is computed on the fly by `trend_engine.analyze_triggers()` and is **not stored** in the `food_triggers` database table. A direct `SELECT * FROM food_triggers` will return `label=null` for every row. To include labels in the export (consistent with `GET /api/trends`), call `trend_engine.analyze_triggers(user_id, period_days, None, min_occurrences=2)` and use its `triggers` list as the `food_triggers` array — same as the trends endpoint. If you prefer to read from the table instead (simpler, no live recompute), note in the deviation log that `label` will be null in the export.
 
   - `GET /api/export/csv` (spec Section 5.9):
     - Query params: `start_date`, `end_date` (optional)
