@@ -3,7 +3,7 @@
 **Spec:** [`hearty-03-rest-api.md`](../specs/2026-05-04-hearty-03-rest-api.md)
 **Roadmap Phase:** Phase 1 — Foundation
 **Plan Status:** 🟡 In Progress
-**Last Updated:** 2026-05-05 (Phase 4 complete)
+**Last Updated:** 2026-05-05 (Phase 5 complete)
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 0
 
@@ -31,7 +31,7 @@
 | 2 | Auth & JWT Middleware | 🟢 Completed | Phase 1 | Claude |
 | 3 | Auth Webhook | 🟢 Completed | Phase 2 | Claude |
 | 4 | AI Extraction Service | 🟢 Completed | Phase 2 | Claude |
-| 5 | Core Logging Endpoints | 🔴 Not Started | Phases 3, 4 | Claude |
+| 5 | Core Logging Endpoints | 🟢 Completed | Phases 3, 4 | Claude |
 | 6 | Trend Engine & Summary | 🔴 Not Started | Phase 5 | Claude |
 | 7 | Export Endpoints | 🔴 Not Started | Phase 5 | Claude |
 | 8 | Health Profile Endpoints | 🔴 Not Started | Phase 2 | Claude |
@@ -526,7 +526,7 @@ When all tasks are done:
 
 ## Phase 5: Core Logging Endpoints
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement the three POST logging endpoints and two GET query endpoints: meals, symptoms, wellbeing — wired to the AI extraction service and Supabase.
 **Depends on:** Phase 3 (auth_hooks router pattern established), Phase 4 (AI extraction available)
 
@@ -557,7 +557,7 @@ When all tasks are done:
 
 ### Task 5.1: Implement meals router (`app/routers/meals.py`)
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/routers/meals.py` implementing:
 
@@ -579,13 +579,13 @@ When all tasks are done:
 - [ ] Verify routes appear: `curl -s http://localhost:8000/openapi.json | python3 -c "import sys,json; d=json.load(sys.stdin); print([p for p in d['paths'] if 'meals' in p])"`
   Expected: `['/api/meals']`
 
-**Deviation Log:** _None_
+**Deviation Log:** Added `MealWithSymptoms(MealResponse)` and `MealsListResponse` to schemas.py (after SymptomResponse) because `GET /api/meals` returns nested symptoms and `MealResponse` had no `symptoms` field. Spec describes this shape but defines no separate schema for it.
 
 ---
 
 ### Task 5.2: Implement symptoms router (`app/routers/symptoms.py`)
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/routers/symptoms.py` implementing:
 
@@ -608,7 +608,7 @@ When all tasks are done:
 
 ### Task 5.3: Implement wellbeing router (`app/routers/wellbeing.py`)
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/routers/wellbeing.py` implementing:
 
