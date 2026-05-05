@@ -3,7 +3,7 @@
 **Spec:** [`hearty-03-rest-api.md`](../specs/2026-05-04-hearty-03-rest-api.md)
 **Roadmap Phase:** Phase 1 — Foundation
 **Plan Status:** 🔴 Not Started
-**Last Updated:** 2026-05-04
+**Last Updated:** 2026-05-05
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 0
 
@@ -26,7 +26,7 @@
 
 | Phase | Name | Status | Depends On | Type |
 |---|---|---|---|---|
-| 0 | Review & Align | 🔴 Not Started | — | Claude (start of every session) |
+| 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
 | 1 | Project Setup | 🔴 Not Started | Spec 01 plan 🟢, Spec 08 Phases 1-2 🟢 | Claude |
 | 2 | Auth & JWT Middleware | 🔴 Not Started | Phase 1 | Claude |
 | 3 | Auth Webhook | 🔴 Not Started | Phase 2 | Claude |
@@ -43,7 +43,7 @@
 
 ## Phase 0: Review & Align
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Verify the dev environment, confirm prerequisite plans are complete, confirm the spec hasn't drifted from this plan, and identify exactly which phase to start or resume.
 **Run this phase at the start of every session on this plan.**
 
