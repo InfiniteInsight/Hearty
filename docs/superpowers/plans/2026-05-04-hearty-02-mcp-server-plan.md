@@ -30,7 +30,7 @@
 | 1 | Project Scaffold | 🟢 Completed | Spec 01 plan 🟢 | Claude |
 | 2 | Supabase Client & Health Profile Context | 🟢 Completed | Phase 1 | Claude |
 | 3 | Logging Tools (log_meal, log_symptoms, log_wellbeing) | 🟢 Completed | Phase 2 | Claude |
-| 4 | Query Tools (query_history, get_trends, get_summary) | 🔴 Not Started | Phase 2 | Claude |
+| 4 | Query Tools (query_history, get_trends, get_summary) | 🟢 Completed | Phase 2 | Claude |
 | 5 | Server Entrypoint & Hearty Persona | 🔴 Not Started | Phases 3–4 | Claude |
 | 6 | Integration Test | 🔴 Not Started | Phase 5 | Claude |
 
@@ -621,7 +621,7 @@ Handler behavior (spec §5.3):
 
 ## Phase 4: Query Tools
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement the three query tool handlers: `query_history`, `get_trends`, `get_summary`.
 **Depends on:** Phase 2 complete
 
@@ -667,7 +667,7 @@ When all three tasks are done:
 
 ### Task 4.1: Implement src/tools/query-history.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/tools/query-history.ts`. The tool name, description, `inputSchema`, and handler behavior must match spec §5.4 exactly.
 
@@ -706,7 +706,7 @@ Handler behavior (spec §5.4):
 
 ### Task 4.2: Implement src/tools/get-trends.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/tools/get-trends.ts`. The tool name, description, and `inputSchema` must match spec §5.5 exactly. Handler behavior is partially deferred (see phase note above).
 
@@ -744,7 +744,7 @@ Handler behavior (spec §5.5, with Spec 07 deferral):
 
 ### Task 4.3: Implement src/tools/get-summary.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/tools/get-summary.ts`. The tool name, description, `inputSchema`, and handler behavior must match spec §5.6 exactly.
 
