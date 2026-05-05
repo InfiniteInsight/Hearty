@@ -2,8 +2,8 @@
 
 **Spec:** [`hearty-03-rest-api.md`](../specs/2026-05-04-hearty-03-rest-api.md)
 **Roadmap Phase:** Phase 1 — Foundation
-**Plan Status:** 🟡 In Progress
-**Last Updated:** 2026-05-05 (Phase 7 complete)
+**Plan Status:** 🟢 Completed
+**Last Updated:** 2026-05-05 (Plan complete — all 11 phases)
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 0
 
@@ -37,7 +37,7 @@
 | 8 | Health Profile Endpoints | 🟢 Completed | Phase 2, Spec 08 Phase 3 | Claude |
 | 9 | Photo Stubs | 🟢 Completed | Phase 2 | Claude |
 | 10 | Fly.io Deployment | 🟢 Completed | Phases 5–9 | Claude |
-| 11 | Integration Tests | 🔴 Not Started | Phase 10 | Claude |
+| 11 | Integration Tests | 🟢 Completed | Phase 10 | Claude |
 
 ---
 
@@ -1131,7 +1131,7 @@ When all tasks are done:
 
 ## Phase 11: Integration Tests
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Write and run a set of integration tests against the live deployed API covering the core happy-path flows and key error cases.
 **Depends on:** Phase 10 complete (live deployment available)
 
@@ -1163,7 +1163,7 @@ When all tasks are done:
 
 ### Task 11.0: Obtain a test JWT
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Get a real Supabase JWT for a test user (needed by every test). Two options — use whichever works:
 
@@ -1193,7 +1193,7 @@ When all tasks are done:
 
 ### Task 11.1: Create test scaffolding
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/tests/__init__.py` (empty).
 
@@ -1209,7 +1209,7 @@ When all tasks are done:
 
 ### Task 11.2: Write and run integration tests
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/tests/test_api.py` covering these cases:
 
@@ -1253,6 +1253,8 @@ When all tasks are done:
 _Format: `[date] — Phase X, Task Y — changed X because Y`_
 
 [2026-05-05] — Phase 6, Task 6.1 — Added `label: Optional[str] = None` to `TriggerFood` schema; spec defines two tiers but no schema field to surface them. `frequency_bonus` undefined in spec; implemented as `min(occurrence_count / 10.0, 1.0)`. Applied 0–240 min onset window to all symptoms (not only unlinked). Deduped foods per meal in denominator. Added migration `20260505120000_food_triggers_unique.sql` for `UNIQUE(user_id, food_name, symptom_type)` required by upsert.
+
+[2026-05-05] — Phase 11, Task 11.2 — Fixed two bugs discovered during integration testing: (1) `ai_extraction.py` used `.format()` on prompts containing literal JSON `{}` braces, causing `KeyError` on the first `{` in the JSON example; switched to `.replace()`. Also added `_strip_code_fence()` helper because Claude wraps JSON responses in ` ```json ``` ` code fences. (2) `auth.py` did not catch exceptions from `supabase.auth.get_user()` — a malformed token raises an exception rather than returning `user=None`, which propagated as a 500; wrapped in try/except. Updated `test_unauthenticated_request` to expect 401 (current FastAPI HTTPBearer behavior) instead of 403 (old behavior noted in plan comments).
 
 ---
 
