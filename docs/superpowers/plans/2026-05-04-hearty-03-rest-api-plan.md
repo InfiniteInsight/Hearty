@@ -35,7 +35,7 @@
 | 6 | Trend Engine & Summary | 🟢 Completed | Phase 5 | Claude |
 | 7 | Export Endpoints | 🟢 Completed | Phase 5 | Claude |
 | 8 | Health Profile Endpoints | 🟢 Completed | Phase 2, Spec 08 Phase 3 | Claude |
-| 9 | Photo Stubs | 🔴 Not Started | Phase 2 | Claude |
+| 9 | Photo Stubs | 🟢 Completed | Phase 2 | Claude |
 | 10 | Fly.io Deployment | 🔴 Not Started | Phases 5–9 | Claude |
 | 11 | Integration Tests | 🔴 Not Started | Phase 10 | Claude |
 
@@ -959,7 +959,7 @@ When done:
 
 ## Phase 9: Photo Stubs
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Add `POST /api/photos` and `GET /api/photos/{id}/status` as stubs returning `501 Not Implemented`. These endpoints are owned by Spec 06 (AI Vision) — this phase ensures the routes are registered so the OpenAPI schema is complete, without implementing the pipelines.
 **Depends on:** Phase 2 complete (auth middleware)
 
@@ -990,7 +990,7 @@ When done:
 
 ### Task 9.1: Create photo router stubs
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/routers/photos.py`:
 
