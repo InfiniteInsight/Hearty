@@ -28,7 +28,7 @@
 |---|---|---|---|---|
 | 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
 | 1 | Project Scaffold | 🟢 Completed | Spec 01 plan 🟢 | Claude |
-| 2 | Supabase Client & Health Profile Context | 🔴 Not Started | Phase 1 | Claude |
+| 2 | Supabase Client & Health Profile Context | 🟢 Completed | Phase 1 | Claude |
 | 3 | Logging Tools (log_meal, log_symptoms, log_wellbeing) | 🔴 Not Started | Phase 2 | Claude |
 | 4 | Query Tools (query_history, get_trends, get_summary) | 🔴 Not Started | Phase 2 | Claude |
 | 5 | Server Entrypoint & Hearty Persona | 🔴 Not Started | Phases 3–4 | Claude |
@@ -265,7 +265,7 @@ When both tasks are done:
 
 ## Phase 2: Supabase Client & Health Profile Context
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement `src/supabase.ts` (Supabase client + `getUserId()`) and `src/context.ts` (`getHealthProfileContext()`). These two modules are shared by all tool handlers.
 **Depends on:** Phase 1 complete
 
@@ -297,7 +297,7 @@ When both tasks are done:
 
 ### Task 2.1: Implement src/supabase.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/supabase.ts` from spec §6.2 exactly:
 
@@ -340,7 +340,7 @@ export function getUserId(): string {
 
 ### Task 2.2: Implement src/context.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/context.ts` from spec §4.2 exactly:
 
