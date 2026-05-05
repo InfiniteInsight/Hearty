@@ -36,7 +36,7 @@
 | 7 | Export Endpoints | 🟢 Completed | Phase 5 | Claude |
 | 8 | Health Profile Endpoints | 🟢 Completed | Phase 2, Spec 08 Phase 3 | Claude |
 | 9 | Photo Stubs | 🟢 Completed | Phase 2 | Claude |
-| 10 | Fly.io Deployment | 🔴 Not Started | Phases 5–9 | Claude |
+| 10 | Fly.io Deployment | 🟢 Completed | Phases 5–9 | Claude |
 | 11 | Integration Tests | 🔴 Not Started | Phase 10 | Claude |
 
 ---
@@ -1037,7 +1037,7 @@ When done:
 
 ## Phase 10: Fly.io Deployment
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Deploy the `hearty-api` service to Fly.io free tier and verify the live `/health` endpoint.
 **Depends on:** Phases 5–9 complete
 
@@ -1068,7 +1068,7 @@ When all tasks are done:
 
 ### Task 10.1: Configure Fly.io
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Verify Fly CLI is installed: `fly version`
   If missing, install per https://fly.io/docs/hands-on/install-flyctl/ and log in: `fly auth login`
@@ -1094,7 +1094,7 @@ When all tasks are done:
 
 ### Task 10.2: Deploy and verify
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create a minimal `Dockerfile` in `hearty-api/` if `fly launch` did not generate one:
   ```dockerfile
