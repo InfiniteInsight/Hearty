@@ -1,6 +1,15 @@
 import json
 import os
+import re
 import litellm
+
+
+def _strip_code_fence(content: str) -> str:
+    content = content.strip()
+    if content.startswith("```"):
+        content = re.sub(r"^```(?:json)?\s*", "", content)
+        content = re.sub(r"\s*```$", "", content)
+    return content.strip()
 
 MEAL_EXTRACTION_PROMPT = """
 You are a precise food data extractor. Given a natural language meal description,
@@ -71,13 +80,13 @@ Data:
 
 def extract_meal(description: str) -> dict:
     """Parse free-form meal description into structured foods list."""
-    prompt = MEAL_EXTRACTION_PROMPT.format(description=description)
+    prompt = MEAL_EXTRACTION_PROMPT.replace("{description}", description)
     response = litellm.completion(
         model=os.environ.get("LLM_MODEL", "claude-sonnet-4-6"),
         messages=[{"role": "user", "content": prompt}],
         api_base=os.environ.get("LLM_BASE_URL") or None,
     )
-    content = response.choices[0].message.content.strip()
+    content = _strip_code_fence(response.choices[0].message.content)
     try:
         return json.loads(content)
     except json.JSONDecodeError as e:
@@ -86,13 +95,13 @@ def extract_meal(description: str) -> dict:
 
 def extract_symptoms(raw_description: str) -> list[dict]:
     """Parse free-form symptom description into structured symptom list."""
-    prompt = SYMPTOM_EXTRACTION_PROMPT.format(raw_description=raw_description)
+    prompt = SYMPTOM_EXTRACTION_PROMPT.replace("{raw_description}", raw_description)
     response = litellm.completion(
         model=os.environ.get("LLM_MODEL", "claude-sonnet-4-6"),
         messages=[{"role": "user", "content": prompt}],
         api_base=os.environ.get("LLM_BASE_URL") or None,
     )
-    content = response.choices[0].message.content.strip()
+    content = _strip_code_fence(response.choices[0].message.content)
     try:
         result = json.loads(content)
         if isinstance(result, list):
@@ -104,10 +113,10 @@ def extract_symptoms(raw_description: str) -> list[dict]:
 
 def generate_summary(stats: dict) -> str:
     """Generate a natural language summary from aggregated health stats."""
-    prompt = SUMMARY_PROMPT.format(stats_json=json.dumps(stats))
+    prompt = SUMMARY_PROMPT.replace("{stats_json}", json.dumps(stats))
     response = litellm.completion(
         model=os.environ.get("LLM_MODEL", "claude-sonnet-4-6"),
         messages=[{"role": "user", "content": prompt}],
         api_base=os.environ.get("LLM_BASE_URL") or None,
     )
-    return response.choices[0].message.content.strip()
+    return response.choices[0].message.content
