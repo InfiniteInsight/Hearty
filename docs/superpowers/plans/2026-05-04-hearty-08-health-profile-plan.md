@@ -2,8 +2,8 @@
 
 **Spec:** [`hearty-08-health-profile.md`](../specs/2026-05-04-hearty-08-health-profile.md)
 **Roadmap Phase:** Phase 1 — Foundation
-**Plan Status:** 🔴 Not Started
-**Last Updated:** 2026-05-04
+**Plan Status:** 🟡 In Progress
+**Last Updated:** 2026-05-05
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 0
 
@@ -26,7 +26,7 @@
 
 | Phase | Name | Status | Depends On | Type |
 |---|---|---|---|---|
-| 0 | Review & Align | 🔴 Not Started | — | Claude (start of every session) |
+| 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
 | 1 | Canonical Lists / Constants | 🔴 Not Started | Phase 0 | Claude |
 | 2 | JSONB Validation Schemas | 🔴 Not Started | Phase 1 | Claude |
 | 3 | REST API Endpoints | 🔴 Not Started | Phase 2 | Claude |
@@ -37,7 +37,7 @@
 
 ## Phase 0: Review & Align
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Confirm Spec 01 (Database) is complete and the `health_profile` table exists; verify this spec hasn't drifted from this plan; identify exactly which phase to start or resume.
 **Run this phase at the start of every session on this plan.**
 
@@ -92,7 +92,7 @@ Tell me to run /compact.
 Remind me that Phase 1's Activation Prompt is at the top of Phase 1 in this plan file.
 ```
 
-**Deviation Log:** _None_
+**Deviation Log:** Extra `notes TEXT` column exists on `health_profile` table (from initial migration) — not in spec §2 CREATE TABLE, benign, ignored.
 
 ---
 
@@ -461,6 +461,9 @@ Confirm which test framework is in use (pytest is expected) before writing any t
 ## Deviation Log
 
 _Format: `[date] — Phase X, Task Y — changed X because Y`_
+
+[2026-05-05] — Phase 0 — `health_profile` table has extra `notes TEXT` column (from migration); not in spec §2; benign.
+[2026-05-05] — Phase 0 — No FastAPI backend (`hearty-api/`) exists yet; `<app_root>` = `hearty-api/app/`; Phase 1 Task 1.1 will create the directory structure.
 
 ---
 
