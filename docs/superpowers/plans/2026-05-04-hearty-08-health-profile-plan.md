@@ -3,7 +3,7 @@
 **Spec:** [`hearty-08-health-profile.md`](../specs/2026-05-04-hearty-08-health-profile.md)
 **Roadmap Phase:** Phase 1 — Foundation
 **Plan Status:** 🟡 In Progress
-**Last Updated:** 2026-05-05 (Phase 1 complete)
+**Last Updated:** 2026-05-05 (Phase 1 complete; Phase 0 re-verified)
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 0
 
