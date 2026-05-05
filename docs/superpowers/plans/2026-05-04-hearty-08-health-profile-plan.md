@@ -130,8 +130,12 @@ When all tasks are done:
 
 **Status:** 🔴 Not Started
 
-- [ ] Check where the FastAPI application code lives (look for a `backend/` or `app/` directory or equivalent); confirm the layout before creating any files
-- [ ] Create `<app_root>/health_profile/constants.py` (use the path that fits the existing project layout)
+- [ ] `<app_root>` is `hearty-api/app/` (established in Phase 0 deviation log — no FastAPI backend existed at plan start; Spec 03 Phase 1 will create the sibling directories). Create the health_profile package:
+  ```bash
+  mkdir -p hearty-api/app/health_profile
+  touch hearty-api/app/health_profile/__init__.py
+  ```
+- [ ] Create `hearty-api/app/health_profile/constants.py`
 - [ ] The module must export four lists of strings, matching exactly what the spec defines:
   - `BIG_9_ALLERGENS` — the 9 FASTER Act allergens from spec §3.1 (normalised names): `"milk"`, `"eggs"`, `"fish"`, `"shellfish"`, `"tree nuts"`, `"peanuts"`, `"wheat"`, `"soybeans"`, `"sesame"`
   - `COMMON_INTOLERANCES` — the 12 items from spec §4 (use the spec's exact name strings)
@@ -279,10 +283,13 @@ When all tasks are done:
 
 **Status:** 🔴 Not Started
 
-- [ ] Create `<app_root>/health_profile/router.py` (confirm location fits existing layout)
+> **Depends on Spec 03 Phase 2 (Auth & JWT Middleware)** — the auth dependency pattern (`get_current_user` or equivalent) is defined there. Do not start this task until Spec 03 Phase 2 is 🟢 Completed. `<app_root>` = `hearty-api/app/`.
+
+- [ ] Create `hearty-api/app/health_profile/router.py`
 - [ ] Register a FastAPI `APIRouter` with prefix `/api/health-profile`
-- [ ] Confirm the existing auth dependency pattern (how other routes extract the authenticated user from the JWT) — use the same approach; do not invent a new one
+- [ ] Confirm the existing auth dependency pattern (how other routes extract the authenticated user from the JWT — defined in Spec 03 Phase 2) — use the same approach; do not invent a new one
 - [ ] Apply the auth dependency at router level so all endpoints in this router require authentication (the `GET /api/health-profile/defaults` endpoint from Phase 1 is separate and unauthenticated)
+- [ ] Wire `health_profile.router` into `hearty-api/app/main.py`
 
 **Deviation Log:** _None_
 
@@ -294,7 +301,7 @@ When all tasks are done:
 
 Implement the four top-level endpoints from spec §10.1:
 
-- [ ] `GET /api/health-profile` — return the user's full profile row (all four arrays + `updated_at`); if no row exists yet, return empty arrays with a 200 (the row is normally auto-created by the on-login webhook defined in Spec 03, but handle the missing-row case gracefully — not a 404)
+- [ ] `GET /api/health-profile` — return the user's full profile row (all four arrays + `updated_at`) via `HealthProfileResponse`; if no row exists yet, return empty arrays with a 200 (the row is normally auto-created by the on-login webhook defined in Spec 03, but handle the missing-row case gracefully — not a 404). **Do not expose the `notes TEXT` column** — it exists in the DB table (see Phase 0 deviation log) but is not part of the spec §2 data model and is not included in `HealthProfileResponse`. The MCP server (`context.ts`) uses it separately.
 - [ ] `PUT /api/health-profile` — full replace: validate all four arrays with `HealthProfilePutRequest`; upsert the row; update `updated_at`
 - [ ] `PATCH /api/health-profile` — partial update: validate present fields only with `HealthProfilePatchRequest`; merge into existing row; update `updated_at`
 - [ ] `DELETE /api/health-profile` — reset: set all four arrays back to `[]`; do not delete the row itself (per spec §7 rules: empty profile row is kept for future use)
@@ -469,6 +476,7 @@ _Format: `[date] — Phase X, Task Y — changed X because Y`_
 
 ## Notes
 
+- **Execution ordering (cross-spec dependency):** Phases 1-2 of this plan (constants + Pydantic schemas) create standalone Python modules that do not require a running FastAPI app — run them first. Then run Spec 03 Phases 1-2 (FastAPI project setup + auth middleware). Then return to this plan for Phases 3-5 (REST endpoints, context injection, tests), which require Spec 03 Phase 2's auth pattern to be in place.
 - The `health_profile` table is defined in Spec 01 (Database). This plan owns only the JSONB shapes inside that table and the API/logic around them. Do not re-define the table structure here.
 - The `health_profile` row is auto-created on first login via the `/auth/on-login` webhook defined in Spec 03. Phase 3 of this plan handles the missing-row case gracefully but does not implement the webhook — that lives in the Spec 03 plan.
 - REST endpoint implementation lives in this plan because the data shapes originate here. The Spec 03 (REST API) plan will reference these endpoints as already-implemented rather than re-implementing them.

@@ -27,7 +27,7 @@
 | Phase | Name | Status | Depends On | Type |
 |---|---|---|---|---|
 | 0 | Review & Align | 🔴 Not Started | — | Claude (start of every session) |
-| 1 | Project Setup | 🔴 Not Started | Spec 01 plan 🟢, Spec 08 plan 🟢 | Claude |
+| 1 | Project Setup | 🔴 Not Started | Spec 01 plan 🟢, Spec 08 Phases 1-2 🟢 | Claude |
 | 2 | Auth & JWT Middleware | 🔴 Not Started | Phase 1 | Claude |
 | 3 | Auth Webhook | 🔴 Not Started | Phase 2 | Claude |
 | 4 | AI Extraction Service | 🔴 Not Started | Phase 2 | Claude |
@@ -70,8 +70,11 @@ Steps:
    - The Spec 01 (Database) plan must be marked 🟢 Completed before Phase 1 can begin.
      The auth/on-login webhook upserts rows into health_profile and notification_preferences —
      those tables must already exist (created in Spec 01).
-   - The Spec 08 (Health Profile) plan must be marked 🟢 Completed before Phase 1 can begin.
-     If either plan file doesn't exist yet, report what is missing and stop.
+   - Spec 08 (Health Profile) **Phases 1-2** must be 🟢 Completed before Phase 1 can begin —
+     the Pydantic schemas from Phase 2 are needed by Phase 3 of this plan (Auth Webhook) and
+     Phase 8 (Health Profile Endpoints). Spec 08 Phases 3-5 (REST router, context injection,
+     tests) depend on this plan's Phase 2 (auth middleware) and run after it.
+     If the Spec 08 plan file doesn't exist yet, report it and stop.
 
 3. Check the dev environment (run each command, note missing items):
    - git status
@@ -106,7 +109,7 @@ Tell me to run /compact, and remind me that the next phase's Activation Prompt i
 
 **Status:** 🔴 Not Started
 **Goal:** Create the `hearty-api/` directory tree, virtualenv, `requirements.txt`, `.env.example`, and stub `main.py` — enough to run `uvicorn app.main:app --reload` without error.
-**Depends on:** Spec 01 plan 🟢 Completed, Spec 08 plan 🟢 Completed
+**Depends on:** Spec 01 plan 🟢 Completed, Spec 08 Phases 1-2 🟢 Completed
 
 ### Activation Prompt
 
@@ -137,14 +140,14 @@ When all tasks are done:
 
 **Status:** 🔴 Not Started
 
-- [ ] Create the full directory tree from spec Section 2:
+- [ ] `hearty-api/app/health_profile/` may already exist from Spec 08 Phase 1 — do not remove it. Create the remaining directories (`mkdir -p` is safe if they already exist):
   ```bash
   mkdir -p hearty-api/app/routers
   mkdir -p hearty-api/app/services
   mkdir -p hearty-api/app/models
   ```
 
-- [ ] Create placeholder `__init__.py` files:
+- [ ] Create placeholder `__init__.py` files (skip any that already exist from Spec 08):
   ```bash
   touch hearty-api/app/__init__.py
   touch hearty-api/app/routers/__init__.py
@@ -1225,7 +1228,7 @@ _Format: `[date] — Phase X, Task Y — changed X because Y`_
 
 ## Notes
 
-- **Spec 08 plan does not exist yet** as of 2026-05-04. Phase 0 checks for it — it will block until the Spec 08 (Health Profile) living plan is written. The auth/on-login webhook upserts default `health_profile` rows, so the DB tables (Spec 01) are a hard dependency; Spec 08 is a soft dependency for knowing what defaults to upsert.
+- **Spec 08 cross-spec dependency:** Spec 08 (Health Profile) owns the `health_profile` Pydantic schemas and REST endpoints. This plan's Phase 3 (Auth Webhook) upserts blank `health_profile` rows — it does not depend on Spec 08's schemas, only on the table existing (Spec 01). This plan's Phase 8 (Health Profile Endpoints) wires Spec 08's router into `main.py`; the router itself is implemented in Spec 08 Phase 3. Execution order: Spec 08 Phases 1-2 → this plan Phases 1-2 → Spec 08 Phases 3-5 → this plan Phases 3+.
 
 - **`food_lookup.py`** (spec Section 7, tiered food lookup pipeline) is Phase 4 roadmap work owned by Spec 07 (Food Intelligence). Phase 9 creates a stub file with an explanatory docstring. Do not implement the pipeline in this plan.
 
