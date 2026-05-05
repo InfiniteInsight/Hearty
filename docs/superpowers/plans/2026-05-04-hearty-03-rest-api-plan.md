@@ -760,6 +760,7 @@ When all tasks are done:
     - Query params: `start_date`, `end_date` (optional, default: all time)
     - Returns `application/json` with the full nested structure from spec Section 5.8:
       `exported_at`, `user_id`, `period`, `meals` (with nested symptoms), `wellbeing_snapshots`, `food_triggers`, `health_profile`
+    - For the `meals` array, use `MealWithSymptoms` from `app/models/schemas.py` (not `MealResponse`) — it carries `symptoms: List[SymptomResponse]`. Serialize with `.model_dump(mode="json")` or build the response as a plain dict by fetching meals joined with their symptoms via a second Supabase query (same pattern as `GET /api/meals`).
 
   - `GET /api/export/csv` (spec Section 5.9):
     - Query params: `start_date`, `end_date` (optional)
@@ -1186,7 +1187,7 @@ When all tasks are done:
   test_health_check()                  # GET /health → 200
   test_log_meal()                      # POST /api/meals → 201, foods[] populated by AI
   test_log_meal_idempotency()          # POST /api/meals with same offline_id → 200, no duplicate
-  test_query_meals()                   # GET /api/meals → 200, list includes the just-logged meal
+  test_query_meals()                   # GET /api/meals → 200, envelope {"total": int, "meals": [...]}, each meal has "symptoms": [] field
   test_log_symptoms()                  # POST /api/symptoms → 201, list of SymptomResponse
   test_log_wellbeing()                 # POST /api/wellbeing → 201
   test_get_trends()                    # GET /api/trends → 200, TrendsResponse
