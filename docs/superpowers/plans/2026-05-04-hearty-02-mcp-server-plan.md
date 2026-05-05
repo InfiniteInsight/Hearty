@@ -27,7 +27,7 @@
 | Phase | Name | Status | Depends On | Type |
 |---|---|---|---|---|
 | 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
-| 1 | Project Scaffold | 🔴 Not Started | Spec 01 plan 🟢 | Claude |
+| 1 | Project Scaffold | 🟢 Completed | Spec 01 plan 🟢 | Claude |
 | 2 | Supabase Client & Health Profile Context | 🔴 Not Started | Phase 1 | Claude |
 | 3 | Logging Tools (log_meal, log_symptoms, log_wellbeing) | 🔴 Not Started | Phase 2 | Claude |
 | 4 | Query Tools (query_history, get_trends, get_summary) | 🔴 Not Started | Phase 2 | Claude |
@@ -99,7 +99,7 @@ Tell me to run /compact, then use the Phase 1 Activation Prompt in this plan.
 
 ## Phase 1: Project Scaffold
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Create the `hearty-mcp/` subdirectory, initialize the npm project, install all dependencies, and lay down the full directory skeleton from spec §2.
 **Depends on:** Spec 01 plan marked 🟢 Completed
 
@@ -129,7 +129,7 @@ When both tasks are done:
 
 ### Task 1.1: Initialize npm project and install dependencies
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create and enter the project directory:
   ```bash
@@ -185,7 +185,7 @@ When both tasks are done:
 
 ### Task 1.2: Create directory structure, tsconfig, and .env.example
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create the directory skeleton from spec §2:
   ```bash
