@@ -9,6 +9,7 @@ The endpoint requires no authentication and returns static reference data only.
 """
 
 from fastapi import APIRouter
+from pydantic import BaseModel
 from .constants import (
     BIG_9_ALLERGENS,
     COMMON_INTOLERANCES,
@@ -16,11 +17,20 @@ from .constants import (
     COMMON_DIETARY_PROTOCOLS,
 )
 
+
+class HealthProfileDefaultsResponse(BaseModel):
+    allergens: list[str]
+    intolerances: list[str]
+    conditions: list[str]
+    dietary_protocols: list[str]
+
+
+# Mount in main.py with: app.include_router(router, prefix="/api/health-profile")
 router = APIRouter()
 
 
-@router.get("/defaults")
-def get_health_profile_defaults():
+@router.get("/defaults", response_model=HealthProfileDefaultsResponse, tags=["health-profile"])
+def get_health_profile_defaults() -> HealthProfileDefaultsResponse:
     """Get canonical health profile quick-select options.
 
     Returns all four canonical lists of health-related items for onboarding
@@ -36,9 +46,9 @@ def get_health_profile_defaults():
             - conditions: List of known medical conditions
             - dietary_protocols: List of common dietary approaches
     """
-    return {
-        "allergens": BIG_9_ALLERGENS,
-        "intolerances": COMMON_INTOLERANCES,
-        "conditions": COMMON_CONDITIONS,
-        "dietary_protocols": COMMON_DIETARY_PROTOCOLS,
-    }
+    return HealthProfileDefaultsResponse(
+        allergens=BIG_9_ALLERGENS,
+        intolerances=COMMON_INTOLERANCES,
+        conditions=COMMON_CONDITIONS,
+        dietary_protocols=COMMON_DIETARY_PROTOCOLS,
+    )
