@@ -27,14 +27,14 @@ class MealRequest(BaseModel):
 class MealResponse(BaseModel):
     id: UUID
     description: str
-    meal_type: Optional[str]
-    foods: Optional[List[FoodItem]]
-    location: Optional[str]
-    mood_before: Optional[int]
-    hunger_before: Optional[int]
+    meal_type: Optional[str] = None
+    foods: Optional[List[FoodItem]] = None
+    location: Optional[str] = None
+    mood_before: Optional[int] = None
+    hunger_before: Optional[int] = None
     logged_at: datetime
-    input_method: Optional[str]
-    notes: Optional[str]
+    input_method: Optional[str] = None
+    notes: Optional[str] = None
     created_at: datetime
 
 # ─── Symptoms ─────────────────────────────────────────────────────────────────
@@ -63,15 +63,15 @@ class SymptomRequest(BaseModel):
 
 class SymptomResponse(BaseModel):
     id: UUID
-    meal_id: Optional[UUID]
+    meal_id: Optional[UUID] = None
     symptom_type: str
-    severity: Optional[int]
-    onset_minutes: Optional[int]
-    duration_minutes: Optional[int]
-    bathroom_urgency: Optional[int]
-    bathroom_visits: Optional[int]
-    stool_consistency: Optional[int]
-    notes: Optional[str]
+    severity: Optional[int] = None
+    onset_minutes: Optional[int] = None
+    duration_minutes: Optional[int] = None
+    bathroom_urgency: Optional[int] = None
+    bathroom_visits: Optional[int] = None
+    stool_consistency: Optional[int] = None
+    notes: Optional[str] = None
     logged_at: datetime
 
 # ─── Wellbeing ────────────────────────────────────────────────────────────────
@@ -120,16 +120,7 @@ class SummaryResponse(BaseModel):
 
 # ─── Health Profile ───────────────────────────────────────────────────────────
 
-class HealthProfileRequest(BaseModel):
-    allergens: Optional[List[str]] = None
-    intolerances: Optional[List[str]] = None
-    conditions: Optional[List[str]] = None
-    dietary_protocols: Optional[List[str]] = None
-    notes: Optional[str] = None
-
-class HealthProfileResponse(HealthProfileRequest):
-    user_id: UUID
-    updated_at: datetime
+# Health profile schemas live in app/health_profile/schemas.py (Spec 08).
 
 # ─── Photos ───────────────────────────────────────────────────────────────────
 
