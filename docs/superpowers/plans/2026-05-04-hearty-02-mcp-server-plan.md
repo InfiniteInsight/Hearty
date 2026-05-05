@@ -29,7 +29,7 @@
 | 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
 | 1 | Project Scaffold | 🟢 Completed | Spec 01 plan 🟢 | Claude |
 | 2 | Supabase Client & Health Profile Context | 🟢 Completed | Phase 1 | Claude |
-| 3 | Logging Tools (log_meal, log_symptoms, log_wellbeing) | 🔴 Not Started | Phase 2 | Claude |
+| 3 | Logging Tools (log_meal, log_symptoms, log_wellbeing) | 🟢 Completed | Phase 2 | Claude |
 | 4 | Query Tools (query_history, get_trends, get_summary) | 🔴 Not Started | Phase 2 | Claude |
 | 5 | Server Entrypoint & Hearty Persona | 🔴 Not Started | Phases 3–4 | Claude |
 | 6 | Integration Test | 🔴 Not Started | Phase 5 | Claude |
@@ -410,7 +410,7 @@ export async function getHealthProfileContext(userId: string): Promise<string> {
 
 ## Phase 3: Logging Tools
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement the three logging tool handlers: `log_meal`, `log_symptoms`, `log_wellbeing`. Each exports a `register*()` function that accepts `McpServer` and registers the tool via `server.tool()`.
 **Depends on:** Phase 2 complete
 
@@ -490,7 +490,7 @@ When all three tasks are done:
 
 ### Task 3.1: Implement src/tools/log-meal.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/tools/log-meal.ts`. The tool name, description, `inputSchema`, and handler behavior must match spec §5.1 exactly.
 
@@ -531,7 +531,7 @@ Required `inputSchema` properties (from spec §5.1):
 
 ### Task 3.2: Implement src/tools/log-symptoms.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/tools/log-symptoms.ts`. The tool name, description, `inputSchema`, and handler behavior must match spec §5.2 exactly.
 
@@ -575,7 +575,7 @@ Required `inputSchema` properties (from spec §5.2):
 
 ### Task 3.3: Implement src/tools/log-wellbeing.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/tools/log-wellbeing.ts`. The tool name, description, `inputSchema`, and handler behavior must match spec §5.3 exactly.
 
