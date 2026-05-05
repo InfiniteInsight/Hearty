@@ -2,7 +2,7 @@
 
 **Spec:** [`hearty-02-mcp-server.md`](../specs/2026-05-04-hearty-02-mcp-server.md)
 **Roadmap Phase:** Phase 1 — Foundation
-**Plan Status:** 🔴 Not Started
+**Plan Status:** 🟡 In Progress
 **Last Updated:** 2026-05-04
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 1
@@ -26,7 +26,7 @@
 
 | Phase | Name | Status | Depends On | Type |
 |---|---|---|---|---|
-| 0 | Review & Align | 🔴 Not Started | — | Claude (start of every session) |
+| 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
 | 1 | Project Scaffold | 🔴 Not Started | Spec 01 plan 🟢 | Claude |
 | 2 | Supabase Client & Health Profile Context | 🔴 Not Started | Phase 1 | Claude |
 | 3 | Logging Tools (log_meal, log_symptoms, log_wellbeing) | 🔴 Not Started | Phase 2 | Claude |
@@ -38,7 +38,7 @@
 
 ## Phase 0: Review & Align
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Verify the dev environment, confirm Spec 01 is complete, confirm the spec hasn't drifted from this plan, and identify exactly which phase to start or resume.
 **Run this phase at the start of every session on this plan.**
 
