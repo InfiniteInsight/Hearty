@@ -3,7 +3,7 @@
 **Spec:** [`hearty-08-health-profile.md`](../specs/2026-05-04-hearty-08-health-profile.md)
 **Roadmap Phase:** Phase 1 — Foundation
 **Plan Status:** 🟡 In Progress
-**Last Updated:** 2026-05-05 (Phase 1 complete; Phase 0 re-verified)
+**Last Updated:** 2026-05-05 (Phase 2 complete)
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 0
 
@@ -170,7 +170,7 @@ When all tasks are done:
 
 ## Phase 2: JSONB Validation Schemas
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Define Pydantic models for the four JSONB shapes from spec §2.1–2.4. These models are used by the REST API layer (Phase 3) to validate incoming data and by the context-injection helper (Phase 4) to serialise outgoing data.
 **Depends on:** Phase 1 complete
 
@@ -200,7 +200,7 @@ When all tasks are done:
 
 ### Task 2.1: Define the four entry models
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `<app_root>/health_profile/schemas.py` (confirm location fits existing layout)
 - [ ] Define `SeverityEnum` with values `mild`, `moderate`, `severe` (from spec §2.1)
@@ -233,7 +233,7 @@ When all tasks are done:
 
 ### Task 2.2: Define the top-level profile request and response models
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Define `HealthProfileResponse` — all four arrays plus `updated_at: datetime`
 - [ ] Define `HealthProfilePutRequest` — all four arrays required (full replace)
