@@ -146,3 +146,13 @@ class PhotoStatusResponse(BaseModel):
 class ExportRequest(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+
+# ─── Meals with Symptoms (GET /api/meals response) ────────────────────────────
+# Defined here so SymptomResponse is already in scope.
+
+class MealWithSymptoms(MealResponse):
+    symptoms: List[SymptomResponse] = []
+
+class MealsListResponse(BaseModel):
+    total: int
+    meals: List[MealWithSymptoms]
