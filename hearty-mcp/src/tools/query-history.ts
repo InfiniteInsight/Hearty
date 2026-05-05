@@ -39,18 +39,22 @@ export function registerQueryHistory(server: McpServer): void {
           .order('logged_at', { ascending: false })
           .limit(limit);
 
-        if (args.symptom_type) {
-          query = query.filter('symptoms.symptom_type', 'eq', args.symptom_type);
-        }
         if (args.food_keyword) {
-          query = query.or(`description.ilike.%${args.food_keyword}%,foods.cs.%${args.food_keyword}%`);
+          query = query.or(`description.ilike.%${args.food_keyword}%,foods::text.ilike.%${args.food_keyword}%`);
         }
 
         const { data, error } = await query;
         if (error) throw error;
 
+        let results = data ?? [];
+        if (args.symptom_type) {
+          results = results.filter(meal =>
+            (meal.symptoms as Array<{ symptom_type: string }> ?? []).some(s => s.symptom_type === args.symptom_type)
+          );
+        }
+
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify({ meals: data ?? [], count: (data ?? []).length }) }],
+          content: [{ type: 'text' as const, text: JSON.stringify({ meals: results, count: results.length }) }],
         };
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error';
