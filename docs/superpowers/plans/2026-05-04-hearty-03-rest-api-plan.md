@@ -3,7 +3,7 @@
 **Spec:** [`hearty-03-rest-api.md`](../specs/2026-05-04-hearty-03-rest-api.md)
 **Roadmap Phase:** Phase 1 — Foundation
 **Plan Status:** 🟡 In Progress
-**Last Updated:** 2026-05-05 (Phase 6 complete)
+**Last Updated:** 2026-05-05 (Phase 7 complete)
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 0
 
@@ -33,7 +33,7 @@
 | 4 | AI Extraction Service | 🟢 Completed | Phase 2 | Claude |
 | 5 | Core Logging Endpoints | 🟢 Completed | Phases 3, 4 | Claude |
 | 6 | Trend Engine & Summary | 🟢 Completed | Phase 5 | Claude |
-| 7 | Export Endpoints | 🔴 Not Started | Phase 5 | Claude |
+| 7 | Export Endpoints | 🟢 Completed | Phase 5 | Claude |
 | 8 | Health Profile Endpoints | 🔴 Not Started | Phase 2 | Claude |
 | 9 | Photo Stubs | 🔴 Not Started | Phase 2 | Claude |
 | 10 | Fly.io Deployment | 🔴 Not Started | Phases 5–9 | Claude |
@@ -726,10 +726,9 @@ When all tasks are done:
 
 ---
 
-## Phase 7:
- Export Endpoints
+## Phase 7: Export Endpoints
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement `app/services/export_service.py` and the JSON, CSV, and PDF export endpoints.
 **Depends on:** Phase 5 complete (meals and symptoms data available)
 
@@ -767,7 +766,7 @@ When all tasks are done:
 
 ### Task 7.1: Implement JSON and CSV export
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/routers/export.py` implementing:
 
@@ -786,13 +785,13 @@ When all tasks are done:
 
 - [ ] Wire `export.router` into `main.py`.
 
-**Deviation Log:** _None_
+**Deviation Log:** CSV emits one row per meal even when a meal has no symptoms (empty symptom columns) — keeps meals visible in the export rather than silently omitting them. Also appended unlinked symptoms (meal_id IS NULL) as rows with empty meal columns; spec only described meal-linked symptoms but omitting them would lose data. Called `trend_engine.analyze_triggers()` for food_triggers rather than reading the `food_triggers` table directly, to preserve the `label` field (not stored in DB, computed at runtime).
 
 ---
 
 ### Task 7.2a: Implement PDF data aggregation and chart rendering
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/services/export_service.py` with a `gather_export_data(user_id, start_date, end_date)` helper:
     - Queries: meals + nested symptoms, wellbeing snapshots, food triggers, health profile, notification_preferences
@@ -824,7 +823,7 @@ When all tasks are done:
 
 ### Task 7.2b: Assemble PDF with reportlab
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Add `generate_pdf(user_id: str, start_date: datetime | None, end_date: datetime | None) -> bytes` to `export_service.py`:
     - Calls `gather_export_data()` and both chart renderers
@@ -857,7 +856,7 @@ When all tasks are done:
 
 ### Task 7.3: Wire PDF export into the router
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] In `hearty-api/app/routers/export.py`, add:
 
