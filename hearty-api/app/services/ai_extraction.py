@@ -94,7 +94,10 @@ def extract_symptoms(raw_description: str) -> list[dict]:
     )
     content = response.choices[0].message.content.strip()
     try:
-        return json.loads(content)
+        result = json.loads(content)
+        if isinstance(result, list):
+            return result
+        return result.get("symptoms", result)
     except json.JSONDecodeError as e:
         raise ValueError(f"AI returned non-JSON response: {content}") from e
 
