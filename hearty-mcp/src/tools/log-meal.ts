@@ -36,15 +36,15 @@ export function registerLogMeal(server: McpServer): void {
           .insert({
             user_id: userId,
             description: args.description,
-            meal_type: args.meal_type,
+            meal_type: args.meal_type ?? null,
             foods: args.foods ?? [],
-            location: args.location,
-            mood_before: args.mood_before,
-            hunger_before: args.hunger_before,
+            location: args.location ?? null,
+            mood_before: args.mood_before ?? null,
+            hunger_before: args.hunger_before ?? null,
             logged_at: args.logged_at ?? new Date().toISOString(),
             input_method: args.input_method ?? 'text',
-            offline_id: args.offline_id,
-            notes: args.notes,
+            offline_id: args.offline_id ?? null,
+            notes: args.notes ?? null,
           })
           .select('id')
           .single();
