@@ -2,8 +2,8 @@
 
 **Spec:** [`hearty-01-database.md`](../specs/2026-05-04-hearty-01-database.md)  
 **Roadmap Phase:** Phase 1 — Foundation  
-**Plan Status:** 🔴 Not Started  
-**Last Updated:** 2026-05-04  
+**Plan Status:** 🟢 Completed  
+**Last Updated:** 2026-05-04 (Phase 0 completed)  
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since  
 **Open Deviations:** 0
 
@@ -26,18 +26,18 @@
 
 | Phase | Name | Status | Depends On | Type |
 |---|---|---|---|---|
-| 0 | Review & Align | 🔴 Not Started | — | Claude (start of every session) |
-| 1 | Supabase Project Setup | 🔴 Not Started | — | Manual (browser) |
-| 2 | Schema Deployment | 🔴 Not Started | Phase 1 | Claude |
-| 3 | Auth Configuration | 🔴 Not Started | Phase 1 | Manual (browser) |
-| 4 | Storage Bucket | 🔴 Not Started | Phase 1 | Manual (browser) |
-| 5 | Smoke Test | 🔴 Not Started | Phases 2–4 | Claude |
+| 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
+| 1 | Supabase Project Setup | 🟢 Completed | — | Manual (browser) |
+| 2 | Schema Deployment | 🟢 Completed | Phase 1 | Claude |
+| 3 | Auth Configuration | 🟢 Completed | Phase 1 | Manual (browser) |
+| 4 | Storage Bucket | 🟢 Completed | Phase 1 | Manual (browser) |
+| 5 | Smoke Test | 🟢 Completed | Phases 2–4 | Claude |
 
 ---
 
 ## Phase 0: Review & Align
 
-**Status:** 🔴 Not Started  
+**Status:** 🟢 Completed  
 **Goal:** Verify the dev environment, confirm the spec hasn't drifted from this plan, and identify exactly which phase to start or resume.  
 **Run this phase at the start of every session on this plan.**
 
@@ -117,7 +117,7 @@ Update the plan: set Phase 0 status to 🟢 Completed and Last Updated to today.
 
 ## Phase 2: Schema Deployment
 
-**Status:** 🔴 Not Started  
+**Status:** 🟢 Completed  
 **Goal:** Install Supabase CLI, link to the project, deploy the initial migration, verify all 8 tables.  
 **Depends on:** Phase 1 complete
 
@@ -148,7 +148,7 @@ When both tasks are done:
 
 ### Task 2.1: Install Supabase CLI and initialize project
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Check if CLI is already installed: `supabase --version`
   If found, skip the install step.
@@ -181,7 +181,7 @@ When both tasks are done:
 
 ### Task 2.2: Create and deploy the initial migration
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create the migrations directory:
   ```bash
@@ -246,7 +246,7 @@ When both tasks are done:
 
 - [ ] Copy the **OAuth Client ID** → paste into Supabase Google provider → **Authorized Client IDs** → Save
 
-**Deviation Log:** _None_
+**Deviation Log:** Supabase dashboard navigation changed — Google provider is now under **Sign In / Providers**, not Authentication → Providers. SHA-1 deferred (placeholder `00:00:00...` used); real fingerprint to be added in Spec 04.
 
 ---
 
@@ -262,7 +262,7 @@ When both tasks are done:
 
 **Phase 3 complete when:** Both providers show as Enabled in the Supabase Dashboard.
 
-**Deviation Log:** _None_
+**Deviation Log:** "Disable password sign-in" toggle does not exist in current Supabase dashboard UI. Magic links are on by default. Password-only enforcement will be handled at the app level in Spec 03 by never calling `signInWithPassword()`. URL configuration confirmed done via Sign In / URL Configuration (navigation differs from plan).
 
 ---
 
@@ -377,6 +377,9 @@ If all 4 pass:
 ## Deviation Log
 
 _Format: `[date] — Phase X, Task Y — changed X because Y`_
+
+[2026-05-04] — Phase 2, Task 2.1 — used `npx supabase` instead of global install (npm global prefix requires sudo on this machine)
+[2026-05-04] — Phase 2, Task 2.2 — migration filename is `20260504223232_initial_schema.sql` (CLI-generated timestamp) instead of the hardcoded `20260504000001_initial_schema.sql` in the plan; supabase skill requires using `supabase migration new` rather than inventing filenames
 
 ---
 
