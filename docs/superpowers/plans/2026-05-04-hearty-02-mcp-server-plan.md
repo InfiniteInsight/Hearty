@@ -2,7 +2,7 @@
 
 **Spec:** [`hearty-02-mcp-server.md`](../specs/2026-05-04-hearty-02-mcp-server.md)
 **Roadmap Phase:** Phase 1 — Foundation
-**Plan Status:** 🟡 In Progress
+**Plan Status:** ⚠️ Blocked
 **Last Updated:** 2026-05-04
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 1
@@ -32,7 +32,7 @@
 | 3 | Logging Tools (log_meal, log_symptoms, log_wellbeing) | 🟢 Completed | Phase 2 | Claude |
 | 4 | Query Tools (query_history, get_trends, get_summary) | 🟢 Completed | Phase 2 | Claude |
 | 5 | Server Entrypoint & Hearty Persona | 🟢 Completed | Phases 3–4 | Claude |
-| 6 | Integration Test | 🔴 Not Started | Phase 5 | Claude |
+| 6 | Integration Test | ⚠️ Blocked | Phase 5 | Claude |
 
 ---
 
@@ -927,7 +927,7 @@ await server.connect(transport);
 
 ## Phase 6: Integration Test
 
-**Status:** 🔴 Not Started
+**Status:** ⚠️ Blocked
 **Goal:** Connect the running MCP server to the real Supabase instance and exercise all six tools end-to-end. Verify rows land in the correct tables and the server handles error conditions gracefully.
 **Depends on:** Phase 5 complete, Spec 01 plan 🟢 Completed (Supabase schema deployed and `.env` populated)
 
@@ -959,7 +959,7 @@ When all tasks are done:
 
 ### Task 6.1: Environment and startup check
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Confirm `.env` file exists with all three required variables:
   ```bash
@@ -985,7 +985,7 @@ When all tasks are done:
 
 ### Task 6.2: Test logging tools against Supabase
 
-**Status:** 🔴 Not Started
+**Status:** ⚠️ Blocked — schema mismatch found
 
 Write a test script at `hearty-mcp/scripts/integration-test.ts` that calls each tool handler directly (bypassing the MCP transport) against the real Supabase instance.
 
@@ -1035,13 +1035,13 @@ Write a test script at `hearty-mcp/scripts/integration-test.ts` that calls each 
   ```
   All 6 tests must pass. Fix any failures before moving on.
 
-**Deviation Log:** _None_
+**Deviation Log:** [2026-05-04] — Test 2 FAIL: `symptoms` table missing flat columns that `log-symptoms.ts` inserts (`symptom_type`, `severity`, `duration_minutes`, `bathroom_urgency`, `bathroom_visits`, `stool_consistency`). Deployed schema uses `severity_overall` + `structured_data JSONB` instead. `query-history.ts` nested select `symptoms(symptom_type, severity)` will also fail. Schema migration needed before tests can pass.
 
 ---
 
 ### Task 6.3: Test error handling
 
-**Status:** 🔴 Not Started
+**Status:** ⚠️ Blocked — depends on Task 6.2
 
 - [ ] Add a Test 7 to the integration test script: pass an invalid/missing `HEARTY_USER_ID` and confirm the tool returns `{ success: false, isError: true }` rather than throwing an unhandled exception.
 
@@ -1063,7 +1063,7 @@ Write a test script at `hearty-mcp/scripts/integration-test.ts` that calls each 
 
 ### Task 6.4: Cleanup and verification
 
-**Status:** 🔴 Not Started
+**Status:** ⚠️ Blocked — depends on Task 6.2
 
 - [ ] Delete the integration test rows from Supabase (use `supabase db execute` or the Supabase Dashboard SQL editor):
   ```sql
@@ -1093,6 +1093,7 @@ _Format: `[date] — Phase X, Task Y — changed X because Y`_
 [2026-05-04] — Phase 4, Task 4.2 — get_trends does not call run_trend_analysis() RPC because that RPC is defined in Spec 07 (Food Intelligence), not Spec 01; returns empty triggers + deferral note instead
 [2026-05-04] — Phase 1, Task 1.1 — added zod ^3.0.0 to dependencies; SDK 1.29.0 declares it as a required peer dependency (README: "npm install @modelcontextprotocol/sdk zod")
 [2026-05-04] — Phases 3–4 — server.tool() deprecated in SDK 1.29.0; using server.registerTool() with Zod raw shapes for all tool inputSchema definitions instead of plain JSON Schema objects
+[2026-05-04] — Phase 6, Task 6.2 — BLOCKED: integration test found schema/handler mismatch. The deployed `symptoms` table has columns `severity_overall` (not `severity`) and `structured_data JSONB` with no `symptom_type`, `duration_minutes`, `bathroom_urgency`, `bathroom_visits`, or `stool_consistency` flat columns. The `log-symptoms.ts` handler inserts these as flat fields and `query-history.ts` selects them — both will fail against the live schema. A new migration is needed to add the missing columns (or the handler must be rewritten to use `structured_data JSONB`). Until resolved, Tasks 6.2, 6.3, 6.4 cannot complete.
 
 ---
 
