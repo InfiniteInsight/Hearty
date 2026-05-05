@@ -31,7 +31,7 @@
 | 2 | Supabase Client & Health Profile Context | 🟢 Completed | Phase 1 | Claude |
 | 3 | Logging Tools (log_meal, log_symptoms, log_wellbeing) | 🟢 Completed | Phase 2 | Claude |
 | 4 | Query Tools (query_history, get_trends, get_summary) | 🟢 Completed | Phase 2 | Claude |
-| 5 | Server Entrypoint & Hearty Persona | 🔴 Not Started | Phases 3–4 | Claude |
+| 5 | Server Entrypoint & Hearty Persona | 🟢 Completed | Phases 3–4 | Claude |
 | 6 | Integration Test | 🔴 Not Started | Phase 5 | Claude |
 
 ---
@@ -789,7 +789,7 @@ Handler behavior (spec §5.6):
 
 ## Phase 5: Server Entrypoint & Hearty Persona
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement `src/index.ts` — register all six tools, attach the full Hearty system prompt as the server `description`, and wire the stdio transport.
 **Depends on:** Phases 3 and 4 complete
 
@@ -821,7 +821,7 @@ When both tasks are done:
 
 ### Task 5.1: Implement src/index.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/index.ts` from spec §9, with the full system prompt from spec §3 inserted as the `description` field:
 
@@ -864,7 +864,7 @@ await server.connect(transport);
 
 ### Task 5.2: Full TypeScript build and Claude Desktop config
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Full TypeScript build:
   ```bash
