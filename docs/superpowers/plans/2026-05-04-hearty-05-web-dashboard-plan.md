@@ -275,3 +275,4 @@ _Format: `[date] — Phase X, Task Y — changed X because Y`_
 - **Vercel deployment:** The spec specifies Vercel for hosting with automatic deploys from `main`. Deployment setup is not a phase in this plan — configure after Phase 8 integration test passes.
 - **Photo uploads:** Web dashboard displays photo thumbnails from mobile entries (via signed Supabase Storage URLs) but does not support new photo uploads. Do not implement a camera/upload flow on web.
 - **Voice input:** Not in scope for the web dashboard. The quick log input is text-only.
+- **Claude Desktop installation:** The `hearty-mcp/claude_desktop_config.example.json` (built in Spec 02) should be surfaced as a "Connect Claude" setup step within the web dashboard onboarding flow. Add a settings page or onboarding card that shows the user how to install the MCP server into Claude Desktop. Implement this as part of Phase 3 (Settings UI) or a dedicated onboarding phase.
