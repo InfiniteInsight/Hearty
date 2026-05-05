@@ -15,7 +15,13 @@ export async function getHealthProfileContext(userId: string): Promise<string> {
     .eq('user_id', userId)
     .single();
 
-  if (error || !data) return '';
+  if (error) {
+    if (error.code !== 'PGRST116') {
+      console.error('[hearty] Failed to fetch health profile:', error.message);
+    }
+    return '';
+  }
+  if (!data) return '';
 
   const profile: HealthProfile = data;
   const parts: string[] = [];
