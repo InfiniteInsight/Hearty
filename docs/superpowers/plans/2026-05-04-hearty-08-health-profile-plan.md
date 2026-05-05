@@ -3,7 +3,7 @@
 **Spec:** [`hearty-08-health-profile.md`](../specs/2026-05-04-hearty-08-health-profile.md)
 **Roadmap Phase:** Phase 1 — Foundation
 **Plan Status:** 🟡 In Progress
-**Last Updated:** 2026-05-05
+**Last Updated:** 2026-05-05 (Phase 1 complete)
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 0
 
@@ -27,7 +27,7 @@
 | Phase | Name | Status | Depends On | Type |
 |---|---|---|---|---|
 | 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
-| 1 | Canonical Lists / Constants | 🔴 Not Started | Phase 0 | Claude |
+| 1 | Canonical Lists / Constants | 🟢 Completed | Phase 0 | Claude |
 | 2 | JSONB Validation Schemas | 🔴 Not Started | Phase 1 | Claude |
 | 3 | REST API Endpoints | 🔴 Not Started | Phase 2 | Claude |
 | 4 | Health Profile Context Injection | 🔴 Not Started | Phase 3 | Claude |
@@ -98,7 +98,7 @@ Remind me that Phase 1's Activation Prompt is at the top of Phase 1 in this plan
 
 ## Phase 1: Canonical Lists / Constants
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Create a constants module that captures the well-known default lists from the spec (Big 9 allergens, common intolerances, common conditions, common dietary protocols). These are the "quick-select defaults" surfaced to the user during onboarding and in the settings UI — not seed rows in the database.
 **Depends on:** Phase 0 complete
 
@@ -128,7 +128,7 @@ When all tasks are done:
 
 ### Task 1.1: Locate or create the constants module
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] `<app_root>` is `hearty-api/app/` (established in Phase 0 deviation log — no FastAPI backend existed at plan start; Spec 03 Phase 1 will create the sibling directories). Create the health_profile package:
   ```bash
@@ -149,7 +149,7 @@ When all tasks are done:
 
 ### Task 1.2: Expose constants via a read-only API endpoint
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Add `GET /api/health-profile/defaults` endpoint that returns all four lists as JSON:
   ```json
@@ -471,6 +471,7 @@ _Format: `[date] — Phase X, Task Y — changed X because Y`_
 
 [2026-05-05] — Phase 0 — `health_profile` table has extra `notes TEXT` column (from migration); not in spec §2; benign.
 [2026-05-05] — Phase 0 — No FastAPI backend (`hearty-api/`) exists yet; `<app_root>` = `hearty-api/app/`; Phase 1 Task 1.1 will create the directory structure.
+[2026-05-05] — Phase 1, Task 1.2 — Smoke-check (live endpoint call) deferred: no `main.py` exists until Spec 03 Phase 1. Verified instead by direct import and function call confirming all four keys present and non-empty.
 
 ---
 
