@@ -22,9 +22,9 @@ export function registerGetTrends(server: McpServer): void {
         const minOccurrences = args.min_occurrences ?? 2;
         let query = supabase
           .from('food_triggers')
-          .select('food_name, symptom_type, confidence_score, avg_severity, avg_onset_minutes, occurrences, last_updated')
+          .select('food_name, symptom_type, confidence_score, avg_severity, avg_onset_minutes, occurrence_count, last_updated')
           .eq('user_id', userId)
-          .gte('occurrences', minOccurrences)
+          .gte('occurrence_count', minOccurrences)
           .order('confidence_score', { ascending: false });
 
         if (args.focus_symptom) {
