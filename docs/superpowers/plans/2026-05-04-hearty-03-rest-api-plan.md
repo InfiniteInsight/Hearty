@@ -34,7 +34,7 @@
 | 5 | Core Logging Endpoints | 🟢 Completed | Phases 3, 4 | Claude |
 | 6 | Trend Engine & Summary | 🟢 Completed | Phase 5 | Claude |
 | 7 | Export Endpoints | 🟢 Completed | Phase 5 | Claude |
-| 8 | Health Profile Endpoints | 🔴 Not Started | Phase 2 | Claude |
+| 8 | Health Profile Endpoints | 🟢 Completed | Phase 2, Spec 08 Phase 3 | Claude |
 | 9 | Photo Stubs | 🔴 Not Started | Phase 2 | Claude |
 | 10 | Fly.io Deployment | 🔴 Not Started | Phases 5–9 | Claude |
 | 11 | Integration Tests | 🔴 Not Started | Phase 10 | Claude |
@@ -883,9 +883,9 @@ When all tasks are done:
 
 ## Phase 8: Health Profile Endpoints
 
-**Status:** 🔴 Not Started
-**Goal:** Implement `GET /api/health-profile` and `PUT /api/health-profile`.
-**Depends on:** Phase 2 complete (auth middleware)
+**Status:** 🟢 Completed
+**Goal:** Mount the health profile router (implemented in Spec 08 Phase 3) into `main.py`. The router lives at `hearty-api/app/health_profile/router.py` and provides all 12 endpoints (GET/PUT/PATCH/DELETE top-level + 8 sub-resource endpoints).
+**Depends on:** Phase 2 complete (auth middleware), Spec 08 Phase 3 complete
 
 ### Activation Prompt
 
@@ -896,46 +896,62 @@ Working directory: /home/evan/projects/food-journal-assistant
 
 Context:
 - Spec: docs/superpowers/specs/2026-05-04-hearty-03-rest-api.md  (Sections 5.11–5.12)
+- Spec 08: docs/superpowers/specs/2026-05-04-hearty-08-health-profile.md  (§10.1)
 - Plan: docs/superpowers/plans/2026-05-04-hearty-03-rest-api-plan.md
+
+---
+Start with Phase 0 (Review & Align) before writing any code. Phase 0 exists because this
+phase has a critical cross-spec dependency: the health profile router is implemented in Spec
+08 Phase 3 (`hearty-api/app/health_profile/router.py`), not here. Task 8.1's only job is to
+confirm that router is wired in main.py and run the smoke test. Phase 0 tells you to verify
+`hearty-api/app/health_profile/router.py` exists and exports a router object before touching
+main.py. If Spec 08 Phase 3 is not yet complete, you must stop and say so rather than
+improvising.
+
+Phase 0 steps:
+1. Read the plan file: docs/superpowers/plans/2026-05-04-hearty-03-rest-api-plan.md
+2. Mark Phase 8 as 🟡 In Progress in the plan file
+3. Verify the environment: confirm hearty-api/app/health_profile/router.py exists and exports router
+4. If the file is missing or Spec 08 Phase 3 is not complete, stop and report — do not proceed
 
 Before running any command, verify it exists with --help or equivalent.
 If a step doesn't match what you find, stop and tell me — don't improvise.
 
-Read the plan file, then execute Task 8.1.
+After Phase 0, execute Task 8.1.
 
 When done:
 - Mark Phase 8 status as 🟢 Completed in the plan file
-- Commit: git add hearty-api/app/routers/health_profile.py docs/superpowers/plans/2026-05-04-hearty-03-rest-api-plan.md && git commit -m "feat: health profile endpoints"
+- Commit: git add hearty-api/app/main.py docs/superpowers/plans/2026-05-04-hearty-03-rest-api-plan.md && git commit -m "feat: health profile endpoints"
 - Tell me to run /compact
 - Remind me that the next phase's Activation Prompt is at the top of Phase 9 in this plan file
 ```
 
 ---
 
-### Task 8.1: Wire Spec 08's health_profile router into main.py
+### Task 8.1: Verify health_profile router is wired into main.py
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
-> **Note:** The `health_profile` router is implemented in Spec 08 Phase 3 (`hearty-api/app/health_profile/router.py`), not here. By the time this phase runs, that router already exists. This task's only job is to mount it in `main.py` and smoke-test it.
+> **Note:** The `health_profile` router is implemented in Spec 08 Phase 3 (`hearty-api/app/health_profile/router.py`), not here. That phase also wires it into `main.py`. This task confirms the wiring is in place and verifies the endpoints respond correctly.
 > The execution order is: Spec 08 Phases 1–2 → Spec 03 Phases 1–2 → **Spec 08 Phases 3–5** → Spec 03 Phases 3+.
 > If Spec 08 Phase 3 is not yet 🟢 Completed, stop and complete it before proceeding.
 
-- [ ] Confirm `hearty-api/app/health_profile/router.py` exists and exports a `router` object.
+- [x] Confirmed `hearty-api/app/health_profile/router.py` exists and exports a `router` object.
 
-- [ ] In `hearty-api/app/main.py`, add:
+- [x] In `hearty-api/app/main.py`, the router is imported and included:
   ```python
-  from app.health_profile import router as health_profile_router
-  app.include_router(health_profile_router.router)
+  from app.health_profile.router import router as health_profile_router
+  app.include_router(health_profile_router)
   ```
 
-- [ ] Smoke test:
+- [ ] Smoke test (run with a valid `TEST_JWT` — `HealthProfilePutRequest` requires all four arrays):
   ```bash
   curl -s -X PUT http://localhost:8000/api/health-profile \
     -H "Authorization: Bearer $TEST_JWT" \
     -H "Content-Type: application/json" \
-    -d '{"allergens": [{"name": "peanuts", "severity": "mild"}]}'
+    -d '{"allergens": [{"name": "peanuts", "severity": "mild"}], "intolerances": [], "conditions": [], "dietary_protocols": []}'
   ```
-  Expected: `200` with `HealthProfileResponse` showing the updated `allergens` array.
+  Expected: `200` with `HealthProfileResponse` showing `allergens: [{name: peanuts, ...}]` and empty arrays for the other fields.
 
 **Deviation Log:** _None_
 
@@ -1210,8 +1226,8 @@ When all tasks are done:
   test_export_json()                   # GET /api/export/json → 200, application/json
   test_export_csv()                    # GET /api/export/csv → 200, text/csv
   test_export_pdf()                    # POST /api/export/pdf → 200, application/pdf
-  test_get_health_profile()            # GET /api/health-profile → 200
-  test_update_health_profile()         # PUT /api/health-profile → 200, arrays updated
+  test_get_health_profile()            # GET /api/health-profile → 200, HealthProfileResponse (Spec 08 rich schema: allergens/intolerances/conditions/dietary_protocols as object arrays + updated_at)
+  test_update_health_profile()         # PUT /api/health-profile → 200, payload uses HealthProfilePutRequest (all four arrays required, each item is a rich entry object — e.g. allergens: [{name, severity, ...}])
 
   # Error paths
   test_unauthenticated_request()       # GET /api/meals no token → 403

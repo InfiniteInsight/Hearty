@@ -3,8 +3,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.health_profile.defaults_router import router as defaults_router
+from app.health_profile.router import router as health_profile_router
 from app.routers import auth_hooks, meals, symptoms, wellbeing, trends, export
-# from app.routers import health_profile, photos
+# from app.routers import photos
 
 _origins_env = os.getenv("ALLOWED_ORIGINS", "")
 _allowed_origins = [o.strip() for o in _origins_env.split(",") if o.strip()] or ["*"]
@@ -28,6 +29,7 @@ app.add_middleware(
 )
 
 app.include_router(defaults_router, prefix="/api/health-profile")
+app.include_router(health_profile_router)
 app.include_router(auth_hooks.router)
 app.include_router(meals.router)
 app.include_router(symptoms.router)
