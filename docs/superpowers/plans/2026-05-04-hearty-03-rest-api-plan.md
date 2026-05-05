@@ -3,7 +3,7 @@
 **Spec:** [`hearty-03-rest-api.md`](../specs/2026-05-04-hearty-03-rest-api.md)
 **Roadmap Phase:** Phase 1 — Foundation
 **Plan Status:** 🟡 In Progress
-**Last Updated:** 2026-05-05
+**Last Updated:** 2026-05-05 (Phase 2 complete)
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 0
 
@@ -28,7 +28,7 @@
 |---|---|---|---|---|
 | 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
 | 1 | Project Setup | 🟢 Completed | Spec 01 plan 🟢, Spec 08 Phases 1-2 🟢 | Claude |
-| 2 | Auth & JWT Middleware | 🔴 Not Started | Phase 1 | Claude |
+| 2 | Auth & JWT Middleware | 🟢 Completed | Phase 1 | Claude |
 | 3 | Auth Webhook | 🔴 Not Started | Phase 2 | Claude |
 | 4 | AI Extraction Service | 🔴 Not Started | Phase 2 | Claude |
 | 5 | Core Logging Endpoints | 🔴 Not Started | Phases 3, 4 | Claude |
@@ -229,7 +229,7 @@ When all tasks are done:
 
 ## Phase 2: Auth & JWT Middleware
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement `app/auth.py` (Supabase JWT verification dependency) and verify it blocks unauthenticated requests.
 **Depends on:** Phase 1 complete
 
@@ -260,7 +260,7 @@ When all tasks are done:
 
 ### Task 2.1: Implement `app/auth.py`
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/auth.py` from spec Section 3.1 (verbatim):
   - `security = HTTPBearer()`
@@ -282,7 +282,7 @@ When all tasks are done:
 
 ### Task 2.2: Add a protected test route and verify 401
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] In `hearty-api/app/main.py`, temporarily add a protected test route:
   ```python
