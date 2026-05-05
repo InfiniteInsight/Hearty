@@ -3,7 +3,7 @@
 **Spec:** [`hearty-03-rest-api.md`](../specs/2026-05-04-hearty-03-rest-api.md)
 **Roadmap Phase:** Phase 1 — Foundation
 **Plan Status:** 🟡 In Progress
-**Last Updated:** 2026-05-05 (Phase 3 complete)
+**Last Updated:** 2026-05-05 (Phase 4 complete)
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 0
 
@@ -30,7 +30,7 @@
 | 1 | Project Setup | 🟢 Completed | Spec 01 plan 🟢, Spec 08 Phases 1-2 🟢 | Claude |
 | 2 | Auth & JWT Middleware | 🟢 Completed | Phase 1 | Claude |
 | 3 | Auth Webhook | 🟢 Completed | Phase 2 | Claude |
-| 4 | AI Extraction Service | 🔴 Not Started | Phase 2 | Claude |
+| 4 | AI Extraction Service | 🟢 Completed | Phase 2 | Claude |
 | 5 | Core Logging Endpoints | 🔴 Not Started | Phases 3, 4 | Claude |
 | 6 | Trend Engine & Summary | 🔴 Not Started | Phase 5 | Claude |
 | 7 | Export Endpoints | 🔴 Not Started | Phase 5 | Claude |
@@ -434,7 +434,7 @@ When all tasks are done:
 
 ## Phase 4: AI Extraction Service
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement `app/services/ai_extraction.py` — `extract_meal()`, `extract_symptoms()`, and `generate_summary()` — using LiteLLM.
 **Depends on:** Phase 2 complete (virtualenv and schemas are in place)
 
@@ -465,7 +465,7 @@ When all tasks are done:
 
 ### Task 4.1: Implement `app/services/ai_extraction.py`
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/services/ai_extraction.py` with all three functions from spec Section 6:
 
@@ -485,13 +485,13 @@ When all tasks are done:
 
 - [ ] Add `hearty-api/app/services/__init__.py` (empty) if not already present.
 
-**Deviation Log:** _None_
+**Deviation Log:** Added `{description}` and `{raw_description}` placeholders to spec 6.1 and 6.2 prompts (missing from spec; required by the spec's own `.format()` call pattern shown in 6.3). Appended as `Description:\n{placeholder}` at the end of each prompt, consistent with the `Data:\n{stats_json}` pattern in 6.3.
 
 ---
 
 ### Task 4.2: Smoke test AI extraction locally
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] With a valid `ANTHROPIC_API_KEY` (or whichever provider key matches `LLM_MODEL`) set in `.env`:
   ```bash
