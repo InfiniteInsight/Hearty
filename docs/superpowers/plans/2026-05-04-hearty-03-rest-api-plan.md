@@ -2,7 +2,7 @@
 
 **Spec:** [`hearty-03-rest-api.md`](../specs/2026-05-04-hearty-03-rest-api.md)
 **Roadmap Phase:** Phase 1 — Foundation
-**Plan Status:** 🔴 Not Started
+**Plan Status:** 🟡 In Progress
 **Last Updated:** 2026-05-05
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 0
@@ -27,7 +27,7 @@
 | Phase | Name | Status | Depends On | Type |
 |---|---|---|---|---|
 | 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
-| 1 | Project Setup | 🔴 Not Started | Spec 01 plan 🟢, Spec 08 Phases 1-2 🟢 | Claude |
+| 1 | Project Setup | 🟢 Completed | Spec 01 plan 🟢, Spec 08 Phases 1-2 🟢 | Claude |
 | 2 | Auth & JWT Middleware | 🔴 Not Started | Phase 1 | Claude |
 | 3 | Auth Webhook | 🔴 Not Started | Phase 2 | Claude |
 | 4 | AI Extraction Service | 🔴 Not Started | Phase 2 | Claude |
@@ -107,7 +107,7 @@ Tell me to run /compact, and remind me that the next phase's Activation Prompt i
 
 ## Phase 1: Project Setup
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Create the `hearty-api/` directory tree, virtualenv, `requirements.txt`, `.env.example`, and stub `main.py` — enough to run `uvicorn app.main:app --reload` without error.
 **Depends on:** Spec 01 plan 🟢 Completed, Spec 08 Phases 1-2 🟢 Completed
 
@@ -138,7 +138,7 @@ When all tasks are done:
 
 ### Task 1.1: Create directory structure
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] `hearty-api/app/health_profile/` may already exist from Spec 08 Phase 1 — do not remove it. Create the remaining directories (`mkdir -p` is safe if they already exist):
   ```bash
@@ -163,7 +163,7 @@ When all tasks are done:
 
 ### Task 1.2: Create `requirements.txt` and virtualenv
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/requirements.txt` with the exact pinned versions from spec Section 12:
   ```
@@ -200,7 +200,7 @@ When all tasks are done:
 
 ### Task 1.3: Create `.env.example` and stub `main.py`
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/.env.example` from spec Section 11 (verbatim).
 
