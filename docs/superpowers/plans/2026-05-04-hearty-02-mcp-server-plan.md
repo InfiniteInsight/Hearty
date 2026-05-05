@@ -420,6 +420,8 @@ cat /home/evan/projects/food-journal-assistant/hearty-mcp/node_modules/@modelcon
 ```
 The spec shows `server.tool(name, description, schema, handler)`. If the installed SDK has a different signature, stop and tell the user — do not adapt silently.
 
+**SDK CHECK DONE (2026-05-04):** server.tool() is deprecated; all handlers use server.registerTool(name, { description, inputSchema: ZodRawShape }, handler) + import { z } from 'zod'. Approved by user.
+
 **Error handling pattern:** Every tool handler (spec §7) must wrap its logic in:
 ```typescript
 try {
@@ -1089,6 +1091,8 @@ Write a test script at `hearty-mcp/scripts/integration-test.ts` that calls each 
 _Format: `[date] — Phase X, Task Y — changed X because Y`_
 
 [2026-05-04] — Phase 4, Task 4.2 — get_trends does not call run_trend_analysis() RPC because that RPC is defined in Spec 07 (Food Intelligence), not Spec 01; returns empty triggers + deferral note instead
+[2026-05-04] — Phase 1, Task 1.1 — added zod ^3.0.0 to dependencies; SDK 1.29.0 declares it as a required peer dependency (README: "npm install @modelcontextprotocol/sdk zod")
+[2026-05-04] — Phases 3–4 — server.tool() deprecated in SDK 1.29.0; using server.registerTool() with Zod raw shapes for all tool inputSchema definitions instead of plain JSON Schema objects
 
 ---
 
