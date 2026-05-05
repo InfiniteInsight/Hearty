@@ -649,16 +649,23 @@ When all tasks are done:
 ```
 You are implementing Phase 6 (Trend Engine & Summary) of the Hearty REST API.
 
-Working directory: /home/evan/projects/food-journal-assistant
+Working directory: /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-mcp-server
 
 Context:
 - Spec: docs/superpowers/specs/2026-05-04-hearty-03-rest-api.md  (Sections 5.6, 5.7, 8)
 - Plan: docs/superpowers/plans/2026-05-04-hearty-03-rest-api-plan.md
 
+**IMPORTANT — Run Phase 0 first.**
+Phase 0 (Review & Align) must be run at the start of every session on this plan.
+Read the plan file and follow the Phase 0 steps before touching any code.
+Phase 0 confirms the dev environment, checks for spec drift, and identifies any
+deviations from prior phases that could affect this one.
+Do not skip it even if you believe the environment is already set up.
+
 Before running any command, verify it exists with --help or equivalent.
 If a step doesn't match what you find, stop and tell me — don't improvise.
 
-Read the plan file, then execute Tasks 6.1 and 6.2 in order.
+After Phase 0, execute Tasks 6.1 and 6.2 in order.
 
 When all tasks are done:
 - Mark Phase 6 status as 🟢 Completed in the plan file
