@@ -3,7 +3,7 @@
 **Spec:** [`hearty-08-health-profile.md`](../specs/2026-05-04-hearty-08-health-profile.md)
 **Roadmap Phase:** Phase 1 — Foundation
 **Plan Status:** 🟡 In Progress
-**Last Updated:** 2026-05-05 (Phase 2 complete)
+**Last Updated:** 2026-05-05 (Phase 3 complete)
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 0
 
@@ -28,8 +28,8 @@
 |---|---|---|---|---|
 | 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
 | 1 | Canonical Lists / Constants | 🟢 Completed | Phase 0 | Claude |
-| 2 | JSONB Validation Schemas | 🔴 Not Started | Phase 1 | Claude |
-| 3 | REST API Endpoints | 🔴 Not Started | Phase 2 | Claude |
+| 2 | JSONB Validation Schemas | 🟢 Completed | Phase 1 | Claude |
+| 3 | REST API Endpoints | 🟢 Completed | Phase 2 | Claude |
 | 4 | Health Profile Context Injection | 🔴 Not Started | Phase 3 | Claude |
 | 5 | Integration Tests | 🔴 Not Started | Phases 1–4 | Claude |
 
@@ -251,7 +251,7 @@ When all tasks are done:
 
 ## Phase 3: REST API Endpoints
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement all 12 REST endpoints defined in spec §10.1. All endpoints require `Authorization: Bearer <supabase_jwt>` and enforce RLS via the authenticated user context.
 **Depends on:** Phase 2 complete
 
@@ -281,30 +281,30 @@ When all tasks are done:
 
 ### Task 3.1: Router setup and shared auth dependency
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 > **Depends on Spec 03 Phase 2 (Auth & JWT Middleware)** — the auth dependency pattern (`get_current_user` or equivalent) is defined there. Do not start this task until Spec 03 Phase 2 is 🟢 Completed. `<app_root>` = `hearty-api/app/`.
 
-- [ ] Create `hearty-api/app/health_profile/router.py`
-- [ ] Register a FastAPI `APIRouter` with prefix `/api/health-profile`
-- [ ] Confirm the existing auth dependency pattern (how other routes extract the authenticated user from the JWT — defined in Spec 03 Phase 2) — use the same approach; do not invent a new one
-- [ ] Apply the auth dependency at router level so all endpoints in this router require authentication (the `GET /api/health-profile/defaults` endpoint from Phase 1 is separate and unauthenticated)
-- [ ] Wire `health_profile.router` into `hearty-api/app/main.py`
+- [x] Create `hearty-api/app/health_profile/router.py`
+- [x] Register a FastAPI `APIRouter` — full paths used in route decorators, consistent with other routers (no prefix on APIRouter itself)
+- [x] Confirm the existing auth dependency pattern (how other routes extract the authenticated user from the JWT — defined in Spec 03 Phase 2) — use the same approach; do not invent a new one
+- [x] Apply the auth dependency at endpoint level via `user=Depends(get_current_user)` on each handler — all endpoints require auth
+- [x] Wire `health_profile_router` into `hearty-api/app/main.py` as `app.include_router(health_profile_router)`
 
-**Deviation Log:** _None_
+**Deviation Log:** Router uses full paths (`/api/health-profile`) in route decorators instead of APIRouter prefix — consistent with all other routers in this codebase.
 
 ---
 
 ### Task 3.2: Top-level profile endpoints
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement the four top-level endpoints from spec §10.1:
 
-- [ ] `GET /api/health-profile` — return the user's full profile row (all four arrays + `updated_at`) via `HealthProfileResponse`; if no row exists yet, return empty arrays with a 200 (the row is normally auto-created by the on-login webhook defined in Spec 03, but handle the missing-row case gracefully — not a 404). **Do not expose the `notes TEXT` column** — it exists in the DB table (see Phase 0 deviation log) but is not part of the spec §2 data model and is not included in `HealthProfileResponse`. The MCP server (`context.ts`) uses it separately.
-- [ ] `PUT /api/health-profile` — full replace: validate all four arrays with `HealthProfilePutRequest`; upsert the row; update `updated_at`
-- [ ] `PATCH /api/health-profile` — partial update: validate present fields only with `HealthProfilePatchRequest`; merge into existing row; update `updated_at`
-- [ ] `DELETE /api/health-profile` — reset: set all four arrays back to `[]`; do not delete the row itself (per spec §7 rules: empty profile row is kept for future use)
+- [x] `GET /api/health-profile` — return the user's full profile row (all four arrays + `updated_at`) via `HealthProfileResponse`; if no row exists yet, return empty arrays with a 200 (the row is normally auto-created by the on-login webhook defined in Spec 03, but handle the missing-row case gracefully — not a 404). **Do not expose the `notes TEXT` column** — it exists in the DB table (see Phase 0 deviation log) but is not part of the spec §2 data model and is not included in `HealthProfileResponse`. The MCP server (`context.ts`) uses it separately.
+- [x] `PUT /api/health-profile` — full replace: validate all four arrays with `HealthProfilePutRequest`; upsert the row; update `updated_at`
+- [x] `PATCH /api/health-profile` — partial update: validate present fields only with `HealthProfilePatchRequest`; merge into existing row; update `updated_at`
+- [x] `DELETE /api/health-profile` — reset: set all four arrays back to `[]`; do not delete the row itself (per spec §7 rules: empty profile row is kept for future use)
 
 **Deviation Log:** _None_
 
@@ -312,18 +312,18 @@ Implement the four top-level endpoints from spec §10.1:
 
 ### Task 3.3: Sub-resource endpoints
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement the eight sub-resource endpoints from spec §10.1:
 
-- [ ] `GET /api/health-profile/allergens` — return `allergens` array only
-- [ ] `PUT /api/health-profile/allergens` — replace `allergens` array; validate with `AllergensUpdateRequest`; update `updated_at`
-- [ ] `GET /api/health-profile/intolerances` — return `intolerances` array only
-- [ ] `PUT /api/health-profile/intolerances` — replace `intolerances` array; validate with `IntolerancesUpdateRequest`; update `updated_at`
-- [ ] `GET /api/health-profile/conditions` — return `conditions` array only
-- [ ] `PUT /api/health-profile/conditions` — replace `conditions` array; validate with `ConditionsUpdateRequest`; update `updated_at`
-- [ ] `GET /api/health-profile/dietary-protocols` — return `dietary_protocols` array only
-- [ ] `PUT /api/health-profile/dietary-protocols` — replace `dietary_protocols` array; validate with `DietaryProtocolsUpdateRequest`; update `updated_at`
+- [x] `GET /api/health-profile/allergens` — return `allergens` array only
+- [x] `PUT /api/health-profile/allergens` — replace `allergens` array; validate with `AllergensUpdateRequest`; update `updated_at`
+- [x] `GET /api/health-profile/intolerances` — return `intolerances` array only
+- [x] `PUT /api/health-profile/intolerances` — replace `intolerances` array; validate with `IntolerancesUpdateRequest`; update `updated_at`
+- [x] `GET /api/health-profile/conditions` — return `conditions` array only
+- [x] `PUT /api/health-profile/conditions` — replace `conditions` array; validate with `ConditionsUpdateRequest`; update `updated_at`
+- [x] `GET /api/health-profile/dietary-protocols` — return `dietary_protocols` array only
+- [x] `PUT /api/health-profile/dietary-protocols` — replace `dietary_protocols` array; validate with `DietaryProtocolsUpdateRequest`; update `updated_at`
 
 **Deviation Log:** _None_
 
