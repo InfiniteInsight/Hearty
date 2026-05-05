@@ -101,6 +101,7 @@ class TriggerFood(BaseModel):
     avg_onset_minutes: Optional[int]
     avg_severity: Optional[float]
     is_confirmed: bool
+    label: Optional[str] = None
 
 class TrendsResponse(BaseModel):
     analysis_period_days: int

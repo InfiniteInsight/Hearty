@@ -3,7 +3,7 @@
 **Spec:** [`hearty-03-rest-api.md`](../specs/2026-05-04-hearty-03-rest-api.md)
 **Roadmap Phase:** Phase 1 — Foundation
 **Plan Status:** 🟡 In Progress
-**Last Updated:** 2026-05-05 (Phase 5 complete)
+**Last Updated:** 2026-05-05 (Phase 6 complete)
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 0
 
@@ -32,7 +32,7 @@
 | 3 | Auth Webhook | 🟢 Completed | Phase 2 | Claude |
 | 4 | AI Extraction Service | 🟢 Completed | Phase 2 | Claude |
 | 5 | Core Logging Endpoints | 🟢 Completed | Phases 3, 4 | Claude |
-| 6 | Trend Engine & Summary | 🔴 Not Started | Phase 5 | Claude |
+| 6 | Trend Engine & Summary | 🟢 Completed | Phase 5 | Claude |
 | 7 | Export Endpoints | 🔴 Not Started | Phase 5 | Claude |
 | 8 | Health Profile Endpoints | 🔴 Not Started | Phase 2 | Claude |
 | 9 | Photo Stubs | 🔴 Not Started | Phase 2 | Claude |
@@ -640,7 +640,7 @@ When all tasks are done:
 
 ## Phase 6: Trend Engine & Summary
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement `app/services/trend_engine.py` (co-occurrence analysis with two-tier classification) and the `GET /api/trends` and `GET /api/summary` endpoints.
 **Depends on:** Phase 5 complete (data exists in meals and symptoms tables to analyze)
 
@@ -678,7 +678,7 @@ When all tasks are done:
 
 ### Task 6.1: Implement `app/services/trend_engine.py`
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/services/trend_engine.py` implementing the co-occurrence analysis algorithm from spec Section 8:
 
@@ -697,13 +697,13 @@ When all tasks are done:
     - Runs `analyze_triggers` and upserts results into the `food_triggers` table
     - Used by the scheduled background job (documented here; the scheduler itself is a Supabase Edge Function or Railway cron, out of scope for this plan)
 
-**Deviation Log:** _None_
+**Deviation Log:** Added `label: Optional[str] = None` to `TriggerFood` schema to surface the two-tier classification ("early signal, needs more data" / "established") — spec defines the tiers but the schema had no field for them. `frequency_bonus` (undefined in spec) implemented as `min(occurrence_count / 10.0, 1.0)`. Applied 0–240 min window to all symptoms (linked and unlinked); deduped food names per meal to avoid denominator inflation. Added migration `20260505120000_food_triggers_unique.sql` to add `UNIQUE(user_id, food_name, symptom_type)` — required for `update_food_triggers_table` upsert.
 
 ---
 
 ### Task 6.2: Implement trends router (`app/routers/trends.py`)
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/routers/trends.py` implementing:
 
@@ -726,7 +726,8 @@ When all tasks are done:
 
 ---
 
-## Phase 7: Export Endpoints
+## Phase 7:
+ Export Endpoints
 
 **Status:** 🔴 Not Started
 **Goal:** Implement `app/services/export_service.py` and the JSON, CSV, and PDF export endpoints.
@@ -1227,6 +1228,8 @@ When all tasks are done:
 ## Deviation Log
 
 _Format: `[date] — Phase X, Task Y — changed X because Y`_
+
+[2026-05-05] — Phase 6, Task 6.1 — Added `label: Optional[str] = None` to `TriggerFood` schema; spec defines two tiers but no schema field to surface them. `frequency_bonus` undefined in spec; implemented as `min(occurrence_count / 10.0, 1.0)`. Applied 0–240 min onset window to all symptoms (not only unlinked). Deduped foods per meal in denominator. Added migration `20260505120000_food_triggers_unique.sql` for `UNIQUE(user_id, food_name, symptom_type)` required by upsert.
 
 ---
 
