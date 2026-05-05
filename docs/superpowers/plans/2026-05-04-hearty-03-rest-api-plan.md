@@ -896,34 +896,30 @@ When done:
 
 ---
 
-### Task 8.1: Implement health_profile router
+### Task 8.1: Wire Spec 08's health_profile router into main.py
 
 **Status:** 🔴 Not Started
 
-- [ ] Create `hearty-api/app/routers/health_profile.py` implementing:
+> **Note:** The `health_profile` router is implemented in Spec 08 Phase 3 (`hearty-api/app/health_profile/router.py`), not here. By the time this phase runs, that router already exists. This task's only job is to mount it in `main.py` and smoke-test it.
+> The execution order is: Spec 08 Phases 1–2 → Spec 03 Phases 1–2 → **Spec 08 Phases 3–5** → Spec 03 Phases 3+.
+> If Spec 08 Phase 3 is not yet 🟢 Completed, stop and complete it before proceeding.
 
-  - `GET /api/health-profile` (spec Section 5.11):
-    - Requires `user=Depends(get_current_user)`
-    - Queries `health_profile` table for the user's row
-    - Returns `HealthProfileResponse`
-    - If no row exists (user logged in before auth/on-login webhook was registered), upsert a blank row and return it
+- [ ] Confirm `hearty-api/app/health_profile/router.py` exists and exports a `router` object.
 
-  - `PUT /api/health-profile` (spec Section 5.12):
-    - Accepts `HealthProfileRequest` (all fields optional)
-    - Upserts on `user_id`
-    - Arrays replace fully (caller sends complete array, not append-only)
-    - Returns `HealthProfileResponse`
-
-- [ ] Wire `health_profile.router` into `main.py`.
+- [ ] In `hearty-api/app/main.py`, add:
+  ```python
+  from app.health_profile import router as health_profile_router
+  app.include_router(health_profile_router.router)
+  ```
 
 - [ ] Smoke test:
   ```bash
   curl -s -X PUT http://localhost:8000/api/health-profile \
     -H "Authorization: Bearer $TEST_JWT" \
     -H "Content-Type: application/json" \
-    -d '{"allergens": ["peanuts"], "intolerances": ["lactose"]}'
+    -d '{"allergens": [{"name": "peanuts", "severity": "mild"}]}'
   ```
-  Expected: `200` with `HealthProfileResponse` showing the updated arrays.
+  Expected: `200` with `HealthProfileResponse` showing the updated `allergens` array.
 
 **Deviation Log:** _None_
 
