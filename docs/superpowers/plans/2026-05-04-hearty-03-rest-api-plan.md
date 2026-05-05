@@ -3,7 +3,7 @@
 **Spec:** [`hearty-03-rest-api.md`](../specs/2026-05-04-hearty-03-rest-api.md)
 **Roadmap Phase:** Phase 1 — Foundation
 **Plan Status:** 🟡 In Progress
-**Last Updated:** 2026-05-05 (Phase 2 complete)
+**Last Updated:** 2026-05-05 (Phase 3 complete)
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 0
 
@@ -29,7 +29,7 @@
 | 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
 | 1 | Project Setup | 🟢 Completed | Spec 01 plan 🟢, Spec 08 Phases 1-2 🟢 | Claude |
 | 2 | Auth & JWT Middleware | 🟢 Completed | Phase 1 | Claude |
-| 3 | Auth Webhook | 🔴 Not Started | Phase 2 | Claude |
+| 3 | Auth Webhook | 🟢 Completed | Phase 2 | Claude |
 | 4 | AI Extraction Service | 🔴 Not Started | Phase 2 | Claude |
 | 5 | Core Logging Endpoints | 🔴 Not Started | Phases 3, 4 | Claude |
 | 6 | Trend Engine & Summary | 🔴 Not Started | Phase 5 | Claude |
@@ -321,7 +321,7 @@ When all tasks are done:
 
 ## Phase 3: Auth Webhook
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement `POST /auth/on-login` — the Supabase Auth webhook that bootstraps `health_profile` and `notification_preferences` rows for new users.
 **Depends on:** Phase 2 complete
 
@@ -352,7 +352,7 @@ When all tasks are done:
 
 ### Task 3.1: Create `app/routers/auth_hooks.py`
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/routers/auth_hooks.py`:
 
@@ -403,7 +403,7 @@ When all tasks are done:
 
 ### Task 3.2: Wire into `main.py` and verify
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] In `hearty-api/app/main.py`, add:
   ```python
