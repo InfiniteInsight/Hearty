@@ -35,11 +35,12 @@ export function registerGetTrends(server: McpServer): void {
         if (error) throw error;
 
         const now = new Date();
-        const hasFreshtData = triggers && triggers.length > 0 &&
+        const hasFreshData = triggers && triggers.length > 0 &&
           triggers.some(t => t.last_updated && (now.getTime() - new Date(t.last_updated).getTime()) < 24 * 60 * 60 * 1000);
 
-        let result: object;
-        if (!hasFreshtData) {
+        type TrendsResult = { triggers: []; note: string } | { triggers: Record<string, unknown>[] };
+        let result: TrendsResult;
+        if (!hasFreshData) {
           result = {
             triggers: [],
             note: 'Trend analysis not yet available — will activate once food intelligence (Spec 07) is deployed.',
