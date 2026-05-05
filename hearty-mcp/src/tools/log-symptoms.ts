@@ -56,7 +56,7 @@ export function registerLogSymptoms(server: McpServer): void {
         const symptomTypes = args.symptoms.map(s => s.symptom_type);
         const { data: triggers } = await supabase
           .from('food_triggers')
-          .select('food_name, symptom_type, confidence_score, occurrences')
+          .select('food_name, symptom_type, confidence_score, occurrence_count')
           .eq('user_id', userId)
           .in('symptom_type', symptomTypes)
           .order('confidence_score', { ascending: false })
