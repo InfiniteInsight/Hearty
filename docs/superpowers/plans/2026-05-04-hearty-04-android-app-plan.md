@@ -27,7 +27,7 @@
 | Phase | Name | Status | Depends On | Type |
 |---|---|---|---|---|
 | 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
-| 1 | Flutter Project Setup | 🔴 Not Started | — | Claude |
+| 1 | Flutter Project Setup | 🟢 Completed | — | Claude |
 | 2 | UI Shell & Navigation | 🔴 Not Started | Phase 1 | Claude |
 | 3 | Auth (Google OAuth + Supabase) | 🔴 Not Started | Phase 1 | Claude |
 | 4 | Voice Input, TTS & Wake Word | 🔴 Not Started | Phases 2–3 | Mixed |
@@ -103,22 +103,20 @@ Update the plan: set Phase 0 status to 🟢 Completed and Last Updated to today.
 
 ## Phase 1: Flutter Project Setup
 
-**Status:** 🔴 Not Started  
+**Status:** 🟢 Completed  
 **Goal:** Scaffold the `hearty_app/` Flutter project with feature-first directory structure, all pubspec dependencies, and build-time `--dart-define` env configuration.  
 **Depends on:** Dependency plans complete (Specs 01, 02, 03 all 🟢)  
 **Type:** Claude
 
 **Key deliverables:**
-- `hearty_app/` directory created via `flutter create` with package name `com.hearty.app`
-- Full feature-first directory structure under `lib/features/` and `lib/core/` matching the spec
-- `pubspec.yaml` with all packages from Section 10 of the spec pinned at specified versions
-- Android manifest with all required permissions from the spec appendix
-- `README` in `hearty_app/` documenting the `--dart-define` variables (`API_BASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `PICOVOICE_ACCESS_KEY`, `FIREBASE_ENABLED`)
-- `flutter analyze` passes with zero errors
+- `hearty_app/` directory created via `flutter create` with package name `com.hearty.app` ✓
+- Full feature-first directory structure under `lib/features/` and `lib/core/` matching the spec ✓
+- `pubspec.yaml` with all packages from Section 10 of the spec pinned at specified versions ✓
+- Android manifest with all required permissions from the spec appendix + `SCHEDULE_EXACT_ALARM` ✓
+- `README` in `hearty_app/` documenting the `--dart-define` variables ✓
+- `flutter analyze` passes with zero errors ✓
 
-_Tasks and activation prompt will be written at the start of this phase using current spec and dependency state._
-
-**Deviation Log:** _None_
+**Deviation Log:** Spec says "pinned at specified versions" but lists no version numbers — used current stable from pub.dev (2026-05-05). Added `SCHEDULE_EXACT_ALARM` permission not in spec appendix (required by `flutter_local_notifications` on Android 12+).
 
 ---
 
