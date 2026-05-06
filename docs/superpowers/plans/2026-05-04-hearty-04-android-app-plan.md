@@ -30,7 +30,7 @@
 | 1 | Flutter Project Setup | 🟢 Completed | — | Claude |
 | 2 | UI Shell & Navigation | 🟢 Completed | Phase 1 | Claude |
 | 3 | Auth (Google OAuth + Supabase) | 🟢 Completed | Phase 1 | Claude |
-| 4 | Voice Input, TTS & Wake Word | 🔴 Not Started | Phases 2–3 | Mixed |
+| 4 | Voice Input, TTS & Wake Word | 🔴 Not Started | Phases 2–3 | Mixed (openWakeWord training + Claude) |
 | 5 | Meal, Symptom & Wellbeing Logging | 🔴 Not Started | Phases 2–4 | Claude |
 | 6 | Offline Queue & Background Sync | 🔴 Not Started | Phase 5 | Claude |
 | 7 | Camera & Photo Types | 🔴 Not Started | Phases 2–3 | Claude |
@@ -166,11 +166,11 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 **Status:** 🔴 Not Started  
 **Goal:** Implement the complete voice I/O loop — STT overlay, TTS response, wake word detection foreground service, and the activation feedback sequence — wired to the log entry screen.  
 **Depends on:** Phases 2–3  
-**Type:** Mixed (manual Picovoice Console setup + Claude implementation)
+**Type:** Mixed (openWakeWord model training + Claude implementation)
 
 **Key deliverables:**
-- **Pre-phase manual step:** "Hey Hearty" `.ppn` model file downloaded from Picovoice Console and placed at `hearty_app/assets/wake_word/hey_hearty_android.ppn`; registered in `pubspec.yaml`
-- `HeartyWakeWordService.kt` — Android foreground service with `BOOT_COMPLETED` receiver, persistent notification with "Pause listening" action, `MethodChannel('com.hearty.app/wake_word')`
+- **Pre-phase manual step:** Train "Hey Hearty" model using openWakeWord Python pipeline (~100 voice recordings); place `.onnx` file at `hearty_app/assets/wake_word/hey_hearty.onnx`; register in `pubspec.yaml`
+- `HeartyWakeWordService.kt` — Android foreground service using ONNX Runtime for Android (Gradle dep: `com.microsoft.onnxruntime:onnxruntime-android`), with `BOOT_COMPLETED` receiver, persistent notification with "Pause listening" action, `MethodChannel('com.hearty.app/wake_word')`
 - `features/voice/` — STT via `speech_to_text`, live waveform animation, auto-stop on 2s silence, retry button
 - `features/voice/` — TTS via `flutter_tts` at 0.9 speech rate; interruptible by screen tap
 - Wake chime (`assets/audio/wake_chime.mp3`) played immediately on wake word detection via `just_audio`
@@ -179,7 +179,7 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 
 _Tasks and activation prompt will be written at the start of this phase using current spec and dependency state._
 
-**Deviation Log:** _None_
+**Deviation Log:** 2026-05-06 — Switched from Picovoice Porcupine to openWakeWord (open source, ONNX-based). Removed `porcupine_flutter` from pubspec.yaml; ONNX Runtime for Android added as a Gradle dependency instead. No API key required. Asset path changed from `.ppn` to `.onnx`.
 
 ---
 
@@ -295,7 +295,7 @@ _Format: `[date] — Phase X, Task Y — changed X because Y`_
 
 ## Notes
 
-- **Porcupine `.ppn` model file:** Must be created manually at [console.picovoice.ai](https://console.picovoice.ai) before Phase 4 can begin. The model file is committed to the repo (not a secret). See spec Section 3 Pre-Phase 2 Setup.
+- **openWakeWord `.onnx` model file:** Must be trained locally using the openWakeWord Python pipeline before Phase 4 can begin. Record ~100 samples of "Hey Hearty", run training, place output at `hearty_app/assets/wake_word/hey_hearty.onnx`. No account or API key required. Model file is committed to the repo (not a secret).
 - **Android SHA-1 fingerprint (Google OAuth):** If not completed during Spec 01 Phase 3, it must be done at the start of Phase 3 of this plan. Requires `~/.android/debug.keystore` to exist (created automatically by first `flutter run` on Android).
 - **Firebase `google-services.json`:** Must be added manually at the start of Phase 8. Requires a Firebase project linked to `com.hearty.app`.
 - **`food_cache` table:** Lives in Spec 01 per that spec's notes. The Spec 07 plan handles the migration. This plan assumes `food_cache` exists by the time photo processing results need it (Phase 7 depends on Spec 07 being underway or complete for full nutritional data enrichment; photo upload and result display work without it).

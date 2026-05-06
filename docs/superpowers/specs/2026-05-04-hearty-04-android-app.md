@@ -91,29 +91,31 @@ hearty_app/
 
 ## 3. Wake Word Detection
 
-### Pre-Phase 2 Setup: Porcupine Wake Word Model
+### Pre-Phase 4 Setup: openWakeWord Model
 
 > Before wake word development can begin, the following steps must be completed manually:
 >
-> 1. Create a free account at [console.picovoice.ai](https://console.picovoice.ai)
-> 2. Navigate to **Porcupine Wake Word** and create a new wake word: **"Hey Hearty"**
-> 3. Select **Android** as the platform, download the generated `.ppn` model file
-> 4. Place the file at `hearty_app/assets/wake_word/hey_hearty_android.ppn`
-> 5. Register the asset in `pubspec.yaml` under `flutter: assets:`
+> 1. Record ~100 samples of "Hey Hearty" (various speeds, distances, volumes)
+> 2. Run the openWakeWord training pipeline (Python) using those recordings
+> 3. Place the resulting `.onnx` model file at `hearty_app/assets/wake_word/hey_hearty.onnx`
+> 4. Register the asset in `pubspec.yaml` under `flutter: assets:`
 >
-> This is a one-time setup. The `.ppn` file is committed to the repo (it is not a secret).
+> This is a one-time setup. The `.onnx` file is committed to the repo (it is not a secret).
+> No account, API key, or external service approval is required.
 
-### 3.1 Wake Word Detection: Picovoice Porcupine
+### 3.1 Wake Word Detection: openWakeWord
 
-**Library:** `porcupine_flutter` (Picovoice's official Flutter package).
+**Library:** openWakeWord (open source, Apache 2.0). Inference runs via ONNX Runtime for Android inside the Kotlin foreground service — no Flutter/Dart package required.
 
-**Why Porcupine:**
-- On-device inference — no network call required for wake word detection.
+**Why openWakeWord:**
+- Fully open source — no account, API key, or approval process.
+- On-device inference via ONNX Runtime — no network call at runtime.
 - Works while the screen is off (via foreground service).
-- Free tier includes one custom wake word or use of built-in keywords.
+- Speaker-independent when trained with diverse data or synthetic voices.
 - Minimal battery impact (~1-2% per hour on modern hardware).
+- Custom wake words trained locally using the openWakeWord Python training pipeline.
 
-**Custom wake word:** "Hey Hearty" — commissioned via Picovoice Console (free for personal use). The `.ppn` model file ships bundled in `assets/wake_word/hey_hearty_android.ppn`.
+**Custom wake word:** "Hey Hearty" — trained locally using openWakeWord. The `.onnx` model file ships bundled in `assets/wake_word/hey_hearty.onnx`.
 
 **Fallback:** If the user has not configured the wake word service or denies microphone permission, they tap the floating action button on the home screen to activate listening.
 
@@ -627,7 +629,7 @@ All changes sync immediately to Supabase. The health profile is embedded in the 
 | `go_router` | Declarative routing with deep link support |
 | `fl_chart` | Trend charts: line, bar, pie (Flutter-native, no WebView) |
 | `riverpod` (+ `hooks_riverpod`) | State management and dependency injection |
-| `porcupine_flutter` | Picovoice Porcupine on-device wake word detection |
+| ONNX Runtime (Android, Gradle dep) | openWakeWord on-device wake word detection (runs in Kotlin foreground service) |
 | `workmanager` | Background task scheduling for sync jobs |
 | `permission_handler` | Runtime permission requests (microphone, camera, notifications) |
 | `image_picker` | Gallery access fallback for photo upload |
@@ -699,17 +701,15 @@ await Supabase.initialize(
 
 **Background/terminated handling:** `firebase_messaging`'s background message handler routes notification taps to the correct GoRouter deep link (`/log` for "Log symptoms" action, `/home` for "All good" action).
 
-### 11.4 Picovoice Porcupine (Wake Word)
+### 11.4 openWakeWord (Wake Word)
 
-**Package:** `porcupine_flutter`
+**Runtime:** ONNX Runtime for Android (Gradle dependency: `com.microsoft.onnxruntime:onnxruntime-android`). No Flutter package — inference runs entirely within the Kotlin foreground service.
 
-**Platform:** The Flutter package wraps the native Android SDK. The Porcupine engine runs in the `HeartyWakeWordService` Kotlin foreground service, not directly in the Flutter Dart isolate. Communication is via `MethodChannel('com.hearty.app/wake_word')`.
+**Platform:** The openWakeWord ONNX model runs inside `HeartyWakeWordService.kt`. Communication with Flutter is via `MethodChannel('com.hearty.app/wake_word')`. No access key or external service required.
 
-**Access key:** Picovoice access key stored as a build-time `--dart-define` variable (`PICOVOICE_ACCESS_KEY`). The free tier allows one wake word and development/personal use without payment.
+**Wake word model file:** `assets/wake_word/hey_hearty.onnx` — trained locally with the openWakeWord Python pipeline, bundled in the app, no network call required at runtime.
 
-**Wake word model file:** `assets/wake_word/hey_hearty_android.ppn` — bundled in the app, no network call required at runtime.
-
-**Sensitivity:** Default 0.5 (range 0.0–1.0). Higher values increase detection rate but also false positives. User-configurable in Settings → Voice Settings.
+**Sensitivity:** Controlled by the detection threshold applied to the model's output score (range 0.0–1.0; default 0.5). Higher values increase detection rate but also false positives. User-configurable in Settings → Voice Settings.
 
 **Lifecycle:**
 - Service starts on `BOOT_COMPLETED` and when the app is first launched.
@@ -755,7 +755,7 @@ await Supabase.initialize(
 | `API_BASE_URL` | `--dart-define` at build | FastAPI base URL |
 | `SUPABASE_URL` | `--dart-define` at build | Supabase project URL |
 | `SUPABASE_ANON_KEY` | `--dart-define` at build | Supabase anon key (public) |
-| `PICOVOICE_ACCESS_KEY` | `--dart-define` at build | Picovoice console access key |
+| ~~`PICOVOICE_ACCESS_KEY`~~ | ~~removed~~ | openWakeWord requires no API key |
 | `FIREBASE_ENABLED` | `--dart-define` at build | `true`/`false`, disables FCM in dev |
 
 All `--dart-define` values are injected at CI build time from GitHub Actions secrets. They are not stored in source control.
