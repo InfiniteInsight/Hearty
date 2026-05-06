@@ -14,15 +14,16 @@ Future<void> main() async {
   runApp(const ProviderScope(child: HeartyApp()));
 }
 
-class HeartyApp extends StatelessWidget {
+class HeartyApp extends ConsumerWidget {
   const HeartyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(goRouterProvider);
     return MaterialApp.router(
       title: 'Hearty',
       theme: AppTheme.lightTheme,
-      routerConfig: goRouter,
+      routerConfig: router,
     );
   }
 }
