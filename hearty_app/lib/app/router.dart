@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../features/auth/screens/sign_in_screen.dart';
 import '../features/logging/screens/home_screen.dart';
 import '../features/history/screens/history_screen.dart';
 import '../features/trends/screens/trends_screen.dart';
@@ -19,11 +23,23 @@ class Routes {
   static const String logDetail = 'log-detail';
   static const String healthProfile = 'health-profile';
   static const String onboarding = 'onboarding';
+  static const String signIn = 'sign-in';
 }
 
 final goRouter = GoRouter(
   initialLocation: '/home',
-  // TODO Phase 3: redirect unauthenticated users to /sign-in
+  refreshListenable: GoRouterRefreshStream(
+    Supabase.instance.client.auth.onAuthStateChange,
+  ),
+  redirect: (context, state) {
+    final session = Supabase.instance.client.auth.currentSession;
+    final isAuthenticated = session != null;
+    final isOnSignIn = state.matchedLocation == '/sign-in';
+
+    if (!isAuthenticated && !isOnSignIn) return '/sign-in';
+    if (isAuthenticated && isOnSignIn) return '/home';
+    return null;
+  },
   routes: [
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
@@ -68,6 +84,11 @@ final goRouter = GoRouter(
       ],
     ),
     GoRoute(
+      path: '/sign-in',
+      name: Routes.signIn,
+      builder: (context, state) => const SignInScreen(),
+    ),
+    GoRoute(
       path: '/log',
       name: Routes.log,
       builder: (context, state) => const LogEntryScreen(),
@@ -90,6 +111,23 @@ final goRouter = GoRouter(
     ),
   ],
 );
+
+/// Bridges a [Stream] to [ChangeNotifier] so GoRouter re-evaluates its
+/// redirect whenever the auth state changes.
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _subscription = stream.listen((_) => notifyListeners());
+  }
+
+  late final StreamSubscription<dynamic> _subscription;
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}
 
 class _ScaffoldWithNavBar extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
