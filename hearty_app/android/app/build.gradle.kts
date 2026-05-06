@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.hearty.hearty_app"
+    namespace = "com.hearty.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
