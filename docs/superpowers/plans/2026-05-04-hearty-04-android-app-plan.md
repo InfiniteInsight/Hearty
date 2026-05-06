@@ -29,7 +29,7 @@
 | 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
 | 1 | Flutter Project Setup | 🟢 Completed | — | Claude |
 | 2 | UI Shell & Navigation | 🟢 Completed | Phase 1 | Claude |
-| 3 | Auth (Google OAuth + Supabase) | 🔴 Not Started | Phase 1 | Claude |
+| 3 | Auth (Google OAuth + Supabase) | 🟢 Completed | Phase 1 | Claude |
 | 4 | Voice Input, TTS & Wake Word | 🔴 Not Started | Phases 2–3 | Mixed |
 | 5 | Meal, Symptom & Wellbeing Logging | 🔴 Not Started | Phases 2–4 | Claude |
 | 6 | Offline Queue & Background Sync | 🔴 Not Started | Phase 5 | Claude |
@@ -142,7 +142,7 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 
 ## Phase 3: Auth (Google OAuth + Supabase)
 
-**Status:** 🔴 Not Started  
+**Status:** 🟢 Completed  
 **Goal:** Implement the full auth flow — Supabase initialization, Google Sign-In, session persistence, first-time onboarding screens, and GoRouter redirect logic — so the app correctly routes authenticated and unauthenticated users.  
 **Depends on:** Phases 1–2; Spec 01 plan complete (Google OAuth configured in Supabase Dashboard)  
 **Type:** Claude
