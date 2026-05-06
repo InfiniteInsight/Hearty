@@ -1,4 +1,4 @@
-package com.hearty.hearty_app
+package com.hearty.app
 
 import io.flutter.embedding.android.FlutterActivity
 
