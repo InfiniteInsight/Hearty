@@ -282,13 +282,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
             child: const Text('Exempt from battery optimization'),
           ),
-          const SizedBox(height: 8),
-          Center(
-            child: TextButton(
-              onPressed: _skipToHome,
-              child: const Text('Skip'),
-            ),
-          ),
           const SizedBox(height: 32),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

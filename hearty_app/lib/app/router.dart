@@ -29,19 +29,26 @@ class Routes {
 }
 
 final goRouterProvider = Provider<GoRouter>((ref) {
-  final hasCompletedOnboarding = ref.watch(hasCompletedOnboardingProvider);
+  final refreshStream = GoRouterRefreshStream(
+    Supabase.instance.client.auth.onAuthStateChange,
+  );
+
+  // When the onboarding flag changes, trigger the router to re-evaluate its
+  // redirect without rebuilding the provider (ref.listen, not ref.watch).
+  ref.listen(hasCompletedOnboardingProvider, (_, next) {
+    refreshStream.notify();
+  });
 
   final router = GoRouter(
     initialLocation: '/home',
-    refreshListenable: GoRouterRefreshStream(
-      Supabase.instance.client.auth.onAuthStateChange,
-    ),
+    refreshListenable: refreshStream,
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
       final isAuthenticated = session != null;
       final location = state.matchedLocation;
       final isOnSignIn = location == '/sign-in';
       final isOnOnboarding = location == '/onboarding';
+      final hasCompletedOnboarding = ref.read(hasCompletedOnboardingProvider);
 
       if (!isAuthenticated && !isOnSignIn) return '/sign-in';
       if (isAuthenticated && isOnSignIn) {
@@ -124,8 +131,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     ],
   );
 
-  // Dispose the router when the provider is disposed
-  ref.onDispose(router.dispose);
+  // Dispose both the stream bridge and the router when the provider is disposed.
+  ref.onDispose(() {
+    refreshStream.dispose();
+    router.dispose();
+  });
 
   return router;
 });
@@ -139,6 +149,9 @@ class GoRouterRefreshStream extends ChangeNotifier {
   }
 
   late final StreamSubscription<dynamic> _subscription;
+
+  /// Allows external callers to manually trigger a router redirect re-evaluation.
+  void notify() => notifyListeners();
 
   @override
   void dispose() {

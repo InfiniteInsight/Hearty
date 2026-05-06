@@ -25,6 +25,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
       if (googleUser == null) {
         // User cancelled the sign-in flow
+        if (!mounted) return;
         setState(() => _isLoading = false);
         return;
       }
@@ -32,6 +33,7 @@ class _SignInScreenState extends State<SignInScreen> {
       final googleAuth = await googleUser.authentication;
       final idToken = googleAuth.idToken;
 
+      if (!mounted) return;
       if (idToken == null) {
         setState(() {
           _isLoading = false;
@@ -48,6 +50,7 @@ class _SignInScreenState extends State<SignInScreen> {
       // GoRouter will automatically redirect to /onboarding or /home
       // via refreshListenable when auth state changes.
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _errorMessage = 'Sign-in failed: ${e.toString()}';
