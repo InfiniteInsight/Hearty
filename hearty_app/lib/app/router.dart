@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/auth/onboarding_provider.dart';
 import '../features/auth/screens/sign_in_screen.dart';
 import '../features/logging/screens/home_screen.dart';
 import '../features/history/screens/history_screen.dart';
@@ -26,91 +28,107 @@ class Routes {
   static const String signIn = 'sign-in';
 }
 
-final goRouter = GoRouter(
-  initialLocation: '/home',
-  refreshListenable: GoRouterRefreshStream(
-    Supabase.instance.client.auth.onAuthStateChange,
-  ),
-  redirect: (context, state) {
-    final session = Supabase.instance.client.auth.currentSession;
-    final isAuthenticated = session != null;
-    final isOnSignIn = state.matchedLocation == '/sign-in';
+final goRouterProvider = Provider<GoRouter>((ref) {
+  final hasCompletedOnboarding = ref.watch(hasCompletedOnboardingProvider);
 
-    if (!isAuthenticated && !isOnSignIn) return '/sign-in';
-    if (isAuthenticated && isOnSignIn) return '/home';
-    return null;
-  },
-  routes: [
-    StatefulShellRoute.indexedStack(
-      builder: (context, state, navigationShell) =>
-          _ScaffoldWithNavBar(navigationShell: navigationShell),
-      branches: [
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/home',
-              name: Routes.home,
-              builder: (context, state) => const HomeScreen(),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/history',
-              name: Routes.history,
-              builder: (context, state) => const HistoryScreen(),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/trends',
-              name: Routes.trends,
-              builder: (context, state) => const TrendsScreen(),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/settings',
-              name: Routes.settings,
-              builder: (context, state) => const SettingsScreen(),
-            ),
-          ],
-        ),
-      ],
+  final router = GoRouter(
+    initialLocation: '/home',
+    refreshListenable: GoRouterRefreshStream(
+      Supabase.instance.client.auth.onAuthStateChange,
     ),
-    GoRoute(
-      path: '/sign-in',
-      name: Routes.signIn,
-      builder: (context, state) => const SignInScreen(),
-    ),
-    GoRoute(
-      path: '/log',
-      name: Routes.log,
-      builder: (context, state) => const LogEntryScreen(),
-    ),
-    GoRoute(
-      path: '/log/:id',
-      name: Routes.logDetail,
-      builder: (context, state) =>
-          LogDetailScreen(id: state.pathParameters['id']!),
-    ),
-    GoRoute(
-      path: '/health-profile',
-      name: Routes.healthProfile,
-      builder: (context, state) => const HealthProfileScreen(),
-    ),
-    GoRoute(
-      path: '/onboarding',
-      name: Routes.onboarding,
-      builder: (context, state) => const OnboardingScreen(),
-    ),
-  ],
-);
+    redirect: (context, state) {
+      final session = Supabase.instance.client.auth.currentSession;
+      final isAuthenticated = session != null;
+      final location = state.matchedLocation;
+      final isOnSignIn = location == '/sign-in';
+      final isOnOnboarding = location == '/onboarding';
+
+      if (!isAuthenticated && !isOnSignIn) return '/sign-in';
+      if (isAuthenticated && isOnSignIn) {
+        return hasCompletedOnboarding ? '/home' : '/onboarding';
+      }
+      if (isAuthenticated && isOnOnboarding && hasCompletedOnboarding) {
+        return '/home';
+      }
+      return null;
+    },
+    routes: [
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            _ScaffoldWithNavBar(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/home',
+                name: Routes.home,
+                builder: (context, state) => const HomeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/history',
+                name: Routes.history,
+                builder: (context, state) => const HistoryScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/trends',
+                name: Routes.trends,
+                builder: (context, state) => const TrendsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/settings',
+                name: Routes.settings,
+                builder: (context, state) => const SettingsScreen(),
+              ),
+            ],
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/sign-in',
+        name: Routes.signIn,
+        builder: (context, state) => const SignInScreen(),
+      ),
+      GoRoute(
+        path: '/log',
+        name: Routes.log,
+        builder: (context, state) => const LogEntryScreen(),
+      ),
+      GoRoute(
+        path: '/log/:id',
+        name: Routes.logDetail,
+        builder: (context, state) =>
+            LogDetailScreen(id: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/health-profile',
+        name: Routes.healthProfile,
+        builder: (context, state) => const HealthProfileScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        name: Routes.onboarding,
+        builder: (context, state) => const OnboardingScreen(),
+      ),
+    ],
+  );
+
+  // Dispose the router when the provider is disposed
+  ref.onDispose(router.dispose);
+
+  return router;
+});
 
 /// Bridges a [Stream] to [ChangeNotifier] so GoRouter re-evaluates its
 /// redirect whenever the auth state changes.
