@@ -38,8 +38,9 @@ dependencies:
   # Audio / Voice
   flutter_tts: ^4.2.2
   speech_to_text: ^7.0.0
-  porcupine_flutter: ^3.0.3
   just_audio: ^0.10.4
+  # Wake word: openWakeWord via ONNX Runtime (inference runs in Kotlin foreground service,
+  # not Dart — no Flutter package needed; Android dependency added in build.gradle)
 
   # Camera / Media
   camera: ^0.11.1
