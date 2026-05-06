@@ -3,7 +3,7 @@
 **Spec:** [`hearty-04-android-app.md`](../specs/2026-05-04-hearty-04-android-app.md)  
 **Roadmap Phase:** Phase 2 — Android App  
 **Plan Status:** 🟡 In Progress  
-**Last Updated:** 2026-05-05  
+**Last Updated:** 2026-05-06  
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since  
 **Open Deviations:** 0
 
@@ -28,7 +28,7 @@
 |---|---|---|---|---|
 | 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
 | 1 | Flutter Project Setup | 🟢 Completed | — | Claude |
-| 2 | UI Shell & Navigation | 🔴 Not Started | Phase 1 | Claude |
+| 2 | UI Shell & Navigation | 🟢 Completed | Phase 1 | Claude |
 | 3 | Auth (Google OAuth + Supabase) | 🔴 Not Started | Phase 1 | Claude |
 | 4 | Voice Input, TTS & Wake Word | 🔴 Not Started | Phases 2–3 | Mixed |
 | 5 | Meal, Symptom & Wellbeing Logging | 🔴 Not Started | Phases 2–4 | Claude |
@@ -122,7 +122,7 @@ Update the plan: set Phase 0 status to 🟢 Completed and Last Updated to today.
 
 ## Phase 2: UI Shell & Navigation
 
-**Status:** 🔴 Not Started  
+**Status:** 🟢 Completed  
 **Goal:** Build the GoRouter navigation shell with all four bottom-tab routes, all full-screen route stubs, Material 3 theming, and placeholder screens so every named route renders without crashing.  
 **Depends on:** Phase 1  
 **Type:** Claude
