@@ -40,7 +40,7 @@ class _TrendsScreenState extends ConsumerState<TrendsScreen> {
     (label: '7 days', days: 7),
     (label: '30 days', days: 30),
     (label: '90 days', days: 90),
-    (label: 'All time', days: 365),
+    (label: 'All time', days: 36500),
   ];
 
   void _selectDays(int days) {
@@ -231,6 +231,10 @@ class _SymptomFrequencyChart extends StatelessWidget {
       if (p.count > maxY) maxY = p.count.toDouble();
     }
 
+    // Ensure x-range is at least 1 to prevent division-by-zero in fl_chart.
+    final maxXOffset = dates.last.difference(earliest).inDays.toDouble();
+    final xRange = math.max(1.0, maxXOffset);
+
     final lines = sortedTypes.asMap().entries.map((entry) {
       final idx = entry.key;
       final type = entry.value;
@@ -245,7 +249,7 @@ class _SymptomFrequencyChart extends StatelessWidget {
 
       return LineChartBarData(
         spots: points,
-        isCurved: true,
+        isCurved: points.length >= 2,
         color: color,
         barWidth: 2,
         dotData: const FlDotData(show: true),
@@ -255,6 +259,8 @@ class _SymptomFrequencyChart extends StatelessWidget {
     return LineChart(
       LineChartData(
         lineBarsData: lines,
+        minX: 0,
+        maxX: xRange,
         minY: 0,
         maxY: maxY + 1,
         titlesData: FlTitlesData(
@@ -324,7 +330,7 @@ class _TriggerFoodsChart extends StatelessWidget {
               height: 200,
               child: data.isEmpty
                   ? const Center(child: Text('No trigger food data'))
-                  : _buildChart(),
+                  : _buildChart(context),
             ),
           ],
         ),
@@ -332,74 +338,69 @@ class _TriggerFoodsChart extends StatelessWidget {
     );
   }
 
-  Widget _buildChart() {
-    final top5 = data.take(5).toList();
+  Widget _buildChart(BuildContext context) {
+    final topFoods = data.take(5).toList();
 
-    final barGroups = top5.asMap().entries.map((entry) {
-      final idx = entry.key;
-      final food = entry.value;
-      return BarChartGroupData(
-        x: idx,
-        barRods: [
-          BarChartRodData(
-            toY: food.confidenceScore,
-            color: Colors.deepOrange,
-            width: 24,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ],
-      );
-    }).toList();
+    final maxScore = math.max(
+      0.1,
+      topFoods.map((f) => f.confidenceScore).fold(0.0, math.max),
+    );
 
-    return BarChart(
-      BarChartData(
-        barGroups: barGroups,
-        minY: 0,
-        maxY: 1.0,
-        titlesData: FlTitlesData(
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 48,
-              getTitlesWidget: (value, meta) {
-                final idx = value.toInt();
-                if (idx < 0 || idx >= top5.length) return const SizedBox();
-                final label = top5[idx].food;
-                return Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Transform.rotate(
-                    angle: -math.pi / 4,
+    // Wrap the BarChart in RotatedBox to appear horizontal.
+    // quarterTurns: 1 rotates the entire widget 90° clockwise, making
+    // vertical bars appear as horizontal bars (food names appear at bottom,
+    // scores flow left-to-right when viewed upright).
+    return RotatedBox(
+      quarterTurns: 1,
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: maxScore,
+          barGroups: topFoods.asMap().entries.map((e) {
+            return BarChartGroupData(
+              x: e.key,
+              barRods: [
+                BarChartRodData(
+                  toY: e.value.confidenceScore,
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 20,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ],
+            );
+          }).toList(),
+          titlesData: FlTitlesData(
+            leftTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 72,
+                getTitlesWidget: (value, meta) {
+                  final idx = value.toInt();
+                  if (idx < 0 || idx >= topFoods.length) {
+                    return const SizedBox.shrink();
+                  }
+                  // Counter-rotate the food name label so it reads normally.
+                  return RotatedBox(
+                    quarterTurns: -1,
                     child: Text(
-                      label,
-                      style: const TextStyle(fontSize: 9),
+                      topFoods[idx].food,
+                      style: const TextStyle(fontSize: 10),
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 36,
-              getTitlesWidget: (value, meta) {
-                return Text(
-                  value.toStringAsFixed(1),
-                  style: const TextStyle(fontSize: 9),
-                );
-              },
-            ),
-          ),
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
+          gridData: const FlGridData(show: false),
+          borderData: FlBorderData(show: false),
         ),
-        gridData: const FlGridData(show: true),
-        borderData: FlBorderData(show: true),
       ),
     );
   }
@@ -448,17 +449,24 @@ class _EnergyMoodChart extends StatelessWidget {
           value,
         );
 
+    // Ensure x-range is at least 1 to prevent division-by-zero in fl_chart.
+    final maxXOffset = sorted.last.date.difference(earliest).inDays.toDouble();
+    final xRange = math.max(1.0, maxXOffset);
+
+    final energySpots = sorted.map((p) => toSpot(p.date, p.energy)).toList();
+    final moodSpots = sorted.map((p) => toSpot(p.date, p.mood)).toList();
+
     final energyLine = LineChartBarData(
-      spots: sorted.map((p) => toSpot(p.date, p.energy)).toList(),
-      isCurved: true,
+      spots: energySpots,
+      isCurved: energySpots.length >= 2,
       color: Colors.blue,
       barWidth: 2,
       dotData: const FlDotData(show: true),
     );
 
     final moodLine = LineChartBarData(
-      spots: sorted.map((p) => toSpot(p.date, p.mood)).toList(),
-      isCurved: true,
+      spots: moodSpots,
+      isCurved: moodSpots.length >= 2,
       color: Colors.pinkAccent,
       barWidth: 2,
       dotData: const FlDotData(show: true),
@@ -480,6 +488,8 @@ class _EnergyMoodChart extends StatelessWidget {
           child: LineChart(
             LineChartData(
               lineBarsData: [energyLine, moodLine],
+              minX: 0,
+              maxX: xRange,
               minY: 1,
               maxY: 5,
               titlesData: FlTitlesData(
@@ -566,9 +576,13 @@ class _MealTypeChart extends StatelessWidget {
             const SizedBox(height: 12),
             SizedBox(
               height: 180,
-              child: data.isEmpty
-                  ? const Center(child: Text('No meal data'))
-                  : _buildChart(),
+              child: () {
+                final total = data.values.fold(0, (sum, v) => sum + v);
+                if (data.isEmpty || total == 0) {
+                  return const Center(child: Text('No meal data'));
+                }
+                return _buildChart(total);
+              }(),
             ),
           ],
         ),
@@ -576,9 +590,8 @@ class _MealTypeChart extends StatelessWidget {
     );
   }
 
-  Widget _buildChart() {
+  Widget _buildChart(int total) {
     final entries = data.entries.toList();
-    final total = entries.fold<int>(0, (sum, e) => sum + e.value);
 
     final sections = entries.asMap().entries.map((entry) {
       final idx = entry.key;
