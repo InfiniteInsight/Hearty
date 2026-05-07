@@ -182,13 +182,16 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
       );
     }
 
+    // Resolve linked meal for symptom detail (must be in build()).
+    final meals = ref.watch(mealsProvider).valueOrNull ?? [];
+
     return Scaffold(
       appBar: AppBar(title: const Text('Log Entry')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: switch (_entry) {
           MealLog m => _buildMeal(m, theme, colorScheme),
-          SymptomLog s => _buildSymptom(s, theme, colorScheme),
+          SymptomLog s => _buildSymptom(s, theme, colorScheme, meals),
           WellbeingLog w => _buildWellbeing(w, theme),
           _ => const SizedBox.shrink(),
         },
@@ -268,13 +271,13 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
   // ─── Symptom detail ──────────────────────────────────────────────────────────
 
   Widget _buildSymptom(
-      SymptomLog symptom, ThemeData theme, ColorScheme colorScheme) {
+      SymptomLog symptom, ThemeData theme, ColorScheme colorScheme,
+      List<MealLog> meals) {
     final severityColor = _severityColor(symptom.severity);
 
     // Look up linked meal description from provider if available.
     String? linkedMealLabel;
     if (symptom.linkedMealId != null) {
-      final meals = ref.watch(mealsProvider).valueOrNull ?? [];
       final linked =
           meals.where((m) => m.id == symptom.linkedMealId).firstOrNull;
       linkedMealLabel =
