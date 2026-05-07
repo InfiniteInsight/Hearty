@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 import '../auth/auth_interceptor.dart';
+import '../offline/offline_database.dart';
 import 'models/meal_log.dart';
 import 'models/symptom_log.dart';
 import 'models/wellbeing_log.dart';
@@ -14,14 +18,22 @@ const _kBaseUrl = String.fromEnvironment(
   defaultValue: 'http://10.0.2.2:8000',
 );
 
+const _uuid = Uuid();
+
 /// Central HTTP client for the Hearty REST API.
 ///
 /// All methods surface [OfflineException] for connection failures and let
 /// other [DioException]s propagate so callers can handle HTTP errors.
+///
+/// Write methods ([logMeal], [logSymptom], [logWellbeing]) catch
+/// [OfflineException] **and** 5xx server errors transparently: the operation
+/// is written to the offline queue and a synthetic model is returned so the
+/// UI can display the entry immediately without knowing it was queued.
 class HeartyApiClient {
-  HeartyApiClient(this._dio);
+  HeartyApiClient(this._dio, this._offlineDb);
 
   final Dio _dio;
+  final OfflineDatabase _offlineDb;
 
   // ──────────────────────────────────────────────────────────────────────────
   // Internal helper — unwraps OfflineException from DioException.
@@ -40,14 +52,40 @@ class HeartyApiClient {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
+  // Offline queue helper
+  // ──────────────────────────────────────────────────────────────────────────
+
+  Future<void> _queueOffline(
+      String actionType, Map<String, dynamic> payload) async {
+    await _offlineDb.into(_offlineDb.offlineQueue).insert(
+          OfflineQueueCompanion.insert(
+            actionType: actionType,
+            payload: jsonEncode(payload),
+          ),
+        );
+  }
+
+  /// Returns true if [e] should be treated as an offline / unavailable failure
+  /// for write operations (connectivity loss OR 5xx server error).
+  bool _shouldQueue(Object e) {
+    if (e is OfflineException) return true;
+    if (e is DioException) {
+      if (e.error is OfflineException) return true;
+      final status = e.response?.statusCode;
+      if (status != null && status >= 500) return true;
+    }
+    return false;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
   // Meals
   // ──────────────────────────────────────────────────────────────────────────
 
   Future<MealLog> logMeal({
     required String description,
     String? mealType,
-  }) {
-    return _call(() async {
+  }) async {
+    try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/api/meals',
         data: {
@@ -57,7 +95,25 @@ class HeartyApiClient {
         }..removeWhere((_, v) => v == null),
       );
       return MealLog.fromJson(response.data!);
-    });
+    } catch (e) {
+      if (_shouldQueue(e)) {
+        final payload = <String, dynamic>{
+          'description': description,
+          'meal_type': mealType,
+          'input_method': 'voice',
+        }..removeWhere((_, v) => v == null);
+        await _queueOffline('log_meal', payload);
+        return MealLog(
+          id: _uuid.v4(),
+          description: description,
+          mealType: mealType ?? 'other',
+          foods: [],
+          loggedAt: DateTime.now(),
+          claudeNote: null,
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<List<MealLog>> fetchMeals({
@@ -96,8 +152,8 @@ class HeartyApiClient {
   Future<SymptomLog> logSymptom({
     required String description,
     int? severity,
-  }) {
-    return _call(() async {
+  }) async {
+    try {
       final response = await _dio.post<List<dynamic>>(
         '/api/symptoms',
         data: {
@@ -111,7 +167,26 @@ class HeartyApiClient {
       // Backend returns a list; return the first entry.
       final list = response.data!;
       return SymptomLog.fromJson(list.first as Map<String, dynamic>);
-    });
+    } catch (e) {
+      if (_shouldQueue(e)) {
+        final payload = <String, dynamic>{
+          'raw_description': description,
+          if (severity != null)
+            'symptoms': [
+              {'symptom_type': 'other', 'severity': severity}
+            ],
+        };
+        await _queueOffline('log_symptom', payload);
+        return SymptomLog(
+          id: _uuid.v4(),
+          description: description,
+          severity: severity ?? 1,
+          linkedMealId: null,
+          loggedAt: DateTime.now(),
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<List<SymptomLog>> fetchSymptoms({
@@ -141,8 +216,8 @@ class HeartyApiClient {
     int? energy,
     int? mood,
     String? notes,
-  }) {
-    return _call(() async {
+  }) async {
+    try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/api/wellbeing',
         data: <String, dynamic>{
@@ -152,7 +227,24 @@ class HeartyApiClient {
         }..removeWhere((_, v) => v == null),
       );
       return WellbeingLog.fromJson(response.data!);
-    });
+    } catch (e) {
+      if (_shouldQueue(e)) {
+        final payload = <String, dynamic>{
+          'energy_level': energy,
+          'mood': mood,
+          'notes': notes,
+        }..removeWhere((_, v) => v == null);
+        await _queueOffline('log_wellbeing', payload);
+        return WellbeingLog(
+          id: _uuid.v4(),
+          energy: energy ?? 3,
+          mood: mood ?? 3,
+          notes: notes,
+          loggedAt: DateTime.now(),
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<List<WellbeingLog>> fetchWellbeing({
@@ -240,6 +332,7 @@ class HeartyApiClient {
 // ────────────────────────────────────────────────────────────────────────────
 
 final heartyApiClientProvider = Provider<HeartyApiClient>((ref) {
+  final db = ref.watch(offlineDatabaseProvider);
   final dio = Dio(BaseOptions(
     baseUrl: _kBaseUrl,
     connectTimeout: const Duration(seconds: 10),
@@ -248,5 +341,5 @@ final heartyApiClientProvider = Provider<HeartyApiClient>((ref) {
   ));
   dio.interceptors.add(AuthInterceptor());
   ref.onDispose(dio.close);
-  return HeartyApiClient(dio);
+  return HeartyApiClient(dio, db);
 });
