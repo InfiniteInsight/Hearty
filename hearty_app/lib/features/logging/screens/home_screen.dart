@@ -15,6 +15,18 @@ import '../../../core/api/models/symptom_log.dart';
 import '../../../core/api/models/wellbeing_log.dart';
 
 // ---------------------------------------------------------------------------
+// Top-level helpers
+// ---------------------------------------------------------------------------
+
+String _formatTime(DateTime dt) {
+  final hour = dt.hour;
+  final minute = dt.minute.toString().padLeft(2, '0');
+  final period = hour < 12 ? 'AM' : 'PM';
+  final displayHour = hour % 12 == 0 ? 12 : hour % 12;
+  return '$displayHour:$minute $period';
+}
+
+// ---------------------------------------------------------------------------
 // Entry types for the merged timeline
 // ---------------------------------------------------------------------------
 
@@ -50,11 +62,24 @@ final class _WellbeingEntry extends _TimelineEntry {
 // HomeScreen
 // ---------------------------------------------------------------------------
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  late final Stream<List<ConnectivityResult>> _connectivityStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _connectivityStream = Connectivity().onConnectivityChanged;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Wake word → chime → voice overlay
     ref.listen(wakeWordDetectedProvider, (_, detected) async {
       if (!detected) return;
@@ -80,7 +105,7 @@ class HomeScreen extends ConsumerWidget {
         title: const Text('Hearty'),
         actions: [
           StreamBuilder<List<ConnectivityResult>>(
-            stream: Connectivity().onConnectivityChanged,
+            stream: _connectivityStream,
             builder: (context, snapshot) {
               final results = snapshot.data;
               final isOffline = results != null &&
@@ -104,9 +129,9 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: _buildBody(context, ref, mealsAsync, symptomsAsync, wellbeingAsync),
+      body: _buildBody(context, mealsAsync, symptomsAsync, wellbeingAsync),
       floatingActionButton: _QuickLogFab(
-        onVoiceTap: () => _openVoiceOverlay(context, ref),
+        onVoiceTap: () => _openVoiceOverlay(context),
         onTextTap: () => context.push('/log'),
         onCameraTap: () => context.push('/log'),
       ),
@@ -115,7 +140,6 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildBody(
     BuildContext context,
-    WidgetRef ref,
     AsyncValue<List<MealLog>> mealsAsync,
     AsyncValue<List<SymptomLog>> symptomsAsync,
     AsyncValue<List<WellbeingLog>> wellbeingAsync,
@@ -155,7 +179,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _openVoiceOverlay(BuildContext context, WidgetRef ref) async {
+  Future<void> _openVoiceOverlay(BuildContext context) async {
     ref.read(voiceProvider.notifier).startListening();
     await showModalBottomSheet<void>(
       context: context,
@@ -356,14 +380,6 @@ class _MealCard extends StatelessWidget {
     };
   }
 
-  static String _formatTime(DateTime dt) {
-    final hour = dt.hour;
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final period = hour < 12 ? 'AM' : 'PM';
-    final displayHour = hour % 12 == 0 ? 12 : hour % 12;
-    return '$displayHour:$minute $period';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -405,14 +421,6 @@ class _SymptomRow extends StatelessWidget {
     return Colors.red;
   }
 
-  static String _formatTime(DateTime dt) {
-    final hour = dt.hour;
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final period = hour < 12 ? 'AM' : 'PM';
-    final displayHour = hour % 12 == 0 ? 12 : hour % 12;
-    return '$displayHour:$minute $period';
-  }
-
   @override
   Widget build(BuildContext context) {
     return ListTile(
@@ -445,12 +453,10 @@ class _WellbeingRow extends StatelessWidget {
 
   const _WellbeingRow({required this.wellbeing});
 
-  static String _formatTime(DateTime dt) {
-    final hour = dt.hour;
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final period = hour < 12 ? 'AM' : 'PM';
-    final displayHour = hour % 12 == 0 ? 12 : hour % 12;
-    return '$displayHour:$minute $period';
+  static (Color bg, Color fg) _scale(int v) {
+    if (v <= 2) return (Colors.red.shade100, Colors.red.shade800);
+    if (v == 3) return (Colors.orange.shade100, Colors.orange.shade800);
+    return (Colors.green.shade100, Colors.green.shade800);
   }
 
   @override
@@ -460,10 +466,37 @@ class _WellbeingRow extends StatelessWidget {
       subtitleParts.add(wellbeing.notes!);
     }
 
+    final (energyBg, energyFg) = _scale(wellbeing.energy);
+    final (moodBg, moodFg) = _scale(wellbeing.mood);
+
     return ListTile(
       leading: const Icon(Icons.favorite_rounded, color: Colors.pink),
-      title: Text(
-          'Energy ${wellbeing.energy}/5 · Mood ${wellbeing.mood}/5'),
+      title: Wrap(
+        spacing: 6,
+        runSpacing: 4,
+        children: [
+          Chip(
+            label: Text(
+              '⚡ ${wellbeing.energy}/5',
+              style: TextStyle(color: energyFg, fontSize: 12),
+            ),
+            backgroundColor: energyBg,
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            side: BorderSide.none,
+          ),
+          Chip(
+            label: Text(
+              '😊 ${wellbeing.mood}/5',
+              style: TextStyle(color: moodFg, fontSize: 12),
+            ),
+            backgroundColor: moodBg,
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            side: BorderSide.none,
+          ),
+        ],
+      ),
       subtitle: Text(subtitleParts.join(' · ')),
       onTap: () => context.push('/log/${wellbeing.id}'),
     );
