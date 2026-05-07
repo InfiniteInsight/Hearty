@@ -3,7 +3,7 @@
 **Spec:** [`hearty-04-android-app.md`](../specs/2026-05-04-hearty-04-android-app.md)  
 **Roadmap Phase:** Phase 2 — Android App  
 **Plan Status:** 🟡 In Progress  
-**Last Updated:** 2026-05-07  
+**Last Updated:** 2026-05-07 (Phase 4 complete; Phase 5 next)  
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since  
 **Open Deviations:** 0
 
@@ -30,7 +30,7 @@
 | 1 | Flutter Project Setup | 🟢 Completed | — | Claude |
 | 2 | UI Shell & Navigation | 🟢 Completed | Phase 1 | Claude |
 | 3 | Auth (Google OAuth + Supabase) | 🟢 Completed | Phase 1 | Claude |
-| 4 | Voice Input, TTS & Wake Word | 🟡 In Progress | Phases 2–3 | Mixed (openWakeWord training + Claude) |
+| 4 | Voice Input, TTS & Wake Word | 🟢 Completed | Phases 2–3 | Mixed (openWakeWord training + Claude) |
 | 5 | Meal, Symptom & Wellbeing Logging | 🔴 Not Started | Phases 2–4 | Claude |
 | 6 | Offline Queue & Background Sync | 🔴 Not Started | Phase 5 | Claude |
 | 7 | Camera & Photo Types | 🔴 Not Started | Phases 2–3 | Claude |
@@ -163,7 +163,7 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 
 ## Phase 4: Voice Input, TTS & Wake Word
 
-**Status:** 🟡 In Progress  
+**Status:** 🟢 Completed  
 **Goal:** Implement the complete voice I/O loop — STT overlay, TTS response, wake word detection foreground service, and the activation feedback sequence — wired to the log entry screen.  
 **Depends on:** Phases 2–3  
 **Type:** Mixed (openWakeWord model training + Claude implementation)
