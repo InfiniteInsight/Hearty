@@ -14,4 +14,10 @@ class WakeWordNotifier extends StateNotifier<bool> {
   }
 
   void setDetected(bool value) => state = value;
+
+  @override
+  void dispose() {
+    WakeWordChannel.clearHandler();
+    super.dispose();
+  }
 }

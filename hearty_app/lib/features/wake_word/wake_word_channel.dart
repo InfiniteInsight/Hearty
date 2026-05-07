@@ -15,4 +15,6 @@ class WakeWordChannel {
 
   static Future<void> stopListening() =>
       _channel.invokeMethod('stopListening');
+
+  static void clearHandler() => _channel.setMethodCallHandler(null);
 }

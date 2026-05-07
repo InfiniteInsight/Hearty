@@ -18,11 +18,20 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   final SpeechToText _stt;
   final FlutterTts _tts;
   bool _sttInitialized = false;
+  bool _askFollowUp = true;
 
   Future<void> _initTts() async {
     await _tts.setLanguage('en-US');
     await _tts.setSpeechRate(0.9);
     await _tts.setPitch(1.0);
+    _tts.setCompletionHandler(() {
+      if (!mounted) return;
+      if (_askFollowUp) {
+        setAwaitingFollowUp();
+      } else {
+        dismiss();
+      }
+    });
   }
 
   Future<bool> _ensureSttInitialized() async {
@@ -71,15 +80,8 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   Future<void> _speakResponse(String response, bool askFollowUp) async {
+    _askFollowUp = askFollowUp;
     await _tts.speak(response);
-    _tts.setCompletionHandler(() {
-      if (!mounted) return;
-      if (askFollowUp) {
-        setAwaitingFollowUp();
-      } else {
-        dismiss();
-      }
-    });
   }
 
   /// Stops TTS immediately (e.g., user tapped screen) and resets to idle.
@@ -101,10 +103,18 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   /// Phase 5 stub — replaced by real POST /api/chat call in Phase 5.
-  Future<void> simulateApiResponse() async {
+  /// Pass [defaultAssistantLabel] so non-health queries redirect to the preferred assistant.
+  Future<void> simulateApiResponse({String? defaultAssistantLabel}) async {
     final transcript = state.transcript;
     if (transcript.isEmpty) return;
-    setResponse('Got it! I logged "$transcript". How are you feeling?');
+    const nonHealthKeywords = ['weather', 'news', 'music', 'sports', 'stock', 'remind'];
+    final isNonHealth = defaultAssistantLabel != null &&
+        nonHealthKeywords.any((k) => transcript.toLowerCase().contains(k));
+    if (isNonHealth) {
+      await redirectToAssistant(defaultAssistantLabel);
+    } else {
+      setResponse('Got it! I logged "$transcript". How are you feeling?');
+    }
   }
 
   /// Speaks the redirect response for a non-health query.

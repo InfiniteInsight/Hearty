@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 import 'package:hearty_app/features/voice/models/voice_state.dart';
 import 'package:hearty_app/features/voice/providers/voice_provider.dart';
 import 'package:hearty_app/features/voice/screens/voice_overlay_screen.dart';
@@ -92,8 +94,26 @@ void main() {
   });
 }
 
+class _FakeStt extends Fake implements SpeechToText {
+  @override
+  bool get isListening => false;
+  @override
+  bool get isNotListening => true;
+  @override
+  dynamic noSuchMethod(Invocation invocation) => Future.value();
+}
+
+class _FakeTts extends Fake implements FlutterTts {
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.memberName == #setCompletionHandler) return null;
+    return Future.value();
+  }
+}
+
 class _StubVoiceNotifier extends VoiceNotifier {
-  _StubVoiceNotifier(VoiceState initial) {
+  _StubVoiceNotifier(VoiceState initial)
+      : super(sttForTesting: _FakeStt(), ttsForTesting: _FakeTts()) {
     state = initial;
   }
 }
