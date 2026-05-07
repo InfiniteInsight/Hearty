@@ -123,9 +123,9 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
     );
   }
 
-  void _onEditPressed() {
+  void _onEditPressed(String currentDescription) {
     setState(() {
-      _textController.text = _reviewText ?? '';
+      _textController.text = currentDescription;
       _reviewText = null;
     });
   }
@@ -306,7 +306,7 @@ class _ReviewCard extends StatefulWidget {
   final String mealType;
   final String followUpTime;
   final Future<void> Function(String description) onLog;
-  final VoidCallback onEdit;
+  final void Function(String currentDescription) onEdit;
 
   const _ReviewCard({
     required this.initialDescription,
@@ -411,7 +411,7 @@ class _ReviewCardState extends State<_ReviewCard> {
             ),
 
             TextButton(
-              onPressed: _saving ? null : widget.onEdit,
+              onPressed: _saving ? null : () => widget.onEdit(_descController.text),
               child: const Text('Edit'),
             ),
           ],
