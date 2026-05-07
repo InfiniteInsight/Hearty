@@ -6,7 +6,7 @@ import '../models/symptom_log.dart';
 class SymptomsNotifier extends AsyncNotifier<List<SymptomLog>> {
   @override
   Future<List<SymptomLog>> build() async {
-    final client = ref.read(heartyApiClientProvider);
+    final client = ref.watch(heartyApiClientProvider);
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
     return client.fetchSymptoms(start: startOfDay, end: now);

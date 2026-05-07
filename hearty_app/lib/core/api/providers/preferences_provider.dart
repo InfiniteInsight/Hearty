@@ -6,7 +6,7 @@ import '../models/user_preferences.dart';
 class PreferencesNotifier extends AsyncNotifier<UserPreferences> {
   @override
   Future<UserPreferences> build() async {
-    final client = ref.read(heartyApiClientProvider);
+    final client = ref.watch(heartyApiClientProvider);
     return client.fetchPreferences();
   }
 

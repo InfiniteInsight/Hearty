@@ -27,7 +27,7 @@ class TrendsData {
 
     final mealDist = <String, int>{};
     final rawDist = json['meal_type_distribution'] as Map<String, dynamic>?;
-    rawDist?.forEach((k, v) => mealDist[k] = v as int);
+    rawDist?.forEach((k, v) => mealDist[k] = (v as num).toInt());
 
     return TrendsData(
       symptomFrequency: symptomFreq,

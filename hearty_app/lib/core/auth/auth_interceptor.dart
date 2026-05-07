@@ -17,7 +17,12 @@ class AuthInterceptor extends Interceptor {
   }
 
   @override
-  void onError(DioException err, ErrorInterceptorHandler handler) async {
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    _onError(err, handler); // intentionally unawaited — see Dio interceptor docs
+  }
+
+  Future<void> _onError(
+      DioException err, ErrorInterceptorHandler handler) async {
     // Offline / connection errors — wrap into OfflineException.
     if (err.type == DioExceptionType.connectionError ||
         err.type == DioExceptionType.connectionTimeout ||
@@ -52,9 +57,16 @@ class AuthInterceptor extends Interceptor {
         }
 
         // Retry the original request once with the new token.
-        final opts = err.requestOptions
-          ..headers['Authorization'] = 'Bearer ${session.accessToken}'
-          ..extra['_retried'] = true;
+        final opts = err.requestOptions.copyWith(
+          headers: {
+            ...err.requestOptions.headers,
+            'Authorization': 'Bearer ${session.accessToken}',
+          },
+          extra: {
+            ...err.requestOptions.extra,
+            '_retried': true,
+          },
+        );
 
         // Use a fresh Dio to avoid re-triggering this interceptor.
         final dio = Dio(BaseOptions(

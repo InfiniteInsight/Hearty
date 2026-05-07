@@ -8,7 +8,7 @@ class TrendsNotifier extends AsyncNotifier<TrendsData> {
 
   @override
   Future<TrendsData> build() async {
-    final client = ref.read(heartyApiClientProvider);
+    final client = ref.watch(heartyApiClientProvider);
     return client.fetchTrends(days: _days);
   }
 
