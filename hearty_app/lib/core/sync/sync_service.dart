@@ -19,10 +19,11 @@ const _kBaseUrl = String.fromEnvironment(
 );
 
 class SyncService {
-  SyncService(this._db, this._dio);
+  SyncService(this._db, this._dio, this._ref);
 
   final OfflineDatabase _db;
   final Dio _dio;
+  final Ref _ref;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
 
   bool _syncing = false;
@@ -48,6 +49,7 @@ class SyncService {
   Future<void> syncPending() async {
     if (_syncing) return;
     _syncing = true;
+    _ref.read(isSyncingProvider.notifier).state = true;
     try {
       final rows = await (_db.select(_db.offlineQueue)
             ..where((q) => q.status.equals('pending'))
@@ -59,19 +61,26 @@ class SyncService {
       }
     } finally {
       _syncing = false;
+      _ref.read(isSyncingProvider.notifier).state = false;
     }
   }
 
   Future<void> _syncRow(OfflineQueueData row) async {
-    // Mark as syncing
+    Map<String, dynamic> payload;
+    try {
+      payload = jsonDecode(row.payload) as Map<String, dynamic>;
+    } catch (_) {
+      await (_db.update(_db.offlineQueue)..where((q) => q.id.equals(row.id)))
+          .write(const OfflineQueueCompanion(status: Value('failed')));
+      return;
+    }
+
     await (_db.update(_db.offlineQueue)..where((q) => q.id.equals(row.id)))
         .write(const OfflineQueueCompanion(status: Value('syncing')));
 
     try {
-      final payload = jsonDecode(row.payload) as Map<String, dynamic>;
       await _replayAction(row.actionType, payload);
 
-      // Success — delete the row
       await (_db.delete(_db.offlineQueue)..where((q) => q.id.equals(row.id)))
           .go();
     } on DioException catch (e) {
@@ -84,7 +93,7 @@ class SyncService {
             .write(
           OfflineQueueCompanion(
             retryCount: Value(newRetry),
-            status: Value(newRetry >= _maxRetries ? 'failed' : 'pending'),
+            status: Value(newRetry > _maxRetries ? 'failed' : 'pending'),
           ),
         );
       } else {
@@ -135,7 +144,7 @@ final syncServiceProvider = Provider<SyncService>((ref) {
   dio.interceptors.add(AuthInterceptor());
   ref.onDispose(dio.close);
 
-  final service = SyncService(db, dio);
+  final service = SyncService(db, dio, ref);
   service.start();
   ref.onDispose(service.dispose);
   return service;
