@@ -114,7 +114,7 @@ flutter:
     - assets/wake_word/hey_hearty.onnx
     - assets/wake_word/melspectrogram.onnx
     - assets/wake_word/embedding_model.onnx
-    - assets/audio/wake_chime.mp3
+    - assets/audio/wake_chime.wav
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
