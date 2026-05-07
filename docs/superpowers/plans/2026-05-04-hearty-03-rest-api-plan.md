@@ -2,8 +2,8 @@
 
 **Spec:** [`hearty-03-rest-api.md`](../specs/2026-05-04-hearty-03-rest-api.md)
 **Roadmap Phase:** Phase 1 — Foundation
-**Plan Status:** 🔴 Not Started
-**Last Updated:** 2026-05-04
+**Plan Status:** 🟢 Completed
+**Last Updated:** 2026-05-05 (Plan complete — all 11 phases)
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
 **Open Deviations:** 0
 
@@ -26,24 +26,24 @@
 
 | Phase | Name | Status | Depends On | Type |
 |---|---|---|---|---|
-| 0 | Review & Align | 🔴 Not Started | — | Claude (start of every session) |
-| 1 | Project Setup | 🔴 Not Started | Spec 01 plan 🟢, Spec 08 plan 🟢 | Claude |
-| 2 | Auth & JWT Middleware | 🔴 Not Started | Phase 1 | Claude |
-| 3 | Auth Webhook | 🔴 Not Started | Phase 2 | Claude |
-| 4 | AI Extraction Service | 🔴 Not Started | Phase 2 | Claude |
-| 5 | Core Logging Endpoints | 🔴 Not Started | Phases 3, 4 | Claude |
-| 6 | Trend Engine & Summary | 🔴 Not Started | Phase 5 | Claude |
-| 7 | Export Endpoints | 🔴 Not Started | Phase 5 | Claude |
-| 8 | Health Profile Endpoints | 🔴 Not Started | Phase 2 | Claude |
-| 9 | Photo Stubs | 🔴 Not Started | Phase 2 | Claude |
-| 10 | Fly.io Deployment | 🔴 Not Started | Phases 5–9 | Claude |
-| 11 | Integration Tests | 🔴 Not Started | Phase 10 | Claude |
+| 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
+| 1 | Project Setup | 🟢 Completed | Spec 01 plan 🟢, Spec 08 Phases 1-2 🟢 | Claude |
+| 2 | Auth & JWT Middleware | 🟢 Completed | Phase 1 | Claude |
+| 3 | Auth Webhook | 🟢 Completed | Phase 2 | Claude |
+| 4 | AI Extraction Service | 🟢 Completed | Phase 2 | Claude |
+| 5 | Core Logging Endpoints | 🟢 Completed | Phases 3, 4 | Claude |
+| 6 | Trend Engine & Summary | 🟢 Completed | Phase 5 | Claude |
+| 7 | Export Endpoints | 🟢 Completed | Phase 5 | Claude |
+| 8 | Health Profile Endpoints | 🟢 Completed | Phase 2, Spec 08 Phase 3 | Claude |
+| 9 | Photo Stubs | 🟢 Completed | Phase 2 | Claude |
+| 10 | Fly.io Deployment | 🟢 Completed | Phases 5–9 | Claude |
+| 11 | Integration Tests | 🟢 Completed | Phase 10 | Claude |
 
 ---
 
 ## Phase 0: Review & Align
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Verify the dev environment, confirm prerequisite plans are complete, confirm the spec hasn't drifted from this plan, and identify exactly which phase to start or resume.
 **Run this phase at the start of every session on this plan.**
 
@@ -70,8 +70,11 @@ Steps:
    - The Spec 01 (Database) plan must be marked 🟢 Completed before Phase 1 can begin.
      The auth/on-login webhook upserts rows into health_profile and notification_preferences —
      those tables must already exist (created in Spec 01).
-   - The Spec 08 (Health Profile) plan must be marked 🟢 Completed before Phase 1 can begin.
-     If either plan file doesn't exist yet, report what is missing and stop.
+   - Spec 08 (Health Profile) **Phases 1-2** must be 🟢 Completed before Phase 1 can begin —
+     the Pydantic schemas from Phase 2 are needed by Phase 3 of this plan (Auth Webhook) and
+     Phase 8 (Health Profile Endpoints). Spec 08 Phases 3-5 (REST router, context injection,
+     tests) depend on this plan's Phase 2 (auth middleware) and run after it.
+     If the Spec 08 plan file doesn't exist yet, report it and stop.
 
 3. Check the dev environment (run each command, note missing items):
    - git status
@@ -104,9 +107,9 @@ Tell me to run /compact, and remind me that the next phase's Activation Prompt i
 
 ## Phase 1: Project Setup
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Create the `hearty-api/` directory tree, virtualenv, `requirements.txt`, `.env.example`, and stub `main.py` — enough to run `uvicorn app.main:app --reload` without error.
-**Depends on:** Spec 01 plan 🟢 Completed, Spec 08 plan 🟢 Completed
+**Depends on:** Spec 01 plan 🟢 Completed, Spec 08 Phases 1-2 🟢 Completed
 
 ### Activation Prompt
 
@@ -135,16 +138,16 @@ When all tasks are done:
 
 ### Task 1.1: Create directory structure
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
-- [ ] Create the full directory tree from spec Section 2:
+- [ ] `hearty-api/app/health_profile/` may already exist from Spec 08 Phase 1 — do not remove it. Create the remaining directories (`mkdir -p` is safe if they already exist):
   ```bash
   mkdir -p hearty-api/app/routers
   mkdir -p hearty-api/app/services
   mkdir -p hearty-api/app/models
   ```
 
-- [ ] Create placeholder `__init__.py` files:
+- [ ] Create placeholder `__init__.py` files (skip any that already exist from Spec 08):
   ```bash
   touch hearty-api/app/__init__.py
   touch hearty-api/app/routers/__init__.py
@@ -160,7 +163,7 @@ When all tasks are done:
 
 ### Task 1.2: Create `requirements.txt` and virtualenv
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/requirements.txt` with the exact pinned versions from spec Section 12:
   ```
@@ -197,7 +200,7 @@ When all tasks are done:
 
 ### Task 1.3: Create `.env.example` and stub `main.py`
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/.env.example` from spec Section 11 (verbatim).
 
@@ -226,7 +229,7 @@ When all tasks are done:
 
 ## Phase 2: Auth & JWT Middleware
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement `app/auth.py` (Supabase JWT verification dependency) and verify it blocks unauthenticated requests.
 **Depends on:** Phase 1 complete
 
@@ -257,7 +260,7 @@ When all tasks are done:
 
 ### Task 2.1: Implement `app/auth.py`
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/auth.py` from spec Section 3.1 (verbatim):
   - `security = HTTPBearer()`
@@ -279,7 +282,7 @@ When all tasks are done:
 
 ### Task 2.2: Add a protected test route and verify 401
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] In `hearty-api/app/main.py`, temporarily add a protected test route:
   ```python
@@ -318,7 +321,7 @@ When all tasks are done:
 
 ## Phase 3: Auth Webhook
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement `POST /auth/on-login` — the Supabase Auth webhook that bootstraps `health_profile` and `notification_preferences` rows for new users.
 **Depends on:** Phase 2 complete
 
@@ -349,7 +352,7 @@ When all tasks are done:
 
 ### Task 3.1: Create `app/routers/auth_hooks.py`
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/routers/auth_hooks.py`:
 
@@ -400,7 +403,7 @@ When all tasks are done:
 
 ### Task 3.2: Wire into `main.py` and verify
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] In `hearty-api/app/main.py`, add:
   ```python
@@ -431,7 +434,7 @@ When all tasks are done:
 
 ## Phase 4: AI Extraction Service
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement `app/services/ai_extraction.py` — `extract_meal()`, `extract_symptoms()`, and `generate_summary()` — using LiteLLM.
 **Depends on:** Phase 2 complete (virtualenv and schemas are in place)
 
@@ -462,7 +465,7 @@ When all tasks are done:
 
 ### Task 4.1: Implement `app/services/ai_extraction.py`
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/services/ai_extraction.py` with all three functions from spec Section 6:
 
@@ -482,13 +485,13 @@ When all tasks are done:
 
 - [ ] Add `hearty-api/app/services/__init__.py` (empty) if not already present.
 
-**Deviation Log:** _None_
+**Deviation Log:** Added `{description}` and `{raw_description}` placeholders to spec 6.1 and 6.2 prompts (missing from spec; required by the spec's own `.format()` call pattern shown in 6.3). Appended as `Description:\n{placeholder}` at the end of each prompt, consistent with the `Data:\n{stats_json}` pattern in 6.3.
 
 ---
 
 ### Task 4.2: Smoke test AI extraction locally
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] With a valid `ANTHROPIC_API_KEY` (or whichever provider key matches `LLM_MODEL`) set in `.env`:
   ```bash
@@ -523,7 +526,7 @@ When all tasks are done:
 
 ## Phase 5: Core Logging Endpoints
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement the three POST logging endpoints and two GET query endpoints: meals, symptoms, wellbeing — wired to the AI extraction service and Supabase.
 **Depends on:** Phase 3 (auth_hooks router pattern established), Phase 4 (AI extraction available)
 
@@ -554,7 +557,7 @@ When all tasks are done:
 
 ### Task 5.1: Implement meals router (`app/routers/meals.py`)
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/routers/meals.py` implementing:
 
@@ -576,13 +579,13 @@ When all tasks are done:
 - [ ] Verify routes appear: `curl -s http://localhost:8000/openapi.json | python3 -c "import sys,json; d=json.load(sys.stdin); print([p for p in d['paths'] if 'meals' in p])"`
   Expected: `['/api/meals']`
 
-**Deviation Log:** _None_
+**Deviation Log:** Added `MealWithSymptoms(MealResponse)` and `MealsListResponse` to schemas.py (after SymptomResponse) because `GET /api/meals` returns nested symptoms and `MealResponse` had no `symptoms` field. Spec describes this shape but defines no separate schema for it.
 
 ---
 
 ### Task 5.2: Implement symptoms router (`app/routers/symptoms.py`)
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/routers/symptoms.py` implementing:
 
@@ -605,7 +608,7 @@ When all tasks are done:
 
 ### Task 5.3: Implement wellbeing router (`app/routers/wellbeing.py`)
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/routers/wellbeing.py` implementing:
 
@@ -637,7 +640,7 @@ When all tasks are done:
 
 ## Phase 6: Trend Engine & Summary
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement `app/services/trend_engine.py` (co-occurrence analysis with two-tier classification) and the `GET /api/trends` and `GET /api/summary` endpoints.
 **Depends on:** Phase 5 complete (data exists in meals and symptoms tables to analyze)
 
@@ -646,16 +649,23 @@ When all tasks are done:
 ```
 You are implementing Phase 6 (Trend Engine & Summary) of the Hearty REST API.
 
-Working directory: /home/evan/projects/food-journal-assistant
+Working directory: /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-mcp-server
 
 Context:
 - Spec: docs/superpowers/specs/2026-05-04-hearty-03-rest-api.md  (Sections 5.6, 5.7, 8)
 - Plan: docs/superpowers/plans/2026-05-04-hearty-03-rest-api-plan.md
 
+**IMPORTANT — Run Phase 0 first.**
+Phase 0 (Review & Align) must be run at the start of every session on this plan.
+Read the plan file and follow the Phase 0 steps before touching any code.
+Phase 0 confirms the dev environment, checks for spec drift, and identifies any
+deviations from prior phases that could affect this one.
+Do not skip it even if you believe the environment is already set up.
+
 Before running any command, verify it exists with --help or equivalent.
 If a step doesn't match what you find, stop and tell me — don't improvise.
 
-Read the plan file, then execute Tasks 6.1 and 6.2 in order.
+After Phase 0, execute Tasks 6.1 and 6.2 in order.
 
 When all tasks are done:
 - Mark Phase 6 status as 🟢 Completed in the plan file
@@ -668,7 +678,7 @@ When all tasks are done:
 
 ### Task 6.1: Implement `app/services/trend_engine.py`
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/services/trend_engine.py` implementing the co-occurrence analysis algorithm from spec Section 8:
 
@@ -687,13 +697,13 @@ When all tasks are done:
     - Runs `analyze_triggers` and upserts results into the `food_triggers` table
     - Used by the scheduled background job (documented here; the scheduler itself is a Supabase Edge Function or Railway cron, out of scope for this plan)
 
-**Deviation Log:** _None_
+**Deviation Log:** Added `label: Optional[str] = None` to `TriggerFood` schema to surface the two-tier classification ("early signal, needs more data" / "established") — spec defines the tiers but the schema had no field for them. `frequency_bonus` (undefined in spec) implemented as `min(occurrence_count / 10.0, 1.0)`. Applied 0–240 min window to all symptoms (linked and unlinked); deduped food names per meal to avoid denominator inflation. Added migration `20260505120000_food_triggers_unique.sql` to add `UNIQUE(user_id, food_name, symptom_type)` — required for `update_food_triggers_table` upsert.
 
 ---
 
 ### Task 6.2: Implement trends router (`app/routers/trends.py`)
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/routers/trends.py` implementing:
 
@@ -718,7 +728,7 @@ When all tasks are done:
 
 ## Phase 7: Export Endpoints
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement `app/services/export_service.py` and the JSON, CSV, and PDF export endpoints.
 **Depends on:** Phase 5 complete (meals and symptoms data available)
 
@@ -727,16 +737,23 @@ When all tasks are done:
 ```
 You are implementing Phase 7 (Export Endpoints) of the Hearty REST API.
 
-Working directory: /home/evan/projects/food-journal-assistant
+Working directory: /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-mcp-server
 
 Context:
 - Spec: docs/superpowers/specs/2026-05-04-hearty-03-rest-api.md  (Sections 5.8–5.10)
 - Plan: docs/superpowers/plans/2026-05-04-hearty-03-rest-api-plan.md
 
+**IMPORTANT — Run Phase 0 first.**
+Phase 0 (Review & Align) must be run at the start of every session on this plan.
+Read the plan file and follow the Phase 0 steps before touching any code.
+Phase 0 confirms the dev environment, checks for spec drift, and identifies any
+deviations from prior phases that could affect this one.
+Do not skip it even if you believe the environment is already set up.
+
 Before running any command, verify it exists with --help or equivalent.
 If a step doesn't match what you find, stop and tell me — don't improvise.
 
-Read the plan file, then execute Tasks 7.1, 7.2a, 7.2b, and 7.3 in order.
+After Phase 0, execute Tasks 7.1, 7.2a, 7.2b, and 7.3 in order.
 
 When all tasks are done:
 - Mark Phase 7 status as 🟢 Completed in the plan file
@@ -749,7 +766,7 @@ When all tasks are done:
 
 ### Task 7.1: Implement JSON and CSV export
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/routers/export.py` implementing:
 
@@ -757,6 +774,8 @@ When all tasks are done:
     - Query params: `start_date`, `end_date` (optional, default: all time)
     - Returns `application/json` with the full nested structure from spec Section 5.8:
       `exported_at`, `user_id`, `period`, `meals` (with nested symptoms), `wellbeing_snapshots`, `food_triggers`, `health_profile`
+    - For the `meals` array, use `MealWithSymptoms` from `app/models/schemas.py` (not `MealResponse`) — it carries `symptoms: List[SymptomResponse]`. Serialize with `.model_dump(mode="json")` or build the response as a plain dict by fetching meals joined with their symptoms via a second Supabase query (same pattern as `GET /api/meals`).
+    - **`food_triggers` source — Phase 6 deviation note:** `TriggerFood.label` is computed on the fly by `trend_engine.analyze_triggers()` and is **not stored** in the `food_triggers` database table. A direct `SELECT * FROM food_triggers` will return `label=null` for every row. To include labels in the export (consistent with `GET /api/trends`), call `trend_engine.analyze_triggers(user_id, period_days, None, min_occurrences=2)` and use its `triggers` list as the `food_triggers` array — same as the trends endpoint. If you prefer to read from the table instead (simpler, no live recompute), note in the deviation log that `label` will be null in the export.
 
   - `GET /api/export/csv` (spec Section 5.9):
     - Query params: `start_date`, `end_date` (optional)
@@ -766,13 +785,13 @@ When all tasks are done:
 
 - [ ] Wire `export.router` into `main.py`.
 
-**Deviation Log:** _None_
+**Deviation Log:** CSV emits one row per meal even when a meal has no symptoms (empty symptom columns) — keeps meals visible in the export rather than silently omitting them. Also appended unlinked symptoms (meal_id IS NULL) as rows with empty meal columns; spec only described meal-linked symptoms but omitting them would lose data. Called `trend_engine.analyze_triggers()` for food_triggers rather than reading the `food_triggers` table directly, to preserve the `label` field (not stored in DB, computed at runtime).
 
 ---
 
 ### Task 7.2a: Implement PDF data aggregation and chart rendering
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/services/export_service.py` with a `gather_export_data(user_id, start_date, end_date)` helper:
     - Queries: meals + nested symptoms, wellbeing snapshots, food triggers, health profile, notification_preferences
@@ -804,7 +823,7 @@ When all tasks are done:
 
 ### Task 7.2b: Assemble PDF with reportlab
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Add `generate_pdf(user_id: str, start_date: datetime | None, end_date: datetime | None) -> bytes` to `export_service.py`:
     - Calls `gather_export_data()` and both chart renderers
@@ -837,7 +856,7 @@ When all tasks are done:
 
 ### Task 7.3: Wire PDF export into the router
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] In `hearty-api/app/routers/export.py`, add:
 
@@ -864,9 +883,9 @@ When all tasks are done:
 
 ## Phase 8: Health Profile Endpoints
 
-**Status:** 🔴 Not Started
-**Goal:** Implement `GET /api/health-profile` and `PUT /api/health-profile`.
-**Depends on:** Phase 2 complete (auth middleware)
+**Status:** 🟢 Completed
+**Goal:** Mount the health profile router (implemented in Spec 08 Phase 3) into `main.py`. The router lives at `hearty-api/app/health_profile/router.py` and provides all 12 endpoints (GET/PUT/PATCH/DELETE top-level + 8 sub-resource endpoints).
+**Depends on:** Phase 2 complete (auth middleware), Spec 08 Phase 3 complete
 
 ### Activation Prompt
 
@@ -877,50 +896,62 @@ Working directory: /home/evan/projects/food-journal-assistant
 
 Context:
 - Spec: docs/superpowers/specs/2026-05-04-hearty-03-rest-api.md  (Sections 5.11–5.12)
+- Spec 08: docs/superpowers/specs/2026-05-04-hearty-08-health-profile.md  (§10.1)
 - Plan: docs/superpowers/plans/2026-05-04-hearty-03-rest-api-plan.md
+
+---
+Start with Phase 0 (Review & Align) before writing any code. Phase 0 exists because this
+phase has a critical cross-spec dependency: the health profile router is implemented in Spec
+08 Phase 3 (`hearty-api/app/health_profile/router.py`), not here. Task 8.1's only job is to
+confirm that router is wired in main.py and run the smoke test. Phase 0 tells you to verify
+`hearty-api/app/health_profile/router.py` exists and exports a router object before touching
+main.py. If Spec 08 Phase 3 is not yet complete, you must stop and say so rather than
+improvising.
+
+Phase 0 steps:
+1. Read the plan file: docs/superpowers/plans/2026-05-04-hearty-03-rest-api-plan.md
+2. Mark Phase 8 as 🟡 In Progress in the plan file
+3. Verify the environment: confirm hearty-api/app/health_profile/router.py exists and exports router
+4. If the file is missing or Spec 08 Phase 3 is not complete, stop and report — do not proceed
 
 Before running any command, verify it exists with --help or equivalent.
 If a step doesn't match what you find, stop and tell me — don't improvise.
 
-Read the plan file, then execute Task 8.1.
+After Phase 0, execute Task 8.1.
 
 When done:
 - Mark Phase 8 status as 🟢 Completed in the plan file
-- Commit: git add hearty-api/app/routers/health_profile.py docs/superpowers/plans/2026-05-04-hearty-03-rest-api-plan.md && git commit -m "feat: health profile endpoints"
+- Commit: git add hearty-api/app/main.py docs/superpowers/plans/2026-05-04-hearty-03-rest-api-plan.md && git commit -m "feat: health profile endpoints"
 - Tell me to run /compact
 - Remind me that the next phase's Activation Prompt is at the top of Phase 9 in this plan file
 ```
 
 ---
 
-### Task 8.1: Implement health_profile router
+### Task 8.1: Verify health_profile router is wired into main.py
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
-- [ ] Create `hearty-api/app/routers/health_profile.py` implementing:
+> **Note:** The `health_profile` router is implemented in Spec 08 Phase 3 (`hearty-api/app/health_profile/router.py`), not here. That phase also wires it into `main.py`. This task confirms the wiring is in place and verifies the endpoints respond correctly.
+> The execution order is: Spec 08 Phases 1–2 → Spec 03 Phases 1–2 → **Spec 08 Phases 3–5** → Spec 03 Phases 3+.
+> If Spec 08 Phase 3 is not yet 🟢 Completed, stop and complete it before proceeding.
 
-  - `GET /api/health-profile` (spec Section 5.11):
-    - Requires `user=Depends(get_current_user)`
-    - Queries `health_profile` table for the user's row
-    - Returns `HealthProfileResponse`
-    - If no row exists (user logged in before auth/on-login webhook was registered), upsert a blank row and return it
+- [x] Confirmed `hearty-api/app/health_profile/router.py` exists and exports a `router` object.
 
-  - `PUT /api/health-profile` (spec Section 5.12):
-    - Accepts `HealthProfileRequest` (all fields optional)
-    - Upserts on `user_id`
-    - Arrays replace fully (caller sends complete array, not append-only)
-    - Returns `HealthProfileResponse`
+- [x] In `hearty-api/app/main.py`, the router is imported and included:
+  ```python
+  from app.health_profile.router import router as health_profile_router
+  app.include_router(health_profile_router)
+  ```
 
-- [ ] Wire `health_profile.router` into `main.py`.
-
-- [ ] Smoke test:
+- [ ] Smoke test (run with a valid `TEST_JWT` — `HealthProfilePutRequest` requires all four arrays):
   ```bash
   curl -s -X PUT http://localhost:8000/api/health-profile \
     -H "Authorization: Bearer $TEST_JWT" \
     -H "Content-Type: application/json" \
-    -d '{"allergens": ["peanuts"], "intolerances": ["lactose"]}'
+    -d '{"allergens": [{"name": "peanuts", "severity": "mild"}], "intolerances": [], "conditions": [], "dietary_protocols": []}'
   ```
-  Expected: `200` with `HealthProfileResponse` showing the updated arrays.
+  Expected: `200` with `HealthProfileResponse` showing `allergens: [{name: peanuts, ...}]` and empty arrays for the other fields.
 
 **Deviation Log:** _None_
 
@@ -928,7 +959,7 @@ When done:
 
 ## Phase 9: Photo Stubs
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Add `POST /api/photos` and `GET /api/photos/{id}/status` as stubs returning `501 Not Implemented`. These endpoints are owned by Spec 06 (AI Vision) — this phase ensures the routes are registered so the OpenAPI schema is complete, without implementing the pipelines.
 **Depends on:** Phase 2 complete (auth middleware)
 
@@ -959,7 +990,7 @@ When done:
 
 ### Task 9.1: Create photo router stubs
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/app/routers/photos.py`:
 
@@ -1006,7 +1037,7 @@ When done:
 
 ## Phase 10: Fly.io Deployment
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Deploy the `hearty-api` service to Fly.io free tier and verify the live `/health` endpoint.
 **Depends on:** Phases 5–9 complete
 
@@ -1037,7 +1068,7 @@ When all tasks are done:
 
 ### Task 10.1: Configure Fly.io
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Verify Fly CLI is installed: `fly version`
   If missing, install per https://fly.io/docs/hands-on/install-flyctl/ and log in: `fly auth login`
@@ -1063,7 +1094,7 @@ When all tasks are done:
 
 ### Task 10.2: Deploy and verify
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create a minimal `Dockerfile` in `hearty-api/` if `fly launch` did not generate one:
   ```dockerfile
@@ -1100,7 +1131,7 @@ When all tasks are done:
 
 ## Phase 11: Integration Tests
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Write and run a set of integration tests against the live deployed API covering the core happy-path flows and key error cases.
 **Depends on:** Phase 10 complete (live deployment available)
 
@@ -1132,7 +1163,7 @@ When all tasks are done:
 
 ### Task 11.0: Obtain a test JWT
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Get a real Supabase JWT for a test user (needed by every test). Two options — use whichever works:
 
@@ -1162,7 +1193,7 @@ When all tasks are done:
 
 ### Task 11.1: Create test scaffolding
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/tests/__init__.py` (empty).
 
@@ -1178,7 +1209,7 @@ When all tasks are done:
 
 ### Task 11.2: Write and run integration tests
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create `hearty-api/tests/test_api.py` covering these cases:
 
@@ -1187,7 +1218,7 @@ When all tasks are done:
   test_health_check()                  # GET /health → 200
   test_log_meal()                      # POST /api/meals → 201, foods[] populated by AI
   test_log_meal_idempotency()          # POST /api/meals with same offline_id → 200, no duplicate
-  test_query_meals()                   # GET /api/meals → 200, list includes the just-logged meal
+  test_query_meals()                   # GET /api/meals → 200, envelope {"total": int, "meals": [...]}, each meal has "symptoms": [] field
   test_log_symptoms()                  # POST /api/symptoms → 201, list of SymptomResponse
   test_log_wellbeing()                 # POST /api/wellbeing → 201
   test_get_trends()                    # GET /api/trends → 200, TrendsResponse
@@ -1195,8 +1226,8 @@ When all tasks are done:
   test_export_json()                   # GET /api/export/json → 200, application/json
   test_export_csv()                    # GET /api/export/csv → 200, text/csv
   test_export_pdf()                    # POST /api/export/pdf → 200, application/pdf
-  test_get_health_profile()            # GET /api/health-profile → 200
-  test_update_health_profile()         # PUT /api/health-profile → 200, arrays updated
+  test_get_health_profile()            # GET /api/health-profile → 200, HealthProfileResponse (Spec 08 rich schema: allergens/intolerances/conditions/dietary_protocols as object arrays + updated_at)
+  test_update_health_profile()         # PUT /api/health-profile → 200, payload uses HealthProfilePutRequest (all four arrays required, each item is a rich entry object — e.g. allergens: [{name, severity, ...}])
 
   # Error paths
   test_unauthenticated_request()       # GET /api/meals no token → 403
@@ -1221,11 +1252,15 @@ When all tasks are done:
 
 _Format: `[date] — Phase X, Task Y — changed X because Y`_
 
+[2026-05-05] — Phase 6, Task 6.1 — Added `label: Optional[str] = None` to `TriggerFood` schema; spec defines two tiers but no schema field to surface them. `frequency_bonus` undefined in spec; implemented as `min(occurrence_count / 10.0, 1.0)`. Applied 0–240 min onset window to all symptoms (not only unlinked). Deduped foods per meal in denominator. Added migration `20260505120000_food_triggers_unique.sql` for `UNIQUE(user_id, food_name, symptom_type)` required by upsert.
+
+[2026-05-05] — Phase 11, Task 11.2 — Fixed two bugs discovered during integration testing: (1) `ai_extraction.py` used `.format()` on prompts containing literal JSON `{}` braces, causing `KeyError` on the first `{` in the JSON example; switched to `.replace()`. Also added `_strip_code_fence()` helper because Claude wraps JSON responses in ` ```json ``` ` code fences. (2) `auth.py` did not catch exceptions from `supabase.auth.get_user()` — a malformed token raises an exception rather than returning `user=None`, which propagated as a 500; wrapped in try/except. Updated `test_unauthenticated_request` to expect 401 (current FastAPI HTTPBearer behavior) instead of 403 (old behavior noted in plan comments).
+
 ---
 
 ## Notes
 
-- **Spec 08 plan does not exist yet** as of 2026-05-04. Phase 0 checks for it — it will block until the Spec 08 (Health Profile) living plan is written. The auth/on-login webhook upserts default `health_profile` rows, so the DB tables (Spec 01) are a hard dependency; Spec 08 is a soft dependency for knowing what defaults to upsert.
+- **Spec 08 cross-spec dependency:** Spec 08 (Health Profile) owns the `health_profile` Pydantic schemas and REST endpoints. This plan's Phase 3 (Auth Webhook) upserts blank `health_profile` rows — it does not depend on Spec 08's schemas, only on the table existing (Spec 01). This plan's Phase 8 (Health Profile Endpoints) wires Spec 08's router into `main.py`; the router itself is implemented in Spec 08 Phase 3. Execution order: Spec 08 Phases 1-2 → this plan Phases 1-2 → Spec 08 Phases 3-5 → this plan Phases 3+.
 
 - **`food_lookup.py`** (spec Section 7, tiered food lookup pipeline) is Phase 4 roadmap work owned by Spec 07 (Food Intelligence). Phase 9 creates a stub file with an explanatory docstring. Do not implement the pipeline in this plan.
 

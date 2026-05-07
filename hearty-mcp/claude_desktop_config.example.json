@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "hearty": {
+      "command": "node",
+      "args": ["/home/evan/projects/food-journal-assistant/hearty-mcp/dist/index.js"],
+      "env": {
+        "SUPABASE_URL": "https://your-project.supabase.co",
+        "SUPABASE_SERVICE_KEY": "your-service-role-key",
+        "HEARTY_USER_ID": "your-user-uuid"
+      }
+    }
+  }
+}

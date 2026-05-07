@@ -2,8 +2,8 @@
 
 **Spec:** [`hearty-04-android-app.md`](../specs/2026-05-04-hearty-04-android-app.md)  
 **Roadmap Phase:** Phase 2 — Android App  
-**Plan Status:** 🔴 Not Started  
-**Last Updated:** 2026-05-04  
+**Plan Status:** 🟡 In Progress  
+**Last Updated:** 2026-05-07  
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since  
 **Open Deviations:** 0
 
@@ -26,11 +26,11 @@
 
 | Phase | Name | Status | Depends On | Type |
 |---|---|---|---|---|
-| 0 | Review & Align | 🔴 Not Started | — | Claude (start of every session) |
-| 1 | Flutter Project Setup | 🔴 Not Started | — | Claude |
-| 2 | UI Shell & Navigation | 🔴 Not Started | Phase 1 | Claude |
-| 3 | Auth (Google OAuth + Supabase) | 🔴 Not Started | Phase 1 | Claude |
-| 4 | Voice Input, TTS & Wake Word | 🔴 Not Started | Phases 2–3 | Mixed |
+| 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
+| 1 | Flutter Project Setup | 🟢 Completed | — | Claude |
+| 2 | UI Shell & Navigation | 🟢 Completed | Phase 1 | Claude |
+| 3 | Auth (Google OAuth + Supabase) | 🟢 Completed | Phase 1 | Claude |
+| 4 | Voice Input, TTS & Wake Word | 🟡 In Progress | Phases 2–3 | Mixed (openWakeWord training + Claude) |
 | 5 | Meal, Symptom & Wellbeing Logging | 🔴 Not Started | Phases 2–4 | Claude |
 | 6 | Offline Queue & Background Sync | 🔴 Not Started | Phase 5 | Claude |
 | 7 | Camera & Photo Types | 🔴 Not Started | Phases 2–3 | Claude |
@@ -41,7 +41,7 @@
 
 ## Phase 0: Review & Align
 
-**Status:** 🔴 Not Started  
+**Status:** 🟢 Completed  
 **Goal:** Verify the dev environment, confirm all dependency plans are complete, check the spec hasn't drifted from this plan, and identify exactly which phase to start or resume.  
 **Run this phase at the start of every session on this plan.**
 
@@ -103,28 +103,26 @@ Update the plan: set Phase 0 status to 🟢 Completed and Last Updated to today.
 
 ## Phase 1: Flutter Project Setup
 
-**Status:** 🔴 Not Started  
+**Status:** 🟢 Completed  
 **Goal:** Scaffold the `hearty_app/` Flutter project with feature-first directory structure, all pubspec dependencies, and build-time `--dart-define` env configuration.  
 **Depends on:** Dependency plans complete (Specs 01, 02, 03 all 🟢)  
 **Type:** Claude
 
 **Key deliverables:**
-- `hearty_app/` directory created via `flutter create` with package name `com.hearty.app`
-- Full feature-first directory structure under `lib/features/` and `lib/core/` matching the spec
-- `pubspec.yaml` with all packages from Section 10 of the spec pinned at specified versions
-- Android manifest with all required permissions from the spec appendix
-- `README` in `hearty_app/` documenting the `--dart-define` variables (`API_BASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `PICOVOICE_ACCESS_KEY`, `FIREBASE_ENABLED`)
-- `flutter analyze` passes with zero errors
+- `hearty_app/` directory created via `flutter create` with package name `com.hearty.app` ✓
+- Full feature-first directory structure under `lib/features/` and `lib/core/` matching the spec ✓
+- `pubspec.yaml` with all packages from Section 10 of the spec pinned at specified versions ✓
+- Android manifest with all required permissions from the spec appendix + `SCHEDULE_EXACT_ALARM` ✓
+- `README` in `hearty_app/` documenting the `--dart-define` variables ✓
+- `flutter analyze` passes with zero errors ✓
 
-_Tasks and activation prompt will be written at the start of this phase using current spec and dependency state._
-
-**Deviation Log:** _None_
+**Deviation Log:** Spec says "pinned at specified versions" but lists no version numbers — used current stable from pub.dev (2026-05-05). Added `SCHEDULE_EXACT_ALARM` permission not in spec appendix (required by `flutter_local_notifications` on Android 12+).
 
 ---
 
 ## Phase 2: UI Shell & Navigation
 
-**Status:** 🔴 Not Started  
+**Status:** 🟢 Completed  
 **Goal:** Build the GoRouter navigation shell with all four bottom-tab routes, all full-screen route stubs, Material 3 theming, and placeholder screens so every named route renders without crashing.  
 **Depends on:** Phase 1  
 **Type:** Claude
@@ -144,7 +142,7 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 
 ## Phase 3: Auth (Google OAuth + Supabase)
 
-**Status:** 🔴 Not Started  
+**Status:** 🟢 Completed  
 **Goal:** Implement the full auth flow — Supabase initialization, Google Sign-In, session persistence, first-time onboarding screens, and GoRouter redirect logic — so the app correctly routes authenticated and unauthenticated users.  
 **Depends on:** Phases 1–2; Spec 01 plan complete (Google OAuth configured in Supabase Dashboard)  
 **Type:** Claude
@@ -165,23 +163,25 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 
 ## Phase 4: Voice Input, TTS & Wake Word
 
-**Status:** 🔴 Not Started  
+**Status:** 🟡 In Progress  
 **Goal:** Implement the complete voice I/O loop — STT overlay, TTS response, wake word detection foreground service, and the activation feedback sequence — wired to the log entry screen.  
 **Depends on:** Phases 2–3  
-**Type:** Mixed (manual Picovoice Console setup + Claude implementation)
+**Type:** Mixed (openWakeWord model training + Claude implementation)
+
+**Task plan:** [`2026-05-07-hearty-04-phase4-voice-wake-word.md`](2026-05-07-hearty-04-phase4-voice-wake-word.md)
 
 **Key deliverables:**
-- **Pre-phase manual step:** "Hey Hearty" `.ppn` model file downloaded from Picovoice Console and placed at `hearty_app/assets/wake_word/hey_hearty_android.ppn`; registered in `pubspec.yaml`
-- `HeartyWakeWordService.kt` — Android foreground service with `BOOT_COMPLETED` receiver, persistent notification with "Pause listening" action, `MethodChannel('com.hearty.app/wake_word')`
+- **Pre-phase manual step:** ✅ DONE — `hearty_app/assets/wake_word/hey_hearty.onnx` trained and registered in `pubspec.yaml`
+- `HeartyWakeWordService.kt` — Android foreground service using ONNX Runtime for Android (Gradle dep: `com.microsoft.onnxruntime:onnxruntime-android`), with `BOOT_COMPLETED` receiver, persistent notification with "Pause listening" action, `MethodChannel('com.hearty.app/wake_word')`
 - `features/voice/` — STT via `speech_to_text`, live waveform animation, auto-stop on 2s silence, retry button
 - `features/voice/` — TTS via `flutter_tts` at 0.9 speech rate; interruptible by screen tap
 - Wake chime (`assets/audio/wake_chime.mp3`) played immediately on wake word detection via `just_audio`
 - Full activation flow: wake → chime → overlay (listening) → STT → thinking animation → Claude API → TTS response → optional follow-up → dismiss
 - Non-health query redirect to configured assistant (Settings → Default Assistant)
 
-_Tasks and activation prompt will be written at the start of this phase using current spec and dependency state._
+**Model I/O (confirmed 2026-05-07):** `hey_hearty.onnx` — input `x` [1, 16, 96] float32; output `sigmoid` [1, 1] float32
 
-**Deviation Log:** _None_
+**Deviation Log:** 2026-05-06 — Switched from Picovoice Porcupine to openWakeWord (open source, ONNX-based). Removed `porcupine_flutter` from pubspec.yaml; ONNX Runtime for Android added as a Gradle dependency instead. No API key required. Asset path changed from `.ppn` to `.onnx`.
 
 ---
 
@@ -297,7 +297,7 @@ _Format: `[date] — Phase X, Task Y — changed X because Y`_
 
 ## Notes
 
-- **Porcupine `.ppn` model file:** Must be created manually at [console.picovoice.ai](https://console.picovoice.ai) before Phase 4 can begin. The model file is committed to the repo (not a secret). See spec Section 3 Pre-Phase 2 Setup.
+- **openWakeWord `.onnx` model file:** Must be trained locally using the openWakeWord Python pipeline before Phase 4 can begin. Record ~100 samples of "Hey Hearty", run training, place output at `hearty_app/assets/wake_word/hey_hearty.onnx`. No account or API key required. Model file is committed to the repo (not a secret).
 - **Android SHA-1 fingerprint (Google OAuth):** If not completed during Spec 01 Phase 3, it must be done at the start of Phase 3 of this plan. Requires `~/.android/debug.keystore` to exist (created automatically by first `flutter run` on Android).
 - **Firebase `google-services.json`:** Must be added manually at the start of Phase 8. Requires a Firebase project linked to `com.hearty.app`.
 - **`food_cache` table:** Lives in Spec 01 per that spec's notes. The Spec 07 plan handles the migration. This plan assumes `food_cache` exists by the time photo processing results need it (Phase 7 depends on Spec 07 being underway or complete for full nutritional data enrichment; photo upload and result display work without it).
