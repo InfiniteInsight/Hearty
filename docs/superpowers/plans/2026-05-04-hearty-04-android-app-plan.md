@@ -3,7 +3,7 @@
 **Spec:** [`hearty-04-android-app.md`](../specs/2026-05-04-hearty-04-android-app.md)  
 **Roadmap Phase:** Phase 2 — Android App  
 **Plan Status:** 🟡 In Progress  
-**Last Updated:** 2026-05-07 (Phase 4 complete; Phase 5 next)  
+**Last Updated:** 2026-05-07 (Phase 6 complete; Phase 7 next)  
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since  
 **Open Deviations:** 0
 
@@ -31,8 +31,8 @@
 | 2 | UI Shell & Navigation | 🟢 Completed | Phase 1 | Claude |
 | 3 | Auth (Google OAuth + Supabase) | 🟢 Completed | Phase 1 | Claude |
 | 4 | Voice Input, TTS & Wake Word | 🟢 Completed | Phases 2–3 | Mixed (openWakeWord training + Claude) |
-| 5 | Meal, Symptom & Wellbeing Logging | 🔴 Not Started | Phases 2–4 | Claude |
-| 6 | Offline Queue & Background Sync | 🔴 Not Started | Phase 5 | Claude |
+| 5 | Meal, Symptom & Wellbeing Logging | 🟢 Completed | Phases 2–4 | Claude |
+| 6 | Offline Queue & Background Sync | 🟢 Completed | Phase 5 | Claude |
 | 7 | Camera & Photo Types | 🔴 Not Started | Phases 2–3 | Claude |
 | 8 | Notification System | 🔴 Not Started | Phases 3, 5 | Mixed |
 | 9 | Integration Test | 🔴 Not Started | Phases 1–8 | Claude |
@@ -134,8 +134,6 @@ Update the plan: set Phase 0 status to 🟢 Completed and Last Updated to today.
 - Placeholder screen widgets for every route (shows route name, no crashes)
 - Riverpod `ProviderScope` wrapping the app root in `main.dart`
 
-_Tasks and activation prompt will be written at the start of this phase using current spec and dependency state._
-
 **Deviation Log:** _None_
 
 ---
@@ -154,8 +152,6 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 - First-time user check against Supabase (`user_profiles` table) — routes to onboarding vs. home
 - Sign-Out in Settings clears session and Google sign-in cache; local SQLite data preserved
 - Android SHA-1 fingerprint registered in Google Cloud Console and Supabase (if not done in Spec 01 Phase 3)
-
-_Tasks and activation prompt will be written at the start of this phase using current spec and dependency state._
 
 **Deviation Log:** _None_
 
@@ -187,7 +183,7 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 
 ## Phase 5: Meal, Symptom & Wellbeing Logging
 
-**Status:** 🔴 Not Started  
+**Status:** 🟢 Completed  
 **Goal:** Implement all three logging flows (meal, symptom, wellbeing) wired to the FastAPI REST API, including the Log Entry screen, Home screen timeline, History screen, Trends charts, and Health Profile editor.  
 **Depends on:** Phases 2–4  
 **Type:** Claude
@@ -200,7 +196,40 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 - Health Profile screen: allergen chips (Big 9 + custom), conditions free-text, dietary protocols, medications
 - All screens wired to FastAPI endpoints via `core/api/hearty_api_client.dart`
 
-_Tasks and activation prompt will be written at the start of this phase using current spec and dependency state._
+### Activation Prompt
+
+```
+You are implementing Phase 5 (Meal, Symptom & Wellbeing Logging) of the Hearty Android App (Spec 04).
+
+Working directory: /home/evan/projects/food-journal-assistant
+Flutter binary: /home/evan/tools/flutter/bin/flutter
+
+Before starting:
+1. Run Phase 0 (Review & Align) using its activation prompt to confirm environment and phase status.
+2. Mark Phase 5 as 🟡 In Progress in docs/superpowers/plans/2026-05-04-hearty-04-android-app-plan.md.
+
+Spec references for this phase:
+- Section 9.2 — Home screen layout (timeline, wellbeing snapshot card, Quick Log FAB)
+- Section 9.3 — Log Entry screen (voice button, text field, camera button, chips, review card)
+- Section 9.4 — History screen (date-grouped timeline, search bar, filter chips, detail view)
+- Section 9.5 — Trends screen (four fl_chart charts, date range chips, loading skeletons)
+- Section 9.6 — Health Profile screen (allergen chips, conditions, protocols, medications)
+- Section 11.1 — FastAPI endpoint list (meals, symptoms, wellbeing, trends, preferences)
+
+Key deliverables (all defined above in this plan — implement them now, do not rewrite the plan):
+- Log Entry screen: voice button, text field, camera button, recent-meal chips, review card with "Log it" confirmation
+- Home screen: today's timeline, wellbeing snapshot card, Quick Log FAB with voice/text/camera sub-actions
+- History screen: date-grouped timeline, keyword search, filter chips, detail view (/log/:id)
+- Trends screen: four fl_chart charts, date range chips, loading skeletons
+- Health Profile screen: allergen chips (Big 9 + custom), conditions, protocols, medications
+- All screens wired to FastAPI via core/api/hearty_api_client.dart
+
+Completion criteria:
+- flutter analyze passes with zero errors
+- Every new screen renders without runtime exceptions in debug mode
+- Mark Phase 5 🟢 Completed in the plan
+- Run /compact, then start Phase 6 using its activation prompt
+```
 
 **Deviation Log:** _None_
 
@@ -208,7 +237,7 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 
 ## Phase 6: Offline Queue & Background Sync
 
-**Status:** 🔴 Not Started  
+**Status:** 🟢 Completed  
 **Goal:** Implement transparent offline support — Drift SQLite queue, online-first with offline fallback in the API client, connectivity-triggered sync, WorkManager background sync, and UI indicators.  
 **Depends on:** Phase 5  
 **Type:** Claude
@@ -220,7 +249,38 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 - WorkManager periodic sync task (every 15 min when online) via `workmanager` package
 - UI indicators: offline amber chip in app bar, linear progress bar during sync, persistent "Some logs couldn't sync" banner on failed rows
 
-_Tasks and activation prompt will be written at the start of this phase using current spec and dependency state._
+### Activation Prompt
+
+```
+You are implementing Phase 6 (Offline Queue & Background Sync) of the Hearty Android App (Spec 04).
+
+Working directory: /home/evan/projects/food-journal-assistant
+Flutter binary: /home/evan/tools/flutter/bin/flutter
+
+Before starting:
+1. Run Phase 0 (Review & Align) using its activation prompt to confirm environment and phase status.
+2. Mark Phase 6 as 🟡 In Progress in docs/superpowers/plans/2026-05-04-hearty-04-android-app-plan.md.
+
+Spec references for this phase:
+- Section 6.1 — Drift OfflineQueue table schema (action_type, payload, retry_count, status)
+- Section 6.2 — Online-first with offline fallback (RetryInterceptor in core/api/)
+- Section 6.3 — Background sync logic (connectivity_plus, WorkManager, retry rules)
+- Section 6.4 — UI indicators (offline chip, sync progress bar, failed banner)
+
+Key deliverables (all defined above in this plan — implement them now, do not rewrite the plan):
+- core/offline/: Drift database with OfflineQueue table matching spec schema exactly
+- core/api/: RetryInterceptor catches OfflineException, writes to queue transparently
+- core/sync/sync_service.dart: connectivity_plus subscription, replays queue on restore,
+  increments retry_count on 5xx (max 5), marks failed on non-5xx
+- WorkManager periodic sync task every 15 min via workmanager package
+- UI: offline amber chip in app bar, linear progress bar during sync, persistent failed banner
+
+Completion criteria:
+- flutter analyze passes with zero errors
+- Offline round-trip verified: log with network off → reconnect → confirm queue drains
+- Mark Phase 6 🟢 Completed in the plan
+- Run /compact, then start Phase 7 using its activation prompt
+```
 
 **Deviation Log:** _None_
 
@@ -241,7 +301,38 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 - Results review screen: editable fields pre-populated from API response, "Looks good → Save" confirmation
 - Allergen warning banner displayed prominently when health profile allergen match is returned
 
-_Tasks and activation prompt will be written at the start of this phase using current spec and dependency state._
+### Activation Prompt
+
+```
+You are implementing Phase 7 (Camera & Photo Types) of the Hearty Android App (Spec 04).
+
+Working directory: /home/evan/projects/food-journal-assistant
+Flutter binary: /home/evan/tools/flutter/bin/flutter
+
+Before starting:
+1. Run Phase 0 (Review & Align) using its activation prompt to confirm environment and phase status.
+2. Mark Phase 7 as 🟡 In Progress in docs/superpowers/plans/2026-05-04-hearty-04-android-app-plan.md.
+
+Spec references for this phase:
+- Section 5.1 — Packages: camera (capture), mobile_scanner (barcode)
+- Section 5.2 — Four photo types and their backend endpoints
+- Section 5.3 — Full capture flow (viewfinder → type selector → upload → status → review)
+- Section 5.4 — Allergen flagging display rules
+
+Key deliverables (all defined above in this plan — implement them now, do not rewrite the plan):
+- features/photos/: full-screen viewfinder (camera package), photo mode + real-time barcode mode (mobile_scanner)
+- Photo type selector bottom sheet; auto-pre-select Barcode when barcode detected
+- Multipart POST to /api/photos/analyze, /api/photos/barcode, /api/photos/nutrition-label, /api/photos/food-label
+- Processing status UI: spinner with contextual label per photo type
+- Results review screen: editable fields pre-populated from API response, "Looks good → Save" confirmation
+- Allergen warning banner when health profile match returned
+
+Completion criteria:
+- flutter analyze passes with zero errors
+- All four photo type routes reach the results review screen in debug mode
+- Mark Phase 7 🟢 Completed in the plan
+- Run /compact, then start Phase 8 using its activation prompt
+```
 
 **Deviation Log:** _None_
 
@@ -262,7 +353,44 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 - `flutter_local_notifications` daily check-in scheduled at user-configured time (default 8:00 AM)
 - Notification Preferences screen: per-type toggles, nudge delay slider (30–90 min), daily time picker, wake word detection toggle (starts/stops `HeartyWakeWordService`)
 
-_Tasks and activation prompt will be written at the start of this phase using current spec and dependency state._
+### Activation Prompt
+
+```
+You are implementing Phase 8 (Notification System) of the Hearty Android App (Spec 04).
+
+Working directory: /home/evan/projects/food-journal-assistant
+Flutter binary: /home/evan/tools/flutter/bin/flutter
+
+Before starting:
+1. Run Phase 0 (Review & Align) using its activation prompt to confirm environment and phase status.
+2. Confirm the pre-phase manual step is done: hearty_app/android/app/google-services.json must exist.
+   If it does not exist, stop and tell the user — Firebase project setup must be completed first.
+3. Mark Phase 8 as 🟡 In Progress in docs/superpowers/plans/2026-05-04-hearty-04-android-app-plan.md.
+
+Spec references for this phase:
+- Section 7.1 — Two notification paths: FCM (firebase_messaging) + local (flutter_local_notifications)
+- Section 7.2 — Post-meal follow-up nudge (FCM, server-triggered, nudge_delay_minutes)
+- Section 7.3 — Daily check-in (local, default 8:00 AM)
+- Section 7.4 — Weekly digest (FCM, Sunday morning)
+- Section 7.5 — Notification Preferences screen (toggles, delay slider, time picker, wake word toggle)
+- Section 7.6 — Four Android notification channels to register at startup
+
+Key deliverables (all defined above in this plan — implement them now, do not rewrite the plan):
+- Four Android notification channels registered at app startup
+  (hearty_meal_followup, hearty_daily_checkin, hearty_digest, hearty_system)
+- FCM token retrieved on launch, sent to FastAPI via PUT /api/preferences
+- Foreground onMessage displayed as local notification
+- Background/terminated tap routing to correct GoRouter deep links (/log, /home)
+- flutter_local_notifications daily check-in at user-configured time (default 8:00 AM)
+- Notification Preferences screen: per-type toggles, nudge delay slider (30–90 min),
+  daily time picker, wake word detection toggle (starts/stops HeartyWakeWordService)
+
+Completion criteria:
+- flutter analyze passes with zero errors
+- Notification channels visible in device Settings → Apps → Hearty → Notifications
+- Mark Phase 8 🟢 Completed in the plan
+- Run /compact, then start Phase 9 using its activation prompt
+```
 
 **Deviation Log:** _None_
 
@@ -283,7 +411,42 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 - Notification flow: log a meal → confirm FCM post-meal nudge fires within nudge delay window
 - All four Flutter widget trees render without `flutter analyze` errors or runtime exceptions in debug mode
 
-_Tasks and activation prompt will be written at the start of this phase using current spec and dependency state._
+### Activation Prompt
+
+```
+You are implementing Phase 9 (Integration Test) of the Hearty Android App (Spec 04).
+
+Working directory: /home/evan/projects/food-journal-assistant
+Flutter binary: /home/evan/tools/flutter/bin/flutter
+
+Before starting:
+1. Run Phase 0 (Review & Align) using its activation prompt to confirm environment and phase status.
+2. Confirm Phases 1–8 are all 🟢 Completed in the plan — Phase 9 depends on all of them.
+3. Mark Phase 9 as 🟡 In Progress in docs/superpowers/plans/2026-05-04-hearty-04-android-app-plan.md.
+
+Prerequisites:
+- Live Supabase project running (from Spec 01)
+- FastAPI server running and reachable (from Spec 03)
+- Firebase project linked and google-services.json in place (from Phase 8)
+- A physical Android device or emulator connected
+
+Integration test flows to run (in order):
+1. Voice log flow: speak a meal → verify log entry created in Supabase meals table
+2. Photo flow: capture a food plate photo → confirm processing status resolves to "complete"
+3. Offline flow: disable network → log a meal → re-enable → verify queue drains and entry syncs
+4. Auth flow: sign out → sign back in → verify timeline data persists
+5. Notification flow: log a meal → confirm FCM post-meal nudge fires within nudge_delay_minutes window
+
+Code quality gate:
+- flutter analyze must pass with zero errors across the entire hearty_app codebase
+- No runtime exceptions in debug mode across all four bottom-tab screens
+
+Completion criteria:
+- All five integration test flows pass
+- flutter analyze passes with zero errors
+- Mark Phase 9 🟢 Completed in the plan
+- The app is shippable — proceed to use superpowers:finishing-a-development-branch
+```
 
 **Deviation Log:** _None_
 
