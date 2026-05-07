@@ -88,6 +88,7 @@ class HeartyWakeWordService : Service() {
 
     override fun onDestroy() {
         stopDetection()
+        melSession?.close(); embedSession?.close(); wakeSession?.close()
         ortEnv?.close()
         super.onDestroy()
     }
@@ -95,14 +96,13 @@ class HeartyWakeWordService : Service() {
     private fun initOnnxModels() {
         ortEnv = OrtEnvironment.getEnvironment()
         val env = ortEnv!!
-        val opts = OrtSession.SessionOptions()
-
-        fun loadModel(assetPath: String): OrtSession =
-            env.createSession(assets.open(assetPath).readBytes(), opts)
-
-        melSession   = loadModel("flutter_assets/assets/wake_word/melspectrogram.onnx")
-        embedSession = loadModel("flutter_assets/assets/wake_word/embedding_model.onnx")
-        wakeSession  = loadModel("flutter_assets/assets/wake_word/hey_hearty.onnx")
+        OrtSession.SessionOptions().use { opts ->
+            fun loadModel(assetPath: String): OrtSession =
+                env.createSession(assets.open(assetPath).readBytes(), opts)
+            melSession   = loadModel("flutter_assets/assets/wake_word/melspectrogram.onnx")
+            embedSession = loadModel("flutter_assets/assets/wake_word/embedding_model.onnx")
+            wakeSession  = loadModel("flutter_assets/assets/wake_word/hey_hearty.onnx")
+        }
     }
 
     private fun startDetection() {
@@ -154,26 +154,23 @@ class HeartyWakeWordService : Service() {
     private fun runEmbeddingPipeline(audio: FloatArray): FloatArray? {
         val env = ortEnv ?: return null
         return try {
-            // Stage 1: audio → mel spectrogram [1, 1, 76, 32]
-            val audioTensor = OnnxTensor.createTensor(env, FloatBuffer.wrap(audio), longArrayOf(1, SAMPLES_PER_CHUNK.toLong()))
-            val melResult = melSession!!.run(mapOf(MEL_INPUT_NODE to audioTensor))
-            val melTensor = melResult[MEL_OUTPUT_NODE].get() as OnnxTensor
-
-            // mel shape is [1, 1, 76, 32]; flatten to FloatArray and reinterpret as [1, 76, 32, 1]
-            val melFloats = FloatArray(76 * 32)
-            melTensor.floatBuffer.get(melFloats)
-
-            // Reshape [76, 32] → [1, 76, 32, 1]: the values are the same, just different logical shape
-            val embedTensor = OnnxTensor.createTensor(env, FloatBuffer.wrap(melFloats), longArrayOf(1, 76, 32, 1))
-
-            // Stage 2: embed [1, 76, 32, 1] → [1, 1, 1, 96]
-            val embedResult = embedSession!!.run(mapOf(EMBED_INPUT_NODE to embedTensor))
-            val embedTensorOut = embedResult[EMBED_OUTPUT_NODE].get() as OnnxTensor
-            val embedding = FloatArray(EMBEDDING_DIM)
-            embedTensorOut.floatBuffer.get(embedding)
-
-            audioTensor.close(); melResult.close(); embedTensor.close(); embedResult.close()
-            embedding
+            OnnxTensor.createTensor(env, FloatBuffer.wrap(audio), longArrayOf(1, SAMPLES_PER_CHUNK.toLong())).use { audioTensor ->
+                // Stage 1: audio → mel spectrogram [1, 1, 76, 32]
+                melSession!!.run(mapOf(MEL_INPUT_NODE to audioTensor)).use { melResult ->
+                    // mel shape is [1, 1, 76, 32]; flatten to FloatArray and reinterpret as [1, 76, 32, 1]
+                    val melFloats = FloatArray(76 * 32)
+                    (melResult[MEL_OUTPUT_NODE].get() as OnnxTensor).floatBuffer.get(melFloats)
+                    // Reshape [76, 32] → [1, 76, 32, 1]: the values are the same, just different logical shape
+                    OnnxTensor.createTensor(env, FloatBuffer.wrap(melFloats), longArrayOf(1, 76, 32, 1)).use { embedTensor ->
+                        // Stage 2: embed [1, 76, 32, 1] → [1, 1, 1, 96]
+                        embedSession!!.run(mapOf(EMBED_INPUT_NODE to embedTensor)).use { embedResult ->
+                            val embedding = FloatArray(EMBEDDING_DIM)
+                            (embedResult[EMBED_OUTPUT_NODE].get() as OnnxTensor).floatBuffer.get(embedding)
+                            embedding
+                        }
+                    }
+                }
+            }
         } catch (e: Exception) {
             null
         }

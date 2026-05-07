@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../voice/providers/voice_provider.dart';
 import '../../voice/screens/voice_overlay_screen.dart';
 import '../../wake_word/providers/wake_word_provider.dart';
+import '../../wake_word/wake_word_channel.dart';
 import '../../../core/audio/chime_player.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -24,6 +25,7 @@ class HomeScreen extends ConsumerWidget {
         builder: (_) => const VoiceOverlayScreen(),
       );
       ref.read(wakeWordDetectedProvider.notifier).setDetected(false);
+      await WakeWordChannel.startListening();
     });
 
     return Scaffold(
@@ -90,15 +92,8 @@ class _QuickLogFabState extends State<_QuickLogFab> {
           const SizedBox(height: 12),
         ],
         FloatingActionButton(
-          onPressed: () {
-            if (_expanded) {
-              widget.onVoiceTap();
-              setState(() => _expanded = false);
-            } else {
-              setState(() => _expanded = true);
-            }
-          },
-          child: Icon(_expanded ? Icons.mic : Icons.add),
+          onPressed: () => setState(() => _expanded = !_expanded),
+          child: Icon(_expanded ? Icons.close : Icons.add),
         ),
       ],
     );
