@@ -14,14 +14,14 @@ class MealsNotifier extends AsyncNotifier<List<MealLog>> {
 
   Future<void> logMeal(String description, {String? mealType}) async {
     final client = ref.read(heartyApiClientProvider);
+    final previous = state.valueOrNull ?? [];
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final newMeal = await client.logMeal(
         description: description,
         mealType: mealType,
       );
-      final current = state.valueOrNull ?? [];
-      return [newMeal, ...current];
+      return [newMeal, ...previous];
     });
   }
 }
