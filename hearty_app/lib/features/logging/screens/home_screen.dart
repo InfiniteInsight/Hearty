@@ -13,6 +13,7 @@ import '../../../core/api/providers/wellbeing_provider.dart';
 import '../../../core/api/models/meal_log.dart';
 import '../../../core/api/models/symptom_log.dart';
 import '../../../core/api/models/wellbeing_log.dart';
+import '../../../core/sync/sync_service.dart';
 
 // ---------------------------------------------------------------------------
 // Top-level helpers
@@ -96,6 +97,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await WakeWordChannel.startListening();
     });
 
+    // Keep sync service alive and watch sync state.
+    ref.watch(syncServiceProvider);
+    ref.watch(pendingQueueCountProvider); // keeps provider alive; count read on-demand via ref.read
+    final hasFailed = ref.watch(hasFailedQueueEntriesProvider).valueOrNull ?? false;
+    final isSyncing = ref.watch(isSyncingProvider);
+
     final mealsAsync = ref.watch(mealsProvider);
     final symptomsAsync = ref.watch(symptomsProvider);
     final wellbeingAsync = ref.watch(wellbeingProvider);
@@ -114,7 +121,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               if (!isOffline) return const SizedBox.shrink();
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
-                child: Chip(
+                child: ActionChip(
                   label: const Text('Offline'),
                   backgroundColor: Colors.amber.shade100,
                   labelStyle: TextStyle(
@@ -123,13 +130,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   visualDensity: VisualDensity.compact,
                   side: BorderSide.none,
+                  onPressed: () {
+                    final count =
+                        ref.read(pendingQueueCountProvider).valueOrNull ?? 0;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(count == 1
+                            ? '1 item queued for sync'
+                            : '$count items queued for sync'),
+                      ),
+                    );
+                  },
                 ),
               );
             },
           ),
         ],
       ),
-      body: _buildBody(context, mealsAsync, symptomsAsync, wellbeingAsync),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              if (hasFailed) _failedBanner(context),
+              Expanded(
+                child: _buildBody(
+                    context, mealsAsync, symptomsAsync, wellbeingAsync),
+              ),
+            ],
+          ),
+          if (isSyncing)
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: LinearProgressIndicator(),
+            ),
+        ],
+      ),
       floatingActionButton: _QuickLogFab(
         onVoiceTap: () => _openVoiceOverlay(context),
         onTextTap: () => context.push('/log'),
@@ -176,6 +213,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       meals: meals,
       symptoms: symptoms,
       wellbeing: wellbeing,
+    );
+  }
+
+  Widget _failedBanner(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed entries: open Settings to manage'),
+          ),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        color: Colors.red.shade100,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red.shade800, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                "Some logs couldn't sync — tap to review.",
+                style: TextStyle(color: Colors.red.shade900, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
