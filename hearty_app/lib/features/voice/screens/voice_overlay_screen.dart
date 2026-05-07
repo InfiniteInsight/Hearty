@@ -33,11 +33,11 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
       }
     });
 
-    // Trigger API stub when thinking starts
+    // Send to chat API when thinking starts
     ref.listen(voiceProvider.select((s) => s.status), (_, status) {
       if (status == VoiceStatus.thinking) {
         final assistantLabel = ref.read(defaultAssistantProvider).label;
-        ref.read(voiceProvider.notifier).simulateApiResponse(defaultAssistantLabel: assistantLabel);
+        ref.read(voiceProvider.notifier).sendToChat(defaultAssistantLabel: assistantLabel);
       }
     });
 

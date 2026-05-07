@@ -1,20 +1,27 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import '../../../core/api/hearty_api_client.dart';
+import '../../../core/api/offline_exception.dart';
 import '../models/voice_state.dart';
 
 final voiceProvider = StateNotifierProvider<VoiceNotifier, VoiceState>((ref) {
-  return VoiceNotifier();
+  return VoiceNotifier(ref: ref);
 });
 
 class VoiceNotifier extends StateNotifier<VoiceState> {
-  VoiceNotifier({SpeechToText? sttForTesting, FlutterTts? ttsForTesting})
-      : _stt = sttForTesting ?? SpeechToText(),
+  VoiceNotifier({
+    Ref? ref,
+    SpeechToText? sttForTesting,
+    FlutterTts? ttsForTesting,
+  })  : _ref = ref,
+        _stt = sttForTesting ?? SpeechToText(),
         _tts = ttsForTesting ?? FlutterTts(),
         super(const VoiceState()) {
     _initTts();
   }
 
+  final Ref? _ref;
   final SpeechToText _stt;
   final FlutterTts _tts;
   bool _sttInitialized = false;
@@ -102,19 +109,48 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     state = const VoiceState();
   }
 
-  /// Phase 5 stub — replaced by real POST /api/chat call in Phase 5.
-  /// Pass [defaultAssistantLabel] so non-health queries redirect to the preferred assistant.
-  Future<void> simulateApiResponse({String? defaultAssistantLabel}) async {
+  /// Sends the current transcript to the Hearty chat API.
+  /// Falls back gracefully when offline or when [_ref] is not available.
+  Future<void> sendToChat({String? defaultAssistantLabel}) async {
     final transcript = state.transcript;
     if (transcript.isEmpty) return;
+
+    // Non-health redirect (same logic as the old simulateApiResponse).
     const nonHealthKeywords = ['weather', 'news', 'music', 'sports', 'stock', 'remind'];
     final isNonHealth = defaultAssistantLabel != null &&
         nonHealthKeywords.any((k) => transcript.toLowerCase().contains(k));
     if (isNonHealth) {
       await redirectToAssistant(defaultAssistantLabel);
-    } else {
+      return;
+    }
+
+    // If no ref (e.g. in certain test contexts), fall back to stub.
+    final ref = _ref;
+    if (ref == null) {
+      setResponse('Got it! I logged "$transcript". How are you feeling?');
+      return;
+    }
+
+    try {
+      final client = ref.read(heartyApiClientProvider);
+      final reply = await client.chat(message: transcript);
+      if (!mounted) return;
+      setResponse(reply.isNotEmpty ? reply : 'Got it! How are you feeling?');
+    } on OfflineException {
+      if (!mounted) return;
+      setResponse(
+        "I couldn't connect to Hearty right now. Try again when you're back online.",
+        askFollowUp: false,
+      );
+    } catch (_) {
+      if (!mounted) return;
       setResponse('Got it! I logged "$transcript". How are you feeling?');
     }
+  }
+
+  /// Phase 5 stub — kept for backwards compatibility; delegates to sendToChat.
+  Future<void> simulateApiResponse({String? defaultAssistantLabel}) async {
+    await sendToChat(defaultAssistantLabel: defaultAssistantLabel);
   }
 
   /// Speaks the redirect response for a non-health query.

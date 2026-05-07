@@ -37,7 +37,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   // redirect without rebuilding the provider (ref.listen, not ref.watch).
   ref.listen(hasCompletedOnboardingProvider, (_, next) {
     refreshStream.notify();
-  });
+  }, fireImmediately: false);
 
   final router = GoRouter(
     initialLocation: '/home',
@@ -48,7 +48,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final location = state.matchedLocation;
       final isOnSignIn = location == '/sign-in';
       final isOnOnboarding = location == '/onboarding';
-      final hasCompletedOnboarding = ref.read(hasCompletedOnboardingProvider);
+      final hasCompletedOnboarding =
+          ref.read(hasCompletedOnboardingProvider).valueOrNull ?? false;
 
       if (!isAuthenticated && !isOnSignIn) return '/sign-in';
       if (isAuthenticated && isOnSignIn) {

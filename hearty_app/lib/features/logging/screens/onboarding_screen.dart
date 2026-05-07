@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../app/router.dart';
-import '../../../core/auth/onboarding_provider.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -61,15 +61,28 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  void _finish() {
-    // TODO Phase 5: save health profile to API
-    ref.read(hasCompletedOnboardingProvider.notifier).state = true;
-    context.goNamed(Routes.home);
+  Future<void> _markOnboardingComplete() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      try {
+        await Supabase.instance.client
+            .from('user_profiles')
+            .upsert({'id': user.id}, onConflict: 'id');
+      } catch (_) {
+        // Non-fatal: router will re-check on next auth event.
+      }
+    }
   }
 
-  void _skipToHome() {
-    ref.read(hasCompletedOnboardingProvider.notifier).state = true;
-    context.goNamed(Routes.home);
+  Future<void> _finish() async {
+    // TODO Phase 5: save health profile to API
+    await _markOnboardingComplete();
+    if (mounted) context.goNamed(Routes.home);
+  }
+
+  Future<void> _skipToHome() async {
+    await _markOnboardingComplete();
+    if (mounted) context.goNamed(Routes.home);
   }
 
   @override
