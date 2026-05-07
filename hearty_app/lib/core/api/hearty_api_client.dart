@@ -85,24 +85,20 @@ class HeartyApiClient {
     required String description,
     String? mealType,
   }) async {
+    final body = <String, dynamic>{
+      'description': description,
+      'meal_type': mealType,
+      'input_method': 'voice',
+    }..removeWhere((_, v) => v == null);
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/api/meals',
-        data: {
-          'description': description,
-          'meal_type': mealType,
-          'input_method': 'voice',
-        }..removeWhere((_, v) => v == null),
+        data: body,
       );
       return MealLog.fromJson(response.data!);
     } catch (e) {
       if (_shouldQueue(e)) {
-        final payload = <String, dynamic>{
-          'description': description,
-          'meal_type': mealType,
-          'input_method': 'voice',
-        }..removeWhere((_, v) => v == null);
-        await _queueOffline('log_meal', payload);
+        await _queueOffline('log_meal', body);
         return MealLog(
           id: _uuid.v4(),
           description: description,
@@ -153,30 +149,24 @@ class HeartyApiClient {
     required String description,
     int? severity,
   }) async {
+    final body = <String, dynamic>{
+      'raw_description': description,
+      if (severity != null)
+        'symptoms': [
+          {'symptom_type': 'other', 'severity': severity}
+        ],
+    };
     try {
       final response = await _dio.post<List<dynamic>>(
         '/api/symptoms',
-        data: {
-          'raw_description': description,
-          if (severity != null)
-            'symptoms': [
-              {'symptom_type': 'other', 'severity': severity}
-            ],
-        },
+        data: body,
       );
       // Backend returns a list; return the first entry.
       final list = response.data!;
       return SymptomLog.fromJson(list.first as Map<String, dynamic>);
     } catch (e) {
       if (_shouldQueue(e)) {
-        final payload = <String, dynamic>{
-          'raw_description': description,
-          if (severity != null)
-            'symptoms': [
-              {'symptom_type': 'other', 'severity': severity}
-            ],
-        };
-        await _queueOffline('log_symptom', payload);
+        await _queueOffline('log_symptom', body);
         return SymptomLog(
           id: _uuid.v4(),
           description: description,
@@ -217,24 +207,20 @@ class HeartyApiClient {
     int? mood,
     String? notes,
   }) async {
+    final body = <String, dynamic>{
+      'energy_level': energy,
+      'mood': mood,
+      'notes': notes,
+    }..removeWhere((_, v) => v == null);
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/api/wellbeing',
-        data: <String, dynamic>{
-          'energy_level': energy,
-          'mood': mood,
-          'notes': notes,
-        }..removeWhere((_, v) => v == null),
+        data: body,
       );
       return WellbeingLog.fromJson(response.data!);
     } catch (e) {
       if (_shouldQueue(e)) {
-        final payload = <String, dynamic>{
-          'energy_level': energy,
-          'mood': mood,
-          'notes': notes,
-        }..removeWhere((_, v) => v == null);
-        await _queueOffline('log_wellbeing', payload);
+        await _queueOffline('log_wellbeing', body);
         return WellbeingLog(
           id: _uuid.v4(),
           energy: energy ?? 3,
@@ -256,7 +242,6 @@ class HeartyApiClient {
       if (start != null) params['start_date'] = start.toIso8601String();
       if (end != null) params['end_date'] = end.toIso8601String();
 
-      // Backend GET /api/wellbeing is not yet implemented; return empty list.
       final response = await _dio.get<List<dynamic>>(
         '/api/wellbeing',
         queryParameters: params,
