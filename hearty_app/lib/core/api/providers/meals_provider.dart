@@ -16,13 +16,20 @@ class MealsNotifier extends AsyncNotifier<List<MealLog>> {
     final client = ref.read(heartyApiClientProvider);
     final previous = state.valueOrNull ?? [];
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    final next = await AsyncValue.guard(() async {
       final newMeal = await client.logMeal(
         description: description,
         mealType: mealType,
       );
       return [newMeal, ...previous];
     });
+    // Preserve previous data on error so chips don't disappear.
+    if (next is AsyncError<List<MealLog>>) {
+      state = AsyncError<List<MealLog>>(next.error, next.stackTrace)
+          .copyWithPrevious(AsyncData(previous));
+    } else {
+      state = next;
+    }
   }
 }
 
