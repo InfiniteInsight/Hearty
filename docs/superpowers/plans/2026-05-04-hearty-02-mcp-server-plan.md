@@ -2,10 +2,10 @@
 
 **Spec:** [`hearty-02-mcp-server.md`](../specs/2026-05-04-hearty-02-mcp-server.md)
 **Roadmap Phase:** Phase 1 — Foundation
-**Plan Status:** 🟡 In Progress
-**Last Updated:** 2026-05-04
+**Plan Status:** 🟢 Completed
+**Last Updated:** 2026-05-05
 **Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since
-**Open Deviations:** 1
+**Open Deviations:** 0
 
 ---
 
@@ -27,12 +27,12 @@
 | Phase | Name | Status | Depends On | Type |
 |---|---|---|---|---|
 | 0 | Review & Align | 🟢 Completed | — | Claude (start of every session) |
-| 1 | Project Scaffold | 🔴 Not Started | Spec 01 plan 🟢 | Claude |
-| 2 | Supabase Client & Health Profile Context | 🔴 Not Started | Phase 1 | Claude |
-| 3 | Logging Tools (log_meal, log_symptoms, log_wellbeing) | 🔴 Not Started | Phase 2 | Claude |
-| 4 | Query Tools (query_history, get_trends, get_summary) | 🔴 Not Started | Phase 2 | Claude |
-| 5 | Server Entrypoint & Hearty Persona | 🔴 Not Started | Phases 3–4 | Claude |
-| 6 | Integration Test | 🔴 Not Started | Phase 5 | Claude |
+| 1 | Project Scaffold | 🟢 Completed | Spec 01 plan 🟢 | Claude |
+| 2 | Supabase Client & Health Profile Context | 🟢 Completed | Phase 1 | Claude |
+| 3 | Logging Tools (log_meal, log_symptoms, log_wellbeing) | 🟢 Completed | Phase 2 | Claude |
+| 4 | Query Tools (query_history, get_trends, get_summary) | 🟢 Completed | Phase 2 | Claude |
+| 5 | Server Entrypoint & Hearty Persona | 🟢 Completed | Phases 3–4 | Claude |
+| 6 | Integration Test | 🟢 Completed | Phase 5 | Claude |
 
 ---
 
@@ -99,7 +99,7 @@ Tell me to run /compact, then use the Phase 1 Activation Prompt in this plan.
 
 ## Phase 1: Project Scaffold
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Create the `hearty-mcp/` subdirectory, initialize the npm project, install all dependencies, and lay down the full directory skeleton from spec §2.
 **Depends on:** Spec 01 plan marked 🟢 Completed
 
@@ -129,7 +129,7 @@ When both tasks are done:
 
 ### Task 1.1: Initialize npm project and install dependencies
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create and enter the project directory:
   ```bash
@@ -185,7 +185,7 @@ When both tasks are done:
 
 ### Task 1.2: Create directory structure, tsconfig, and .env.example
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Create the directory skeleton from spec §2:
   ```bash
@@ -265,7 +265,7 @@ When both tasks are done:
 
 ## Phase 2: Supabase Client & Health Profile Context
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement `src/supabase.ts` (Supabase client + `getUserId()`) and `src/context.ts` (`getHealthProfileContext()`). These two modules are shared by all tool handlers.
 **Depends on:** Phase 1 complete
 
@@ -297,7 +297,7 @@ When both tasks are done:
 
 ### Task 2.1: Implement src/supabase.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/supabase.ts` from spec §6.2 exactly:
 
@@ -340,7 +340,7 @@ export function getUserId(): string {
 
 ### Task 2.2: Implement src/context.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/context.ts` from spec §4.2 exactly:
 
@@ -410,7 +410,7 @@ export async function getHealthProfileContext(userId: string): Promise<string> {
 
 ## Phase 3: Logging Tools
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement the three logging tool handlers: `log_meal`, `log_symptoms`, `log_wellbeing`. Each exports a `register*()` function that accepts `McpServer` and registers the tool via `server.tool()`.
 **Depends on:** Phase 2 complete
 
@@ -419,6 +419,8 @@ export async function getHealthProfileContext(userId: string): Promise<string> {
 cat /home/evan/projects/food-journal-assistant/hearty-mcp/node_modules/@modelcontextprotocol/sdk/README.md | head -100
 ```
 The spec shows `server.tool(name, description, schema, handler)`. If the installed SDK has a different signature, stop and tell the user — do not adapt silently.
+
+**SDK CHECK DONE (2026-05-04):** server.tool() is deprecated; all handlers use server.registerTool(name, { description, inputSchema: ZodRawShape }, handler) + import { z } from 'zod'. Approved by user.
 
 **Error handling pattern:** Every tool handler (spec §7) must wrap its logic in:
 ```typescript
@@ -488,7 +490,7 @@ When all three tasks are done:
 
 ### Task 3.1: Implement src/tools/log-meal.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/tools/log-meal.ts`. The tool name, description, `inputSchema`, and handler behavior must match spec §5.1 exactly.
 
@@ -529,7 +531,7 @@ Required `inputSchema` properties (from spec §5.1):
 
 ### Task 3.2: Implement src/tools/log-symptoms.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/tools/log-symptoms.ts`. The tool name, description, `inputSchema`, and handler behavior must match spec §5.2 exactly.
 
@@ -573,7 +575,7 @@ Required `inputSchema` properties (from spec §5.2):
 
 ### Task 3.3: Implement src/tools/log-wellbeing.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/tools/log-wellbeing.ts`. The tool name, description, `inputSchema`, and handler behavior must match spec §5.3 exactly.
 
@@ -619,7 +621,7 @@ Handler behavior (spec §5.3):
 
 ## Phase 4: Query Tools
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement the three query tool handlers: `query_history`, `get_trends`, `get_summary`.
 **Depends on:** Phase 2 complete
 
@@ -665,7 +667,7 @@ When all three tasks are done:
 
 ### Task 4.1: Implement src/tools/query-history.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/tools/query-history.ts`. The tool name, description, `inputSchema`, and handler behavior must match spec §5.4 exactly.
 
@@ -704,7 +706,7 @@ Handler behavior (spec §5.4):
 
 ### Task 4.2: Implement src/tools/get-trends.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/tools/get-trends.ts`. The tool name, description, and `inputSchema` must match spec §5.5 exactly. Handler behavior is partially deferred (see phase note above).
 
@@ -742,7 +744,7 @@ Handler behavior (spec §5.5, with Spec 07 deferral):
 
 ### Task 4.3: Implement src/tools/get-summary.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/tools/get-summary.ts`. The tool name, description, `inputSchema`, and handler behavior must match spec §5.6 exactly.
 
@@ -787,7 +789,7 @@ Handler behavior (spec §5.6):
 
 ## Phase 5: Server Entrypoint & Hearty Persona
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Implement `src/index.ts` — register all six tools, attach the full Hearty system prompt as the server `description`, and wire the stdio transport.
 **Depends on:** Phases 3 and 4 complete
 
@@ -819,7 +821,7 @@ When both tasks are done:
 
 ### Task 5.1: Implement src/index.ts
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Implement `hearty-mcp/src/index.ts` from spec §9, with the full system prompt from spec §3 inserted as the `description` field:
 
@@ -862,7 +864,7 @@ await server.connect(transport);
 
 ### Task 5.2: Full TypeScript build and Claude Desktop config
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Full TypeScript build:
   ```bash
@@ -925,7 +927,7 @@ await server.connect(transport);
 
 ## Phase 6: Integration Test
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 **Goal:** Connect the running MCP server to the real Supabase instance and exercise all six tools end-to-end. Verify rows land in the correct tables and the server handles error conditions gracefully.
 **Depends on:** Phase 5 complete, Spec 01 plan 🟢 Completed (Supabase schema deployed and `.env` populated)
 
@@ -957,7 +959,7 @@ When all tasks are done:
 
 ### Task 6.1: Environment and startup check
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Confirm `.env` file exists with all three required variables:
   ```bash
@@ -983,7 +985,7 @@ When all tasks are done:
 
 ### Task 6.2: Test logging tools against Supabase
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 Write a test script at `hearty-mcp/scripts/integration-test.ts` that calls each tool handler directly (bypassing the MCP transport) against the real Supabase instance.
 
@@ -1033,13 +1035,13 @@ Write a test script at `hearty-mcp/scripts/integration-test.ts` that calls each 
   ```
   All 6 tests must pass. Fix any failures before moving on.
 
-**Deviation Log:** _None_
+**Deviation Log:** [2026-05-04] — Test 2 FAIL: `symptoms` table missing flat columns that `log-symptoms.ts` inserts (`symptom_type`, `severity`, `duration_minutes`, `bathroom_urgency`, `bathroom_visits`, `stool_consistency`). Deployed schema uses `severity_overall` + `structured_data JSONB` instead. `query-history.ts` nested select `symptoms(symptom_type, severity)` will also fail. Schema migration needed before tests can pass.
 
 ---
 
 ### Task 6.3: Test error handling
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Add a Test 7 to the integration test script: pass an invalid/missing `HEARTY_USER_ID` and confirm the tool returns `{ success: false, isError: true }` rather than throwing an unhandled exception.
 
@@ -1061,7 +1063,7 @@ Write a test script at `hearty-mcp/scripts/integration-test.ts` that calls each 
 
 ### Task 6.4: Cleanup and verification
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed
 
 - [ ] Delete the integration test rows from Supabase (use `supabase db execute` or the Supabase Dashboard SQL editor):
   ```sql
@@ -1089,12 +1091,17 @@ Write a test script at `hearty-mcp/scripts/integration-test.ts` that calls each 
 _Format: `[date] — Phase X, Task Y — changed X because Y`_
 
 [2026-05-04] — Phase 4, Task 4.2 — get_trends does not call run_trend_analysis() RPC because that RPC is defined in Spec 07 (Food Intelligence), not Spec 01; returns empty triggers + deferral note instead
+[2026-05-04] — Phase 1, Task 1.1 — added zod ^3.0.0 to dependencies; SDK 1.29.0 declares it as a required peer dependency (README: "npm install @modelcontextprotocol/sdk zod")
+[2026-05-04] — Phases 3–4 — server.tool() deprecated in SDK 1.29.0; using server.registerTool() with Zod raw shapes for all tool inputSchema definitions instead of plain JSON Schema objects
+[2026-05-04] — Phase 6, Task 6.2 — BLOCKED: integration test found schema/handler mismatch. The deployed `symptoms` table has columns `severity_overall` (not `severity`) and `structured_data JSONB` with no `symptom_type`, `duration_minutes`, `bathroom_urgency`, `bathroom_visits`, or `stool_consistency` flat columns. The `log-symptoms.ts` handler inserts these as flat fields and `query-history.ts` selects them — both will fail against the live schema. A new migration is needed to add the missing columns (or the handler must be rewritten to use `structured_data JSONB`). Until resolved, Tasks 6.2, 6.3, 6.4 cannot complete.
+[2026-05-05] — Phase 6 — symptoms table missing flat columns (symptom_type, severity, etc.) per MCP spec; applied migration 20260505035200_symptoms_flat_columns.sql to add them; also fixed food_triggers.occurrence_count column name (handlers had 'occurrences')
 
 ---
 
 ## Notes
 
 - **run_trend_analysis RPC** (Phase 4, Task 4.2): returns `triggers: []` until Spec 07 deploys the trend engine. Revisit `get-trends.ts` at the start of the Spec 07 plan to enable the RPC call and remove the deferral note.
+- **`TriggerFood.label` not in `food_triggers` table** (Spec 03, Phase 6 deviation): the REST API trend engine computes a `label` field ("early signal, needs more data" / "established") on the fly — it is not stored in the `food_triggers` DB table. `get-trends.ts` reads the table directly and will return `label` absent from its results. When the Spec 07 trend engine wires up (removing the deferral note), either (a) add a `label TEXT` column to `food_triggers` via migration + update `update_food_triggers_table()` to persist it, and update `get-trends.ts` SELECT to include it; or (b) compute `label` locally in the handler from `occurrence_count` (≥6 → "established", else → "early signal, needs more data"). Option (a) is preferred for consistency.
 - **Multi-user JWT auth**: spec §6.1 notes this as a future path. Current implementation is single-user via `HEARTY_USER_ID` env var + service role key. Auth model change would require replacing `getUserId()` with JWT extraction from the MCP request context.
 - **Offline mode**: spec §8 explicitly scopes the MCP server as always-online. Flutter app offline queue is handled in Spec 04.
 - **Claude Desktop config path**: the example config in `claude_desktop_config.example.json` uses an absolute path pinned to this machine. Anyone else using this server should update the `args` path accordingly.

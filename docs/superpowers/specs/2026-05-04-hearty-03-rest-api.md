@@ -223,17 +223,21 @@ class SummaryResponse(BaseModel):
     top_triggers: List[TriggerFood]
 
 # ─── Health Profile ───────────────────────────────────────────────────────────
-
-class HealthProfileRequest(BaseModel):
-    allergens: Optional[List[str]] = None
-    intolerances: Optional[List[str]] = None
-    conditions: Optional[List[str]] = None
-    dietary_protocols: Optional[List[str]] = None
-    notes: Optional[str] = None
-
-class HealthProfileResponse(HealthProfileRequest):
-    user_id: UUID
-    updated_at: datetime
+# Owned by Spec 08 (Health Profile). Models live in app/health_profile/schemas.py.
+# Reproduced here for reference; Spec 08 is authoritative.
+#
+# class AllergenEntry(BaseModel):       name, severity (mild/moderate/severe),
+#                                       reaction?, confirmed_by_doctor, notes?
+# class IntoleranceEntry(BaseModel):    name, severity?, threshold?, notes?
+# class ConditionEntry(BaseModel):      name, diagnosed, diagnosis_year?, notes?
+# class DietaryProtocolEntry(BaseModel):name, active, started (YYYY-MM-DD)?, phase?, notes?
+#
+# class HealthProfilePutRequest(BaseModel):   allergens, intolerances, conditions, dietary_protocols (all required)
+# class HealthProfilePatchRequest(BaseModel): same four fields, all Optional
+# class HealthProfileResponse(BaseModel):     allergens, intolerances, conditions, dietary_protocols, updated_at
+#
+# Note: HealthProfileResponse does NOT include user_id (scoped to the authenticated user)
+#       and does NOT expose the notes TEXT column (used internally by the MCP server).
 
 # ─── Photos ───────────────────────────────────────────────────────────────────
 
@@ -546,28 +550,29 @@ Flat structure, one row per symptom event with denormalized meal fields. Column 
 
 ### 5.11 `GET /api/health-profile` — Get Health Profile
 
-**Response `200`:** `HealthProfileResponse`
+**Response `200`:** `HealthProfileResponse` (see Spec 08 §2 for the full schema; schemas live in `app/health_profile/schemas.py`)
+
 ```json
 {
-  "user_id": "...",
-  "allergens": ["peanuts"],
-  "intolerances": ["lactose", "fructose"],
-  "conditions": ["GERD", "IBS-D"],
-  "dietary_protocols": ["low-FODMAP"],
-  "notes": "Symptoms worse in the morning and after high-fat meals.",
+  "allergens": [{"name": "peanuts", "severity": "mild", "reaction": null, "confirmed_by_doctor": false, "notes": null}],
+  "intolerances": [{"name": "lactose", "severity": "moderate", "threshold": null, "notes": null}],
+  "conditions": [{"name": "GERD", "diagnosed": true, "diagnosis_year": 2022, "notes": null}],
+  "dietary_protocols": [{"name": "low-FODMAP", "active": true, "started": "2026-01-01", "phase": "elimination", "notes": null}],
   "updated_at": "2026-04-15T10:00:00Z"
 }
 ```
+
+If no row exists for the user, returns empty arrays with 200 (graceful handling — row is auto-created by the `/auth/on-login` webhook).
 
 ---
 
 ### 5.12 `PUT /api/health-profile` — Update Health Profile
 
-**Request:** `HealthProfileRequest` (all fields optional — partial updates merge with existing)
+**Request:** `HealthProfilePutRequest` — all four arrays required (full replace semantics). For partial updates use `PATCH /api/health-profile`. See Spec 08 §10.1.
 
 **Response `200`:** `HealthProfileResponse`
 
-**Behavior:** Upsert on `user_id`. Arrays replace fully on update (not append). Caller sends complete array values.
+**Behavior:** Upsert on `user_id`. Arrays replace fully (caller sends the complete new array, not individual items). `updated_at` is set server-side.
 
 ---
 
