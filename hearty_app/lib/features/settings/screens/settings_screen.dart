@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -63,7 +64,7 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.health_and_safety),
             title: const Text('Health Profile'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
+            onTap: () => context.push('/health-profile'),
           ),
           const Divider(),
 
