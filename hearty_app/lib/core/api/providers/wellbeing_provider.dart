@@ -6,7 +6,7 @@ import '../models/wellbeing_log.dart';
 class WellbeingNotifier extends AsyncNotifier<List<WellbeingLog>> {
   @override
   Future<List<WellbeingLog>> build() async {
-    final client = ref.read(heartyApiClientProvider);
+    final client = ref.watch(heartyApiClientProvider);
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
     return client.fetchWellbeing(start: startOfDay, end: now);

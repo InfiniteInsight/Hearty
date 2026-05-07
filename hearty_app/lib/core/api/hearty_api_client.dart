@@ -31,7 +31,10 @@ class HeartyApiClient {
     try {
       return await fn();
     } on DioException catch (e) {
-      if (e.error is OfflineException) throw e.error as OfflineException;
+      final offline = e.error;
+      if (offline is OfflineException) {
+        Error.throwWithStackTrace(offline, e.stackTrace);
+      }
       rethrow;
     }
   }
@@ -244,5 +247,6 @@ final heartyApiClientProvider = Provider<HeartyApiClient>((ref) {
     headers: {'Content-Type': 'application/json'},
   ));
   dio.interceptors.add(AuthInterceptor());
+  ref.onDispose(dio.close);
   return HeartyApiClient(dio);
 });

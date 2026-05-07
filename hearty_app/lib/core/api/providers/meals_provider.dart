@@ -6,7 +6,7 @@ import '../models/meal_log.dart';
 class MealsNotifier extends AsyncNotifier<List<MealLog>> {
   @override
   Future<List<MealLog>> build() async {
-    final client = ref.read(heartyApiClientProvider);
+    final client = ref.watch(heartyApiClientProvider);
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
     return client.fetchMeals(start: startOfDay, end: now);
