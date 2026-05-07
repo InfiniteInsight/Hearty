@@ -1,15 +1,48 @@
+import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:workmanager/workmanager.dart';
 
 import 'app/router.dart';
 import 'app/theme.dart';
+import 'core/offline/offline_database.dart';
+import 'core/sync/sync_service.dart';
+
+/// WorkManager callback — must be a top-level function.
+///
+/// Full sync in background requires reconstructing auth + Dio without Riverpod,
+/// which is complex and out of scope. Instead, this task cleans up stale
+/// 'syncing' rows left by an interrupted foreground sync so they are retried
+/// when the app returns to the foreground.
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((taskName, inputData) async {
+    final db = OfflineDatabase();
+    try {
+      await (db.update(db.offlineQueue)
+            ..where((q) => q.status.equals('syncing')))
+          .write(const OfflineQueueCompanion(status: Value('pending')));
+    } finally {
+      await db.close();
+    }
+    return Future.value(true);
+  });
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(
     url: const String.fromEnvironment('SUPABASE_URL'),
     anonKey: const String.fromEnvironment('SUPABASE_ANON_KEY'),
+  );
+  await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+  await Workmanager().registerPeriodicTask(
+    kSyncTaskName,
+    kSyncTaskTag,
+    frequency: const Duration(minutes: 15),
+    existingWorkPolicy: ExistingWorkPolicy.keep,
+    constraints: Constraints(networkType: NetworkType.connected),
   );
   runApp(const ProviderScope(child: HeartyApp()));
 }
@@ -19,6 +52,8 @@ class HeartyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Keep the sync service alive for the lifetime of the app.
+    ref.watch(syncServiceProvider);
     final router = ref.watch(goRouterProvider);
     return MaterialApp.router(
       title: 'Hearty',
