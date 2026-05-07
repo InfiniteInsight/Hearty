@@ -30,7 +30,7 @@
 | 1 | Flutter Project Setup | 🟢 Completed | — | Claude |
 | 2 | UI Shell & Navigation | 🟢 Completed | Phase 1 | Claude |
 | 3 | Auth (Google OAuth + Supabase) | 🟢 Completed | Phase 1 | Claude |
-| 4 | Voice Input, TTS & Wake Word | 🔴 Not Started | Phases 2–3 | Mixed (openWakeWord training + Claude) |
+| 4 | Voice Input, TTS & Wake Word | 🟡 In Progress | Phases 2–3 | Mixed (openWakeWord training + Claude) |
 | 5 | Meal, Symptom & Wellbeing Logging | 🔴 Not Started | Phases 2–4 | Claude |
 | 6 | Offline Queue & Background Sync | 🔴 Not Started | Phase 5 | Claude |
 | 7 | Camera & Photo Types | 🔴 Not Started | Phases 2–3 | Claude |
@@ -163,13 +163,15 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 
 ## Phase 4: Voice Input, TTS & Wake Word
 
-**Status:** 🔴 Not Started  
+**Status:** 🟡 In Progress  
 **Goal:** Implement the complete voice I/O loop — STT overlay, TTS response, wake word detection foreground service, and the activation feedback sequence — wired to the log entry screen.  
 **Depends on:** Phases 2–3  
 **Type:** Mixed (openWakeWord model training + Claude implementation)
 
+**Task plan:** [`2026-05-07-hearty-04-phase4-voice-wake-word.md`](2026-05-07-hearty-04-phase4-voice-wake-word.md)
+
 **Key deliverables:**
-- **Pre-phase manual step:** Train "Hey Hearty" model using openWakeWord Python pipeline (~100 voice recordings); place `.onnx` file at `hearty_app/assets/wake_word/hey_hearty.onnx`; register in `pubspec.yaml`
+- **Pre-phase manual step:** ✅ DONE — `hearty_app/assets/wake_word/hey_hearty.onnx` trained and registered in `pubspec.yaml`
 - `HeartyWakeWordService.kt` — Android foreground service using ONNX Runtime for Android (Gradle dep: `com.microsoft.onnxruntime:onnxruntime-android`), with `BOOT_COMPLETED` receiver, persistent notification with "Pause listening" action, `MethodChannel('com.hearty.app/wake_word')`
 - `features/voice/` — STT via `speech_to_text`, live waveform animation, auto-stop on 2s silence, retry button
 - `features/voice/` — TTS via `flutter_tts` at 0.9 speech rate; interruptible by screen tap
@@ -177,7 +179,7 @@ _Tasks and activation prompt will be written at the start of this phase using cu
 - Full activation flow: wake → chime → overlay (listening) → STT → thinking animation → Claude API → TTS response → optional follow-up → dismiss
 - Non-health query redirect to configured assistant (Settings → Default Assistant)
 
-_Tasks and activation prompt will be written at the start of this phase using current spec and dependency state._
+**Model I/O (confirmed 2026-05-07):** `hey_hearty.onnx` — input `x` [1, 16, 96] float32; output `sigmoid` [1, 1] float32
 
 **Deviation Log:** 2026-05-06 — Switched from Picovoice Porcupine to openWakeWord (open source, ONNX-based). Removed `porcupine_flutter` from pubspec.yaml; ONNX Runtime for Android added as a Gradle dependency instead. No API key required. Asset path changed from `.ppn` to `.onnx`.
 
