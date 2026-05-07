@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:hearty_app/features/voice/models/voice_state.dart';
 import 'package:hearty_app/features/voice/providers/voice_provider.dart';
 
@@ -35,16 +36,44 @@ class FakeSpeechToText extends Fake implements SpeechToText {
   }
 }
 
+// Fake FlutterTts for testing
+class FakeFlutterTts extends Fake implements FlutterTts {
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.memberName == #setLanguage) {
+      return Future<int>.value(1);
+    }
+    if (invocation.memberName == #setSpeechRate) {
+      return Future.value();
+    }
+    if (invocation.memberName == #setPitch) {
+      return Future.value();
+    }
+    if (invocation.memberName == #speak) {
+      return Future<int>.value(1);
+    }
+    if (invocation.memberName == #stop) {
+      return Future.value();
+    }
+    if (invocation.memberName == #setCompletionHandler) {
+      return null;
+    }
+    return super.noSuchMethod(invocation);
+  }
+}
+
 void main() {
   group('VoiceNotifier state transitions', () {
     late ProviderContainer container;
     late FakeSpeechToText fakeStt;
+    late FakeFlutterTts fakeTts;
 
     setUp(() {
       fakeStt = FakeSpeechToText();
+      fakeTts = FakeFlutterTts();
       container = ProviderContainer(
         overrides: [
-          voiceProvider.overrideWith((ref) => VoiceNotifier(sttForTesting: fakeStt)),
+          voiceProvider.overrideWith((ref) => VoiceNotifier(sttForTesting: fakeStt, ttsForTesting: fakeTts)),
         ],
       );
     });
@@ -84,6 +113,12 @@ void main() {
     test('dismiss resets to idle', () {
       container.read(voiceProvider.notifier).setResponse('Done');
       container.read(voiceProvider.notifier).dismiss();
+      expect(container.read(voiceProvider).status, VoiceStatus.idle);
+    });
+
+    test('stopSpeaking resets to idle from responding state', () {
+      container.read(voiceProvider.notifier).setResponse('Good job!');
+      container.read(voiceProvider.notifier).stopSpeaking();
       expect(container.read(voiceProvider).status, VoiceStatus.idle);
     });
   });

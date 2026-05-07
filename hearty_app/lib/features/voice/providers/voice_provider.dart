@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import '../models/voice_state.dart';
 
@@ -7,12 +8,22 @@ final voiceProvider = StateNotifierProvider<VoiceNotifier, VoiceState>((ref) {
 });
 
 class VoiceNotifier extends StateNotifier<VoiceState> {
-  VoiceNotifier({SpeechToText? sttForTesting})
+  VoiceNotifier({SpeechToText? sttForTesting, FlutterTts? ttsForTesting})
       : _stt = sttForTesting ?? SpeechToText(),
-        super(const VoiceState());
+        _tts = ttsForTesting ?? FlutterTts(),
+        super(const VoiceState()) {
+    _initTts();
+  }
 
   final SpeechToText _stt;
+  final FlutterTts _tts;
   bool _sttInitialized = false;
+
+  Future<void> _initTts() async {
+    await _tts.setLanguage('en-US');
+    await _tts.setSpeechRate(0.9);
+    await _tts.setPitch(1.0);
+  }
 
   Future<bool> _ensureSttInitialized() async {
     if (!_sttInitialized) {
@@ -52,23 +63,62 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     state = state.copyWith(status: VoiceStatus.thinking);
   }
 
-  void setResponse(String response) {
+  /// Sets response text, speaks it via TTS, then transitions to awaitingFollowUp.
+  /// Pass [askFollowUp: false] to dismiss after speaking instead.
+  void setResponse(String response, {bool askFollowUp = true}) {
     state = state.copyWith(status: VoiceStatus.responding, response: response);
+    _speakResponse(response, askFollowUp);
+  }
+
+  Future<void> _speakResponse(String response, bool askFollowUp) async {
+    await _tts.speak(response);
+    _tts.setCompletionHandler(() {
+      if (!mounted) return;
+      if (askFollowUp) {
+        setAwaitingFollowUp();
+      } else {
+        dismiss();
+      }
+    });
+  }
+
+  /// Stops TTS immediately (e.g., user tapped screen) and resets to idle.
+  void stopSpeaking() {
+    _tts.stop();
+    state = const VoiceState();
   }
 
   void setAwaitingFollowUp() {
+    if (!mounted) return;
     state = state.copyWith(status: VoiceStatus.awaitingFollowUp);
     _beginStt();
   }
 
   void dismiss() {
     if (_stt.isListening) _stt.stop();
+    _tts.stop();
     state = const VoiceState();
+  }
+
+  /// Phase 5 stub — replaced by real POST /api/chat call in Phase 5.
+  Future<void> simulateApiResponse() async {
+    final transcript = state.transcript;
+    if (transcript.isEmpty) return;
+    setResponse('Got it! I logged "$transcript". How are you feeling?');
+  }
+
+  /// Speaks the redirect response for a non-health query.
+  Future<void> redirectToAssistant(String assistantLabel) async {
+    final response = assistantLabel == 'None'
+        ? "That's outside what I track. I focus on food, symptoms, and wellbeing."
+        : 'For that, try asking $assistantLabel.';
+    setResponse(response, askFollowUp: false);
   }
 
   @override
   void dispose() {
     _stt.stop();
+    _tts.stop();
     super.dispose();
   }
 }
