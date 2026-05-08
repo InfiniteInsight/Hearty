@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +13,8 @@ import 'models/wellbeing_log.dart';
 import 'models/trends_data.dart';
 import 'models/user_preferences.dart';
 import 'offline_exception.dart';
+import '../../features/photos/models/photo_upload_response.dart';
+import '../../features/photos/models/photo_status_response.dart';
 
 const _kBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -308,6 +311,43 @@ class HeartyApiClient {
         data: prefs.toJson(),
       );
       return UserPreferences.fromJson(response.data!);
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Photos
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Uploads [file] to POST /api/photos as multipart/form-data with [type].
+  /// Returns the initial upload response (status: 'pending').
+  Future<PhotoUploadResponse> uploadPhoto({
+    required File file,
+    required String photoType, // pass PhotoType.apiValue
+  }) {
+    return _call(() async {
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          file.path,
+          filename: file.uri.pathSegments.last,
+        ),
+        'type': photoType,
+      });
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/photos',
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      return PhotoUploadResponse.fromJson(response.data!);
+    });
+  }
+
+  /// Polls GET /api/photos/{id}/status for processing results.
+  Future<PhotoStatusResponse> fetchPhotoStatus(String photoId) {
+    return _call(() async {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/photos/$photoId/status',
+      );
+      return PhotoStatusResponse.fromJson(response.data!);
     });
   }
 }

@@ -3,9 +3,9 @@
 **Spec:** [`hearty-04-android-app.md`](../specs/2026-05-04-hearty-04-android-app.md)  
 **Roadmap Phase:** Phase 2 — Android App  
 **Plan Status:** 🟡 In Progress  
-**Last Updated:** 2026-05-07 (Phase 6 complete; Phase 7 next)  
-**Last Verified Against Spec:** 2026-05-04 — re-verify if spec has changed since  
-**Open Deviations:** 0
+**Last Updated:** 2026-05-08 (Phase 7 complete; Phase 8 next)  
+**Last Verified Against Spec:** 2026-05-08  
+**Open Deviations:** 1
 
 ---
 
@@ -33,7 +33,7 @@
 | 4 | Voice Input, TTS & Wake Word | 🟢 Completed | Phases 2–3 | Mixed (openWakeWord training + Claude) |
 | 5 | Meal, Symptom & Wellbeing Logging | 🟢 Completed | Phases 2–4 | Claude |
 | 6 | Offline Queue & Background Sync | 🟢 Completed | Phase 5 | Claude |
-| 7 | Camera & Photo Types | 🔴 Not Started | Phases 2–3 | Claude |
+| 7 | Camera & Photo Types | 🟢 Completed | Phases 2–3 | Claude |
 | 8 | Notification System | 🔴 Not Started | Phases 3, 5 | Mixed |
 | 9 | Integration Test | 🔴 Not Started | Phases 1–8 | Claude |
 
@@ -288,18 +288,22 @@ Completion criteria:
 
 ## Phase 7: Camera & Photo Types
 
-**Status:** 🔴 Not Started  
+**Status:** 🟢 Completed  
 **Goal:** Implement the full camera capture flow with all four photo types (food plate, barcode, nutrition label, food label), type selector, upload to FastAPI, processing status display, and allergen warning rendering.  
 **Depends on:** Phases 2–3  
 **Type:** Claude
 
 **Key deliverables:**
-- `features/photos/` — full-screen camera viewfinder (`camera` package) with photo mode and real-time barcode mode (`mobile_scanner`)
-- Photo type selector bottom sheet; auto-pre-select Barcode if barcode was detected in scan mode
-- Multipart POST to appropriate FastAPI endpoints (`/api/photos/analyze`, `/api/photos/barcode`, `/api/photos/nutrition-label`, `/api/photos/food-label`)
+- `features/photos/` — mode picker bottom sheet (Photo / Scan Barcode); still photos via `image_picker` (native camera); barcode scanning via dedicated `mobile_scanner` full-screen screen (`camera` package used only to capture a frame on barcode detection)
+- Photo type selector bottom sheet; auto-pre-select Barcode when barcode path taken
+- Multipart POST to `POST /api/photos` with `type` field (`food_plate`, `barcode`, `nutrition_label`, `food_label`); poll `GET /api/photos/{id}/status` for results
 - Processing status UI: spinner with contextual label per photo type
 - Results review screen: editable fields pre-populated from API response, "Looks good → Save" confirmation
 - Allergen warning banner displayed prominently when health profile allergen match is returned
+
+**Phase 0 findings (2026-05-08):**
+- Photo endpoint stubs were NOT added in Phase 3 — `hearty_api_client.dart` has no photo methods; Phase 7 creates them from scratch.
+- Spec drift corrected: REST API spec (Section 5.13/5.14) uses a SINGLE endpoint `POST /api/photos` with a `type` field, not separate per-type URLs. Plan updated to reflect this.
 
 ### Activation Prompt
 
@@ -320,8 +324,8 @@ Spec references for this phase:
 - Section 5.4 — Allergen flagging display rules
 
 Key deliverables (all defined above in this plan — implement them now, do not rewrite the plan):
-- features/photos/: full-screen viewfinder (camera package), photo mode + real-time barcode mode (mobile_scanner)
-- Photo type selector bottom sheet; auto-pre-select Barcode when barcode detected
+- features/photos/: mode picker (Photo / Scan Barcode); image_picker for still photos; mobile_scanner + camera for barcode capture
+- Photo type selector bottom sheet; auto-pre-select Barcode when barcode path taken
 - Multipart POST to /api/photos/analyze, /api/photos/barcode, /api/photos/nutrition-label, /api/photos/food-label
 - Processing status UI: spinner with contextual label per photo type
 - Results review screen: editable fields pre-populated from API response, "Looks good → Save" confirmation
@@ -455,6 +459,9 @@ Completion criteria:
 ## Deviation Log
 
 _Format: `[date] — Phase X, Task Y — changed X because Y`_
+
+2026-05-08 — Phase 7 — Plan listed separate photo endpoints (`/api/photos/analyze` etc.) but REST API spec (Section 5.13) defines a single `POST /api/photos` endpoint with a `type` field. Implementing against the spec. Also: photo stubs were not added in Phase 3 as previously assumed; Phase 7 creates them from scratch.
+2026-05-08 — Phase 7 — Switched still-photo capture from custom `camera` viewfinder to `image_picker` (native camera app). User gets full device camera controls (flash, focus, zoom) for free; custom viewfinder now only used for barcode scanning. Flash toggle removed from the custom barcode scanner screen. Spec and plan updated to reflect this.
 
 ---
 
