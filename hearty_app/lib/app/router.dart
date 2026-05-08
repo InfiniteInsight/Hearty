@@ -15,6 +15,7 @@ import '../features/logging/screens/log_entry_screen.dart';
 import '../features/health_profile/screens/health_profile_screen.dart';
 import '../features/logging/screens/log_detail_screen.dart';
 import '../features/logging/screens/onboarding_screen.dart';
+import '../features/photos/screens/camera_screen.dart';
 
 class Routes {
   static const String home = 'home';
@@ -26,6 +27,7 @@ class Routes {
   static const String healthProfile = 'health-profile';
   static const String onboarding = 'onboarding';
   static const String signIn = 'sign-in';
+  static const String camera = 'camera';
 }
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -128,6 +130,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/onboarding',
         name: Routes.onboarding,
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: '/camera',
+        name: Routes.camera,
+        builder: (context, state) => const CameraScreen(),
       ),
     ],
   );

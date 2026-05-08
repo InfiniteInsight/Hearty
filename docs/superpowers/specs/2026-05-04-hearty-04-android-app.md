@@ -267,8 +267,8 @@ Wake word detected
 
 ### 5.1 Packages
 
-- **Camera capture:** `camera` Flutter package (full camera control, flash, zoom)
-- **Barcode scanning:** `mobile_scanner` Flutter package (real-time ML Kit scanning overlay)
+- **Still photo capture:** `image_picker` Flutter package — opens the native camera app (user gets full device controls: flash, focus, zoom, HDR) for all non-barcode photo types (food plate, nutrition label, food label)
+- **Barcode scanning:** `mobile_scanner` Flutter package (real-time ML Kit scanning overlay); `camera` package is used alongside it to capture a still image once a barcode is detected
 
 ### 5.2 Photo Types
 
@@ -286,20 +286,23 @@ The app handles four distinct photo types, each routed to a different processing
 ```
 1. User taps camera button (home screen FAB or log entry screen)
    ↓
-2. Camera screen opens (full-screen viewfinder)
-   — Two modes:
-     a. Photo mode: tap shutter to capture still image
-     b. Barcode mode: real-time scanning overlay (auto-detects and captures barcode)
+2. Mode picker appears (bottom sheet):
+     [Take a Photo]  [Scan a Barcode]
    ↓
-3. Image captured
+3a. Photo selected:
+     — Native camera app opens via image_picker
+     — User has full device camera controls (flash, focus, zoom, HDR)
+     — User captures image; app receives the photo file
+   ↓
+3b. Barcode selected:
+     — Full-screen barcode scanner opens (mobile_scanner)
+     — Real-time scanning overlay auto-detects barcode and captures image
    ↓
 4. Type selector appears (bottom sheet):
      "What did you photograph?"
      [Food / Meal]  [Barcode]  [Nutrition Label]  [Food Label / Package]
-   — If user came from barcode mode and a barcode was detected, skip selector
-     and pre-select "Barcode"
-   — App may also auto-suggest: e.g., if ML Kit recognizes a barcode pattern
-     in a still photo, prompt "This looks like a barcode — is that right?"
+   — Barcode path pre-selects "Barcode"
+   — Photo path pre-selects "Food / Meal" (user can change)
    ↓
 5. Image + type uploaded to FastAPI via multipart POST
    ↓
@@ -617,7 +620,7 @@ All changes sync immediately to Supabase. The health profile is embedded in the 
 |---|---|
 | `flutter_tts` | On-device text-to-speech for Claude responses |
 | `speech_to_text` | Android SpeechRecognizer API wrapper for STT |
-| `camera` | Full-featured camera capture for food/label photos |
+| `camera` | Used in barcode scanner only: captures a still frame when a barcode is detected |
 | `mobile_scanner` | Real-time barcode/QR scanning overlay using ML Kit |
 | `drift` | Type-safe SQLite ORM for offline queue and local caching |
 | `dio` | HTTP client for FastAPI REST calls; supports interceptors for auth |
@@ -632,7 +635,7 @@ All changes sync immediately to Supabase. The health profile is embedded in the 
 | ONNX Runtime (Android, Gradle dep) | openWakeWord on-device wake word detection (runs in Kotlin foreground service) |
 | `workmanager` | Background task scheduling for sync jobs |
 | `permission_handler` | Runtime permission requests (microphone, camera, notifications) |
-| `image_picker` | Gallery access fallback for photo upload |
+| `image_picker` | Primary still-photo capture (food plate, nutrition label, food label) via native camera app; also provides gallery access |
 | `cached_network_image` | Image caching for meal photo thumbnails |
 
 **Minimum SDK:** Android 8.0 (API 26). Targets Android 14 (API 34).

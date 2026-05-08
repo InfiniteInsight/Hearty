@@ -1,10 +1,18 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/models/meal_log.dart';
 import '../../../core/api/offline_exception.dart';
 import '../../../core/api/providers/meals_provider.dart';
+import '../../photos/models/photo_type.dart';
+import '../../photos/providers/photo_provider.dart';
+import '../../photos/screens/camera_screen.dart';
+import '../../photos/screens/photo_upload_flow_screen.dart';
+import '../../photos/widgets/photo_type_selector.dart';
 import '../../voice/models/voice_state.dart';
 import '../../voice/providers/voice_provider.dart';
 import '../../voice/screens/voice_overlay_screen.dart';
@@ -84,6 +92,79 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
       backgroundColor: Colors.transparent,
       builder: (_) => const VoiceOverlayScreen(),
     );
+  }
+
+  Future<void> _openCameraFlow() async {
+    // Step 1: Mode picker
+    final useBarcode = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+              child: Text(
+                'Camera',
+                style: Theme.of(ctx).textTheme.titleMedium,
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.of(ctx).pop(false),
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code_scanner),
+              title: const Text('Scan a barcode'),
+              onTap: () => Navigator.of(ctx).pop(true),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (useBarcode == null || !mounted) return;
+
+    File? file;
+    PhotoType preselected;
+
+    if (!useBarcode) {
+      // Step 2a: Native camera via image_picker
+      final xfile = await ImagePicker().pickImage(source: ImageSource.camera);
+      if (xfile == null || !mounted) return;
+      file = File(xfile.path);
+      preselected = PhotoType.foodPlate;
+    } else {
+      // Step 2b: Barcode scanner
+      final result = await Navigator.of(context).push<CameraResult>(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => const CameraScreen(),
+        ),
+      );
+      if (result == null || !mounted) return;
+      file = result.file;
+      preselected = result.preselectedType;
+    }
+
+    // Step 3: Type selector
+    final selectedType = await showPhotoTypeSelector(
+      context,
+      preselected: preselected,
+    );
+    if (selectedType == null || !mounted) return;
+
+    // Step 4: Upload flow
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => PhotoUploadFlowScreen(
+          file: file!,
+          photoType: selectedType,
+        ),
+      ),
+    );
+    if (mounted) ref.read(photoProvider.notifier).reset();
   }
 
   /// Shows the review card immediately — no API call yet.
@@ -193,14 +274,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
                 IconButton(
                   icon: const Icon(Icons.camera_alt),
                   tooltip: 'Log with camera',
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            'Camera logging — coming in a future update'),
-                      ),
-                    );
-                  },
+                  onPressed: _openCameraFlow,
                 ),
               ],
             ),
