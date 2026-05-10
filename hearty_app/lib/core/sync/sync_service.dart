@@ -44,6 +44,21 @@ class SyncService {
     }
   }
 
+  /// Resets all failed entries to pending and runs a sync cycle.
+  Future<void> retryFailed() async {
+    await (_db.update(_db.offlineQueue)
+          ..where((q) => q.status.equals('failed')))
+        .write(const OfflineQueueCompanion(status: Value('pending')));
+    await syncPending();
+  }
+
+  /// Permanently deletes all failed entries from the queue.
+  Future<void> dismissFailed() async {
+    await (_db.delete(_db.offlineQueue)
+          ..where((q) => q.status.equals('failed')))
+        .go();
+  }
+
   /// Replays all pending queue entries in order.
   /// Called by connectivity listener and by the WorkManager background task.
   Future<void> syncPending() async {

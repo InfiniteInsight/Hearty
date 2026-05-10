@@ -13,6 +13,7 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.os.IBinder
+import android.util.Log
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
 import java.nio.FloatBuffer
@@ -26,17 +27,22 @@ class HeartyWakeWordService : Service() {
         const val METHOD_CHANNEL = "com.hearty.app/wake_word"
 
         const val SAMPLE_RATE = 16000
-        const val SAMPLES_PER_CHUNK = 12640  // 790ms → exactly 76 mel frames
+        // 80ms chunks match the openWakeWord Python pipeline (1280 samples → ~5 mel frames).
+        // Using overlapping mel frame windows dramatically improves detection vs. the old
+        // 12640-sample non-overlapping approach where the classifier saw mostly background embeddings.
+        const val SAMPLES_PER_CHUNK = 1280
 
-        // Model node names (verified by Python inspection)
         const val MEL_INPUT_NODE = "input"
         const val MEL_OUTPUT_NODE = "output"
         const val EMBED_INPUT_NODE = "input_1"
         const val EMBED_OUTPUT_NODE = "conv2d_19"
 
+        const val MEL_BINS = 32
+        const val MEL_WINDOW_FRAMES = 76   // frames the embedding model expects
         const val EMBEDDING_BUFFER_SIZE = 16
         const val EMBEDDING_DIM = 96
         const val DEFAULT_THRESHOLD = 0.5f
+        const val TAG = "HeartyWakeWord"
 
         var flutterBinaryMessenger: BinaryMessenger? = null
     }
@@ -50,6 +56,9 @@ class HeartyWakeWordService : Service() {
     private var isRunning = false
     private var isPaused = false
     private var threshold = DEFAULT_THRESHOLD
+
+    // Sliding mel frame buffer — grows up to MEL_WINDOW_FRAMES, then rolls.
+    private val melFrameBuffer = LinkedList<FloatArray>()
     private val embeddingBuffer = LinkedList<FloatArray>()
     private var methodChannel: MethodChannel? = null
 
@@ -60,6 +69,11 @@ class HeartyWakeWordService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         when (intent?.action) {
             "PAUSE" -> {
                 isPaused = !isPaused
@@ -67,7 +81,7 @@ class HeartyWakeWordService : Service() {
             }
             else -> {
                 val messenger = flutterBinaryMessenger
-                if (messenger != null && methodChannel == null) {
+                if (messenger != null) {
                     methodChannel = MethodChannel(messenger, METHOD_CHANNEL)
                     methodChannel?.setMethodCallHandler { call, result ->
                         when (call.method) {
@@ -77,8 +91,8 @@ class HeartyWakeWordService : Service() {
                         }
                     }
                 }
-                startDetection()
                 startForeground(NOTIFICATION_ID, buildNotification())
+                startDetection()
             }
         }
         return START_STICKY
@@ -94,14 +108,21 @@ class HeartyWakeWordService : Service() {
     }
 
     private fun initOnnxModels() {
-        ortEnv = OrtEnvironment.getEnvironment()
-        val env = ortEnv!!
-        OrtSession.SessionOptions().use { opts ->
-            fun loadModel(assetPath: String): OrtSession =
-                env.createSession(assets.open(assetPath).readBytes(), opts)
-            melSession   = loadModel("flutter_assets/assets/wake_word/melspectrogram.onnx")
-            embedSession = loadModel("flutter_assets/assets/wake_word/embedding_model.onnx")
-            wakeSession  = loadModel("flutter_assets/assets/wake_word/hey_hearty.onnx")
+        try {
+            ortEnv = OrtEnvironment.getEnvironment()
+            val env = ortEnv!!
+            OrtSession.SessionOptions().use { opts ->
+                fun loadModel(assetPath: String): OrtSession {
+                    Log.d(TAG, "Loading model: $assetPath")
+                    return env.createSession(assets.open(assetPath).readBytes(), opts)
+                }
+                melSession   = loadModel("flutter_assets/assets/wake_word/melspectrogram.onnx")
+                embedSession = loadModel("flutter_assets/assets/wake_word/embedding_model.onnx")
+                wakeSession  = loadModel("flutter_assets/assets/wake_word/hey_jarvis.onnx")
+            }
+            Log.d(TAG, "All ONNX models loaded successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load ONNX models: ${e.message}", e)
         }
     }
 
@@ -111,36 +132,81 @@ class HeartyWakeWordService : Service() {
 
         val bufferSize = maxOf(
             AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT),
-            SAMPLES_PER_CHUNK * 2
+            SAMPLES_PER_CHUNK * 4
         )
         audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.MIC,
+            MediaRecorder.AudioSource.UNPROCESSED,
             SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT,
             bufferSize
         )
+        if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
+            audioRecord?.release(); audioRecord = null
+            isRunning = false
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+            stopSelf()
+            return
+        }
         audioRecord!!.startRecording()
+        Log.d(TAG, "AudioRecord started — sliding window detection loop beginning")
 
         detectionThread = Thread {
             val shortBuffer = ShortArray(SAMPLES_PER_CHUNK)
+            var chunkCount = 0
+            var maxScore = 0f
+
             while (isRunning) {
-                if (isPaused) { Thread.sleep(200); continue }
+                if (isPaused) { Thread.sleep(50); continue }
                 val read = audioRecord?.read(shortBuffer, 0, SAMPLES_PER_CHUNK) ?: 0
                 if (read < SAMPLES_PER_CHUNK) continue
 
                 val floatAudio = FloatArray(SAMPLES_PER_CHUNK) { shortBuffer[it].toFloat() / 32768.0f }
-                val embedding = runEmbeddingPipeline(floatAudio) ?: continue
+                val rms = Math.sqrt(floatAudio.map { it * it }.average()).toFloat()
 
-                synchronized(embeddingBuffer) {
-                    embeddingBuffer.addLast(embedding)
-                    if (embeddingBuffer.size > EMBEDDING_BUFFER_SIZE) embeddingBuffer.removeFirst()
-                    if (embeddingBuffer.size == EMBEDDING_BUFFER_SIZE) {
-                        val score = runClassifier()
-                        if (score >= threshold) onWakeWordDetected()
+                // Mild normalization: bring quiet phone mic up toward training amplitude
+                // without clipping. Cap gain at 15× to avoid distorting speech peaks.
+                val processAudio = if (rms > 0.001f) {
+                    val gain = minOf(0.05f / rms, 15f)
+                    FloatArray(SAMPLES_PER_CHUNK) { floatAudio[it] * gain }
+                } else {
+                    floatAudio
+                }
+
+                // Stage 1: 1280 samples → mel frames [1, 1, N, 32] where N ≈ 5
+                val newFrames = getMelFrames(processAudio) ?: continue
+
+                // Add new mel frames to the rolling 76-frame buffer.
+                for (frame in newFrames) {
+                    melFrameBuffer.addLast(frame)
+                }
+                while (melFrameBuffer.size > MEL_WINDOW_FRAMES) melFrameBuffer.removeFirst()
+
+                // Only compute embeddings once the mel buffer is primed.
+                if (melFrameBuffer.size < MEL_WINDOW_FRAMES) continue
+
+                // Stage 2: 76 mel frames → 96-dim embedding.
+                val embedding = computeEmbedding() ?: continue
+
+                embeddingBuffer.addLast(embedding)
+                if (embeddingBuffer.size > EMBEDDING_BUFFER_SIZE) embeddingBuffer.removeFirst()
+
+                if (embeddingBuffer.size == EMBEDDING_BUFFER_SIZE) {
+                    val score = runClassifier()
+                    if (score > maxScore) maxScore = score
+                    chunkCount++
+                    // Heartbeat every ~4s; also log whenever there's meaningful audio or score.
+                    if (chunkCount % 50 == 0 || score > 0.005f || rms > 0.005f) {
+                        Log.d(TAG, "chunk=$chunkCount rms=${"%.4f".format(rms)} score=${"%.4f".format(score)} max=${"%.4f".format(maxScore)}")
+                    }
+                    if (score >= threshold) {
+                        Log.d(TAG, "WAKE WORD DETECTED! score=$score")
+                        onWakeWordDetected()
                     }
                 }
             }
+            Log.d(TAG, "Detection loop exited")
         }.also { it.isDaemon = true; it.start() }
     }
 
@@ -148,52 +214,92 @@ class HeartyWakeWordService : Service() {
         isRunning = false
         audioRecord?.stop(); audioRecord?.release(); audioRecord = null
         detectionThread?.interrupt(); detectionThread = null
+        melFrameBuffer.clear()
+        embeddingBuffer.clear()
     }
 
-    // Stage 1+2: raw float audio [12640] → mel [1,1,76,32] → reshape [1,76,32,1] → embed [1,1,1,96] → [96]
-    private fun runEmbeddingPipeline(audio: FloatArray): FloatArray? {
+    // Returns each mel frame as a FloatArray of MEL_BINS floats.
+    private fun getMelFrames(audio: FloatArray): List<FloatArray>? {
         val env = ortEnv ?: return null
         return try {
-            OnnxTensor.createTensor(env, FloatBuffer.wrap(audio), longArrayOf(1, SAMPLES_PER_CHUNK.toLong())).use { audioTensor ->
-                // Stage 1: audio → mel spectrogram [1, 1, 76, 32]
-                melSession!!.run(mapOf(MEL_INPUT_NODE to audioTensor)).use { melResult ->
-                    // mel shape is [1, 1, 76, 32]; flatten to FloatArray and reinterpret as [1, 76, 32, 1]
-                    val melFloats = FloatArray(76 * 32)
-                    (melResult[MEL_OUTPUT_NODE].get() as OnnxTensor).floatBuffer.get(melFloats)
-                    // Reshape [76, 32] → [1, 76, 32, 1]: the values are the same, just different logical shape
-                    OnnxTensor.createTensor(env, FloatBuffer.wrap(melFloats), longArrayOf(1, 76, 32, 1)).use { embedTensor ->
-                        // Stage 2: embed [1, 76, 32, 1] → [1, 1, 1, 96]
-                        embedSession!!.run(mapOf(EMBED_INPUT_NODE to embedTensor)).use { embedResult ->
-                            val embedding = FloatArray(EMBEDDING_DIM)
-                            (embedResult[EMBED_OUTPUT_NODE].get() as OnnxTensor).floatBuffer.get(embedding)
-                            embedding
-                        }
-                    }
+            OnnxTensor.createTensor(env, FloatBuffer.wrap(audio), longArrayOf(1, audio.size.toLong())).use { audioTensor ->
+                melSession!!.run(mapOf(MEL_INPUT_NODE to audioTensor)).use { result ->
+                    val tensor = result[MEL_OUTPUT_NODE].get() as OnnxTensor
+                    val allFloats = FloatArray(tensor.floatBuffer.remaining())
+                    tensor.floatBuffer.get(allFloats)
+                    val nFrames = allFloats.size / MEL_BINS
+                    List(nFrames) { i -> allFloats.copyOfRange(i * MEL_BINS, (i + 1) * MEL_BINS) }
                 }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Mel error: ${e.message}", e)
             null
         }
     }
 
-    // Stage 3: 16 embeddings [1, 16, 96] → sigmoid score
+    // Assembles the current 76-frame mel buffer into [1, 76, 32, 1] and runs the embedding model.
+    private fun computeEmbedding(): FloatArray? {
+        val env = ortEnv ?: return null
+        return try {
+            val melFlat = FloatArray(MEL_WINDOW_FRAMES * MEL_BINS)
+            melFrameBuffer.forEachIndexed { i, frame -> frame.copyInto(melFlat, i * MEL_BINS) }
+            OnnxTensor.createTensor(env, FloatBuffer.wrap(melFlat),
+                longArrayOf(1, MEL_WINDOW_FRAMES.toLong(), MEL_BINS.toLong(), 1)).use { embedTensor ->
+                embedSession!!.run(mapOf(EMBED_INPUT_NODE to embedTensor)).use { result ->
+                    val embedding = FloatArray(EMBEDDING_DIM)
+                    (result[EMBED_OUTPUT_NODE].get() as OnnxTensor).floatBuffer.get(embedding)
+                    embedding
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Embedding error: ${e.message}", e)
+            null
+        }
+    }
+
+    // 16 embeddings [1, 16, 96] → sigmoid score.
     private fun runClassifier(): Float {
         val env = ortEnv ?: return 0f
         return try {
             val flat = FloatArray(EMBEDDING_BUFFER_SIZE * EMBEDDING_DIM)
             embeddingBuffer.forEachIndexed { i, emb -> emb.copyInto(flat, i * EMBEDDING_DIM) }
-            val inputTensor = OnnxTensor.createTensor(env, FloatBuffer.wrap(flat), longArrayOf(1, EMBEDDING_BUFFER_SIZE.toLong(), EMBEDDING_DIM.toLong()))
-            val result = wakeSession!!.run(mapOf("x" to inputTensor))
-            val score = (result["sigmoid"].get() as OnnxTensor).floatBuffer.get()
-            inputTensor.close(); result.close()
-            score
-        } catch (e: Exception) { 0f }
+            OnnxTensor.createTensor(env, FloatBuffer.wrap(flat),
+                longArrayOf(1, EMBEDDING_BUFFER_SIZE.toLong(), EMBEDDING_DIM.toLong())).use { inputTensor ->
+                wakeSession!!.run(mapOf("x.1" to inputTensor)).use { result ->
+                    (result["53"].get() as OnnxTensor).floatBuffer.get()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Classifier error: ${e.message}", e)
+            0f
+        }
     }
 
     private fun onWakeWordDetected() {
-        isPaused = true  // pause mic while STT is active
+        isPaused = true
+        melFrameBuffer.clear()
+        embeddingBuffer.clear()
+
+        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+        @Suppress("DEPRECATION")
+        val wl = pm.newWakeLock(
+            android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK or
+                    android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP or
+                    android.os.PowerManager.ON_AFTER_RELEASE,
+            "Hearty:WakeWordWake"
+        )
+        wl.acquire(5_000L)
+
         android.os.Handler(android.os.Looper.getMainLooper()).post {
+            val launchIntent = Intent(this@HeartyWakeWordService, MainActivity::class.java).apply {
+                action = MainActivity.ACTION_WAKE_WORD_DETECTED
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            startActivity(launchIntent)
             methodChannel?.invokeMethod("wakeWordDetected", null)
+            wl.release()
         }
     }
 
@@ -212,7 +318,7 @@ class HeartyWakeWordService : Service() {
         val label = if (isPaused) "Resume listening" else "Pause listening"
         val action = Notification.Action.Builder(null, label, pauseIntent).build()
         return Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("Hearty is listening for 'Hey Hearty'")
+            .setContentTitle("Hearty is listening for 'Hey Jarvis'")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .addAction(action)
             .setOngoing(true)

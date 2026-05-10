@@ -5,8 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:permission_handler/permission_handler.dart';
+
+import '../core/audio/chime_player.dart';
 import '../core/auth/onboarding_provider.dart';
 import '../features/auth/screens/sign_in_screen.dart';
+import '../features/voice/providers/voice_provider.dart';
+import '../features/voice/screens/voice_overlay_screen.dart';
+import '../features/wake_word/providers/wake_word_provider.dart';
+import '../features/wake_word/wake_word_channel.dart';
 import '../features/logging/screens/home_screen.dart';
 import '../features/history/screens/history_screen.dart';
 import '../features/trends/screens/trends_screen.dart';
@@ -16,6 +23,12 @@ import '../features/health_profile/screens/health_profile_screen.dart';
 import '../features/logging/screens/log_detail_screen.dart';
 import '../features/logging/screens/onboarding_screen.dart';
 import '../features/photos/screens/camera_screen.dart';
+import '../features/settings/screens/notification_preferences_screen.dart';
+import '../features/wellbeing/screens/wellbeing_log_screen.dart';
+
+/// Global navigator key — used by [NotificationService] to push deep links
+/// when a notification is tapped from background/terminated state.
+final navigatorKey = GlobalKey<NavigatorState>();
 
 class Routes {
   static const String home = 'home';
@@ -28,6 +41,8 @@ class Routes {
   static const String onboarding = 'onboarding';
   static const String signIn = 'sign-in';
   static const String camera = 'camera';
+  static const String notificationPreferences = 'notification-preferences';
+  static const String wellbeingLog = 'wellbeing-log';
 }
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -42,6 +57,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   }, fireImmediately: false);
 
   final router = GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: '/home',
     refreshListenable: refreshStream,
     redirect: (context, state) {
@@ -136,6 +152,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: Routes.camera,
         builder: (context, state) => const CameraScreen(),
       ),
+      GoRoute(
+        path: '/settings/notifications',
+        name: Routes.notificationPreferences,
+        builder: (context, state) => const NotificationPreferencesScreen(),
+      ),
+      GoRoute(
+        path: '/wellbeing/log',
+        name: Routes.wellbeingLog,
+        builder: (context, state) => const WellbeingLogScreen(),
+      ),
     ],
   );
 
@@ -168,20 +194,54 @@ class GoRouterRefreshStream extends ChangeNotifier {
   }
 }
 
-class _ScaffoldWithNavBar extends StatelessWidget {
+class _ScaffoldWithNavBar extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const _ScaffoldWithNavBar({required this.navigationShell});
 
   @override
+  ConsumerState<_ScaffoldWithNavBar> createState() => _ScaffoldWithNavBarState();
+}
+
+class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
+  @override
+  void initState() {
+    super.initState();
+    _initWakeWord();
+  }
+
+  Future<void> _initWakeWord() async {
+    final status = await Permission.microphone.request();
+    if (status.isGranted) {
+      WakeWordChannel.startService().catchError((_) {});
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Global wake-word listener — active on every tab, not just Home.
+    ref.listen(wakeWordDetectedProvider, (_, detected) async {
+      if (!detected) return;
+      await ChimePlayer.instance.play();
+      if (!context.mounted) return;
+      ref.read(voiceProvider.notifier).startListening();
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => const VoiceOverlayScreen(),
+      );
+      ref.read(wakeWordDetectedProvider.notifier).setDetected(false);
+      WakeWordChannel.startListening().catchError((_) {});
+    });
+
     return Scaffold(
-      body: navigationShell,
+      body: widget.navigationShell,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) => navigationShell.goBranch(
+        selectedIndex: widget.navigationShell.currentIndex,
+        onDestinationSelected: (index) => widget.navigationShell.goBranch(
           index,
-          initialLocation: index == navigationShell.currentIndex,
+          initialLocation: index == widget.navigationShell.currentIndex,
         ),
         destinations: const [
           NavigationDestination(

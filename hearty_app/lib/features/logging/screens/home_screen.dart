@@ -4,9 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../voice/providers/voice_provider.dart';
 import '../../voice/screens/voice_overlay_screen.dart';
-import '../../wake_word/providers/wake_word_provider.dart';
-import '../../wake_word/wake_word_channel.dart';
-import '../../../core/audio/chime_player.dart';
 import '../../../core/api/providers/meals_provider.dart';
 import '../../../core/api/providers/symptoms_provider.dart';
 import '../../../core/api/providers/wellbeing_provider.dart';
@@ -14,6 +11,7 @@ import '../../../core/api/models/meal_log.dart';
 import '../../../core/api/models/symptom_log.dart';
 import '../../../core/api/models/wellbeing_log.dart';
 import '../../../core/sync/sync_service.dart';
+import '../../../app/router.dart';
 
 // ---------------------------------------------------------------------------
 // Top-level helpers
@@ -81,22 +79,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Wake word → chime → voice overlay
-    ref.listen(wakeWordDetectedProvider, (_, detected) async {
-      if (!detected) return;
-      await ChimePlayer.instance.play();
-      if (!context.mounted) return;
-      ref.read(voiceProvider.notifier).startListening();
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => const VoiceOverlayScreen(),
-      );
-      ref.read(wakeWordDetectedProvider.notifier).setDetected(false);
-      await WakeWordChannel.startListening();
-    });
-
     // Keep sync service alive and watch sync state.
     ref.watch(syncServiceProvider);
     ref.watch(pendingQueueCountProvider); // keeps provider alive; count read on-demand via ref.read
@@ -218,13 +200,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _failedBanner(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed entries: open Settings to manage'),
-          ),
-        );
-      },
+      onTap: () => _showFailedDialog(context),
       child: Container(
         width: double.infinity,
         color: Colors.red.shade100,
@@ -241,6 +217,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showFailedDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Unsynced logs'),
+        content: const Text(
+          'Some entries failed to sync while the server was unavailable. '
+          'Retry to upload them now, or dismiss to discard them.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ref.read(syncServiceProvider).dismissFailed();
+            },
+            child: const Text('Dismiss'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ref.read(syncServiceProvider).retryFailed();
+            },
+            child: const Text('Retry'),
+          ),
+        ],
       ),
     );
   }
@@ -274,7 +279,8 @@ class _TimelineBody extends StatelessWidget {
   /// Returns true if [dt] falls on today's date (date parts only).
   static bool _isToday(DateTime dt) {
     final now = DateTime.now();
-    return dt.year == now.year && dt.month == now.month && dt.day == now.day;
+    final local = dt.toLocal();
+    return local.year == now.year && local.month == now.month && local.day == now.day;
   }
 
   @override
@@ -363,7 +369,7 @@ class _WellbeingSnapshotCard extends StatelessWidget {
         child: Card(
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
-            onTap: () => context.push('/log'),
+            onTap: () => context.pushNamed(Routes.wellbeingLog),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(

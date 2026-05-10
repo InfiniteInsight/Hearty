@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "822563687817",
+    "project_id": "hearty-495323",
+    "storage_bucket": "hearty-495323.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:822563687817:android:d65696e451aed0f5186558",
+        "android_client_info": {
+          "package_name": "com.hearty.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "822563687817-f2r5e8q4j3m2sllcuouovlepnrp0gd82.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.hearty.app",
+            "certificate_hash": "8a6d9cd6bf79fb7f39d78152bed292db4356a528"
+          }
+        },
+        {
+          "client_id": "822563687817-ilgg7pf13akhprkvh5i8t6oonmdbrlgh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAs3lmG7JwpzDivkcQKlWdSWt3hnKJDM9w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "822563687817-ilgg7pf13akhprkvh5i8t6oonmdbrlgh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

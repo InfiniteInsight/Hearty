@@ -6,6 +6,11 @@ class UserPreferences {
   final int nudgeDelayMinutes;
   final bool postMealNudgeEnabled;
   final bool dailyCheckinEnabled;
+  final bool weeklyDigestEnabled;
+  final bool syncErrorAlertsEnabled;
+  final bool wakeWordEnabled;
+  final int dailyCheckinHour;
+  final int dailyCheckinMinute;
   final String? fcmToken;
 
   const UserPreferences({
@@ -16,6 +21,11 @@ class UserPreferences {
     this.nudgeDelayMinutes = 45,
     this.postMealNudgeEnabled = true,
     this.dailyCheckinEnabled = true,
+    this.weeklyDigestEnabled = true,
+    this.syncErrorAlertsEnabled = true,
+    this.wakeWordEnabled = true,
+    this.dailyCheckinHour = 8,
+    this.dailyCheckinMinute = 0,
     this.fcmToken,
   });
 
@@ -35,6 +45,13 @@ class UserPreferences {
           (json['post_meal_nudge_enabled'] as bool?) ?? true,
       dailyCheckinEnabled:
           (json['daily_checkin_enabled'] as bool?) ?? true,
+      weeklyDigestEnabled:
+          (json['weekly_digest_enabled'] as bool?) ?? true,
+      syncErrorAlertsEnabled:
+          (json['sync_error_alerts_enabled'] as bool?) ?? true,
+      wakeWordEnabled: (json['wake_word_enabled'] as bool?) ?? true,
+      dailyCheckinHour: (json['daily_checkin_hour'] as int?) ?? 8,
+      dailyCheckinMinute: (json['daily_checkin_minute'] as int?) ?? 0,
       fcmToken: json['fcm_token'] as String?,
     );
   }
@@ -47,6 +64,11 @@ class UserPreferences {
         'nudge_delay_minutes': nudgeDelayMinutes,
         'post_meal_nudge_enabled': postMealNudgeEnabled,
         'daily_checkin_enabled': dailyCheckinEnabled,
+        'weekly_digest_enabled': weeklyDigestEnabled,
+        'sync_error_alerts_enabled': syncErrorAlertsEnabled,
+        'wake_word_enabled': wakeWordEnabled,
+        'daily_checkin_hour': dailyCheckinHour,
+        'daily_checkin_minute': dailyCheckinMinute,
         if (fcmToken != null) 'fcm_token': fcmToken,
       };
 
@@ -58,6 +80,11 @@ class UserPreferences {
     int? nudgeDelayMinutes,
     bool? postMealNudgeEnabled,
     bool? dailyCheckinEnabled,
+    bool? weeklyDigestEnabled,
+    bool? syncErrorAlertsEnabled,
+    bool? wakeWordEnabled,
+    int? dailyCheckinHour,
+    int? dailyCheckinMinute,
     String? fcmToken,
   }) {
     return UserPreferences(
@@ -68,6 +95,12 @@ class UserPreferences {
       nudgeDelayMinutes: nudgeDelayMinutes ?? this.nudgeDelayMinutes,
       postMealNudgeEnabled: postMealNudgeEnabled ?? this.postMealNudgeEnabled,
       dailyCheckinEnabled: dailyCheckinEnabled ?? this.dailyCheckinEnabled,
+      weeklyDigestEnabled: weeklyDigestEnabled ?? this.weeklyDigestEnabled,
+      syncErrorAlertsEnabled:
+          syncErrorAlertsEnabled ?? this.syncErrorAlertsEnabled,
+      wakeWordEnabled: wakeWordEnabled ?? this.wakeWordEnabled,
+      dailyCheckinHour: dailyCheckinHour ?? this.dailyCheckinHour,
+      dailyCheckinMinute: dailyCheckinMinute ?? this.dailyCheckinMinute,
       fcmToken: fcmToken ?? this.fcmToken,
     );
   }

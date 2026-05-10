@@ -33,11 +33,15 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
       }
     });
 
-    // Send to chat API when thinking starts
-    ref.listen(voiceProvider.select((s) => s.status), (_, status) {
+    // Send to chat API on initial log; route follow-up to symptom logging.
+    ref.listen(voiceProvider.select((s) => s.status), (previous, status) {
       if (status == VoiceStatus.thinking) {
-        final assistantLabel = ref.read(defaultAssistantProvider).label;
-        ref.read(voiceProvider.notifier).sendToChat(defaultAssistantLabel: assistantLabel);
+        if (previous == VoiceStatus.awaitingFollowUp) {
+          ref.read(voiceProvider.notifier).sendFollowUpToApi();
+        } else {
+          final assistantLabel = ref.read(defaultAssistantProvider).label;
+          ref.read(voiceProvider.notifier).sendToChat(defaultAssistantLabel: assistantLabel);
+        }
       }
     });
 

@@ -5,6 +5,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../app/router.dart';
+import '../../../core/api/providers/preferences_provider.dart';
+import '../../../core/api/models/user_preferences.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -18,15 +20,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   // Screen 1: Health profile state
   final Set<String> _selectedAllergens = {};
+  List<String> _customAllergens = [];
   final TextEditingController _conditionsController = TextEditingController();
+  List<String> _conditions = [];
   final Set<String> _selectedProtocols = {};
+  final TextEditingController _medicationController = TextEditingController();
+  List<String> _medications = [];
 
   // Screen 2: Notifications state
   bool _postMealEnabled = true;
   double _postMealDelay = 60.0; // minutes
   bool _morningCheckInEnabled = true;
 
-  static const List<String> _allergens = [
+  static const List<String> _builtInAllergens = [
     'Gluten',
     'Dairy',
     'Eggs',
@@ -42,14 +48,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     'Dairy-Free',
     'Low-FODMAP',
     'Vegetarian',
+    'Pescetarian',
     'Vegan',
     'Keto',
+    'Paleo',
   ];
 
   @override
   void dispose() {
     _pageController.dispose();
     _conditionsController.dispose();
+    _medicationController.dispose();
     super.dispose();
   }
 
@@ -75,14 +84,119 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _finish() async {
-    // TODO Phase 5: save health profile to API
     await _markOnboardingComplete();
+
+    try {
+      final existing =
+          ref.read(preferencesProvider).valueOrNull ?? const UserPreferences();
+      await ref.read(preferencesProvider.notifier).save(
+            existing.copyWith(
+              allergens: [
+                ..._selectedAllergens,
+                ..._customAllergens,
+              ],
+              conditions: _conditions,
+              dietaryProtocols: _selectedProtocols.toList(),
+              medications: _medications,
+              postMealNudgeEnabled: _postMealEnabled,
+              nudgeDelayMinutes: _postMealDelay.round(),
+              dailyCheckinEnabled: _morningCheckInEnabled,
+            ),
+          );
+    } catch (_) {
+      // Non-fatal: user can update profile in Settings.
+    }
+
     if (mounted) context.goNamed(Routes.home);
   }
 
   Future<void> _skipToHome() async {
     await _markOnboardingComplete();
     if (mounted) context.goNamed(Routes.home);
+  }
+
+  Future<void> _showAddAllergenDialog() async {
+    final controller = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Allergen'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          onSubmitted: (_) {
+            final text = controller.text.trim();
+            if (text.isNotEmpty) {
+              setState(() {
+                if (!_customAllergens.contains(text)) {
+                  _customAllergens = [..._customAllergens, text];
+                }
+                _selectedAllergens.add(text);
+              });
+              Navigator.of(ctx).pop();
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final text = controller.text.trim();
+              if (text.isNotEmpty) {
+                setState(() {
+                  if (!_customAllergens.contains(text)) {
+                    _customAllergens = [..._customAllergens, text];
+                  }
+                  _selectedAllergens.add(text);
+                });
+                Navigator.of(ctx).pop();
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+  }
+
+  Widget _buildNavRow({
+    required bool showBack,
+    required VoidCallback? onBack,
+    required VoidCallback? onForward,
+    required String forwardLabel,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Flexible(
+          child: TextButton(
+            onPressed: _skipToHome,
+            child: const Text('Skip'),
+          ),
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showBack) ...[
+              OutlinedButton(
+                onPressed: onBack,
+                child: const Text('Back'),
+              ),
+              const SizedBox(width: 8),
+            ],
+            ElevatedButton(
+              onPressed: onForward,
+              child: Text(forwardLabel),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   @override
@@ -104,6 +218,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _buildPage1(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final allAllergens = [..._builtInAllergens, ..._customAllergens];
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -117,7 +232,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           Text(
             "We'll use this to personalize your experience.",
             style: textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 32),
@@ -126,32 +244,74 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 4,
-            children: _allergens.map((allergen) {
-              return FilterChip(
-                label: Text(allergen),
-                selected: _selectedAllergens.contains(allergen),
-                onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _selectedAllergens.add(allergen);
-                    } else {
-                      _selectedAllergens.remove(allergen);
-                    }
-                  });
-                },
-              );
-            }).toList(),
+            children: [
+              ...allAllergens.map((allergen) => FilterChip(
+                    label: Text(allergen),
+                    selected: _selectedAllergens.contains(allergen),
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          _selectedAllergens.add(allergen);
+                        } else {
+                          _selectedAllergens.remove(allergen);
+                        }
+                      });
+                    },
+                  )),
+              ActionChip(
+                avatar: const Icon(Icons.add, size: 16),
+                label: const Text('Add'),
+                onPressed: _showAddAllergenDialog,
+              ),
+            ],
           ),
           const SizedBox(height: 24),
           Text('Known conditions', style: textTheme.labelLarge),
           const SizedBox(height: 8),
           TextField(
             controller: _conditionsController,
-            decoration: const InputDecoration(
-              hintText: 'e.g., IBS, Acid Reflux',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: 'Add a condition (e.g. IBS)',
+              border: const OutlineInputBorder(),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: () {
+                  final text = _conditionsController.text.trim();
+                  if (text.isNotEmpty) {
+                    setState(() {
+                      _conditions = [..._conditions, text];
+                      _conditionsController.clear();
+                    });
+                  }
+                },
+              ),
             ),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (text) {
+              text = text.trim();
+              if (text.isNotEmpty) {
+                setState(() {
+                  _conditions = [..._conditions, text];
+                  _conditionsController.clear();
+                });
+              }
+            },
           ),
+          if (_conditions.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: _conditions
+                  .map((c) => InputChip(
+                        label: Text(c),
+                        onDeleted: () => setState(
+                            () => _conditions =
+                                _conditions.where((x) => x != c).toList()),
+                      ))
+                  .toList(),
+            ),
+          ],
           const SizedBox(height: 24),
           Text('Dietary protocols', style: textTheme.labelLarge),
           const SizedBox(height: 8),
@@ -174,19 +334,59 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               );
             }).toList(),
           ),
+          const SizedBox(height: 24),
+          Text('Medications & supplements', style: textTheme.labelLarge),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _medicationController,
+            decoration: InputDecoration(
+              hintText: 'Add medication or supplement',
+              border: const OutlineInputBorder(),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: () {
+                  final text = _medicationController.text.trim();
+                  if (text.isNotEmpty) {
+                    setState(() {
+                      _medications = [..._medications, text];
+                      _medicationController.clear();
+                    });
+                  }
+                },
+              ),
+            ),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (text) {
+              text = text.trim();
+              if (text.isNotEmpty) {
+                setState(() {
+                  _medications = [..._medications, text];
+                  _medicationController.clear();
+                });
+              }
+            },
+          ),
+          if (_medications.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: _medications
+                  .map((m) => InputChip(
+                        label: Text(m),
+                        onDeleted: () => setState(
+                            () => _medications =
+                                _medications.where((x) => x != m).toList()),
+                      ))
+                  .toList(),
+            ),
+          ],
           const SizedBox(height: 32),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              TextButton(
-                onPressed: _skipToHome,
-                child: const Text('Skip for now'),
-              ),
-              ElevatedButton(
-                onPressed: () => _goToPage(1),
-                child: const Text('Next →'),
-              ),
-            ],
+          _buildNavRow(
+            showBack: false,
+            onBack: null,
+            onForward: () => _goToPage(1),
+            forwardLabel: 'Next →',
           ),
         ],
       ),
@@ -208,7 +408,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           Text(
             "We'll remind you to log how you're feeling.",
             style: textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 32),
@@ -241,27 +444,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           const SizedBox(height: 32),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              TextButton(
-                onPressed: _skipToHome,
-                child: const Text('Skip for now'),
-              ),
-              Row(
-                children: [
-                  OutlinedButton(
-                    onPressed: () => _goToPage(0),
-                    child: const Text('← Back'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () => _goToPage(2),
-                    child: const Text('Next →'),
-                  ),
-                ],
-              ),
-            ],
+          _buildNavRow(
+            showBack: true,
+            onBack: () => _goToPage(0),
+            onForward: () => _goToPage(2),
+            forwardLabel: 'Next →',
           ),
         ],
       ),
@@ -296,27 +483,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             child: const Text('Exempt from battery optimization'),
           ),
           const SizedBox(height: 32),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              TextButton(
-                onPressed: _skipToHome,
-                child: const Text('Skip for now'),
-              ),
-              Row(
-                children: [
-                  OutlinedButton(
-                    onPressed: () => _goToPage(1),
-                    child: const Text('← Back'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _finish,
-                    child: const Text('Finish'),
-                  ),
-                ],
-              ),
-            ],
+          _buildNavRow(
+            showBack: true,
+            onBack: () => _goToPage(1),
+            onForward: _finish,
+            forwardLabel: 'Finish',
           ),
         ],
       ),
