@@ -129,11 +129,29 @@ The foreground service displays a persistent notification (required by Android f
 - **Text:** "Hearty is listening for 'Hey Hearty'"
 - **Action button:** "Pause listening" (disables wake word detection until tapped again)
 
-The service is started on boot via `BOOT_COMPLETED` receiver and restarts itself if killed by the OS.
+The service is started on boot via `BOOT_COMPLETED` receiver and restarts itself if killed by the OS (`START_STICKY`).
 
-Flutter communicates with the Kotlin service via a `MethodChannel` named `com.hearty.app/wake_word`. The channel carries three events: `wakeWordDetected`, `startListening`, `stopListening`.
+**Availability after first launch:**
+- App backgrounded / swiped from recents: wake word continues (`START_STICKY`)
+- Screen off: wake word continues; screen is woken on detection (see below)
+- After device reboot: `BootReceiver` restarts the service automatically
+- After Android force-stop: requires one manual reopen (unavoidable OS limit)
 
-### 3.3 Activation Flow
+**Screen-off detection and wakeup:**  
+When the wake word fires, the service acquires a timed `SCREEN_BRIGHT_WAKE_LOCK | ACQUIRE_CAUSES_WAKEUP` (5 s) to turn the display on, then fires an explicit `Intent` to `MainActivity` with `FLAG_ACTIVITY_CLEAR_TOP | FLAG_ACTIVITY_SINGLE_TOP`. `MainActivity.onNewIntent` applies `setShowWhenLocked(true)` and `setTurnScreenOn(true)` (API 27+) so the voice overlay appears over the lock screen without requiring a PIN. The service simultaneously invokes the `MethodChannel` for low-latency delivery when the Flutter engine is already running. This dual-path approach handles both foreground and screen-off states.
+
+**MethodChannel binding:**  
+The service re-creates its `MethodChannel` on every `onStartCommand` call (not just on first start). This prevents a stale channel after a Flutter hot-restart or activity recreation, where the binary messenger changes but the service process stays alive.
+
+Flutter communicates with the Kotlin service via a `MethodChannel` named `com.hearty.app/wake_word` (events: `wakeWordDetected`, `startListening`, `stopListening`) and a control channel `com.hearty.app/wake_word_control` (methods: `startService`, `stopService`).
+
+### 3.3 Global Wake-Word Listener
+
+The wake-word listener (`ref.listen(wakeWordDetectedProvider, ...)`) lives in `_ScaffoldWithNavBar` — the persistent shell widget that wraps all four bottom-tab screens (Home, History, Trends, Settings). This means wake word detection triggers the voice overlay regardless of which tab the user is on. The listener is NOT on any individual screen.
+
+`_ScaffoldWithNavBar.initState()` requests microphone permission and calls `WakeWordChannel.startService()`. Because this runs on every app launch (not just on the Home tab), the service is started and the MethodChannel is refreshed even when the user navigates directly to another tab.
+
+### 3.4 Activation Flow
 
 ```
 1. Wake word detected (or FAB tapped)
@@ -431,7 +449,7 @@ All preferences are stored in Supabase (`user_preferences` table) so they sync a
 
 ### 7.6 Android Notification Channels
 
-Three notification channels registered at app startup:
+Four notification channels registered at app startup:
 
 | Channel ID | Name | Importance |
 |---|---|---|
@@ -715,9 +733,11 @@ await Supabase.initialize(
 **Sensitivity:** Controlled by the detection threshold applied to the model's output score (range 0.0–1.0; default 0.5). Higher values increase detection rate but also false positives. User-configurable in Settings → Voice Settings.
 
 **Lifecycle:**
-- Service starts on `BOOT_COMPLETED` and when the app is first launched.
-- Service binds to the Flutter engine for MethodChannel communication.
-- When a wake word is detected, the service calls `wakeWordDetected` on the MethodChannel, which triggers the activation flow in Flutter.
+- Service starts on `BOOT_COMPLETED` and whenever `_ScaffoldWithNavBar` is mounted (app launch).
+- Service re-binds `MethodChannel` on every `onStartCommand` — handles hot-restart and activity recreation.
+- When wake word is detected: acquires `SCREEN_BRIGHT_WAKE_LOCK`, fires Intent to `MainActivity`, invokes `MethodChannel.wakeWordDetected`.
+- `MainActivity` applies `setShowWhenLocked`/`setTurnScreenOn` on the `ACTION_WAKE_WORD_DETECTED` intent.
+- Flutter listener in `_ScaffoldWithNavBar` (not `HomeScreen`) handles `wakeWordDetected` — plays chime, shows voice overlay.
 - Service pauses detection while the microphone is in use for STT (to avoid conflicts).
 
 ---
@@ -741,6 +761,9 @@ await Supabase.initialize(
 
 <!-- Boot receiver for wake word service restart -->
 <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+<!-- Wake lock to turn screen on when wake word fires -->
+<uses-permission android:name="android.permission.WAKE_LOCK" />
 
 <!-- Notifications (Android 13+) -->
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

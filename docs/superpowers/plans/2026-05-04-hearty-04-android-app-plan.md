@@ -3,7 +3,7 @@
 **Spec:** [`hearty-04-android-app.md`](../specs/2026-05-04-hearty-04-android-app.md)  
 **Roadmap Phase:** Phase 2 — Android App  
 **Plan Status:** 🟡 In Progress  
-**Last Updated:** 2026-05-08 (Phase 7 complete; Phase 8 next)  
+**Last Updated:** 2026-05-08 (Phase 8 complete; Phase 9 next)  
 **Last Verified Against Spec:** 2026-05-08  
 **Open Deviations:** 1
 
@@ -34,8 +34,8 @@
 | 5 | Meal, Symptom & Wellbeing Logging | 🟢 Completed | Phases 2–4 | Claude |
 | 6 | Offline Queue & Background Sync | 🟢 Completed | Phase 5 | Claude |
 | 7 | Camera & Photo Types | 🟢 Completed | Phases 2–3 | Claude |
-| 8 | Notification System | 🔴 Not Started | Phases 3, 5 | Mixed |
-| 9 | Integration Test | 🔴 Not Started | Phases 1–8 | Claude |
+| 8 | Notification System | 🟢 Completed | Phases 3, 5 | Mixed |
+| 9 | Integration Test | 🟡 In Progress | Phases 1–8 | Claude |
 
 ---
 
@@ -168,16 +168,21 @@ Update the plan: set Phase 0 status to 🟢 Completed and Last Updated to today.
 
 **Key deliverables:**
 - **Pre-phase manual step:** ✅ DONE — `hearty_app/assets/wake_word/hey_hearty.onnx` trained and registered in `pubspec.yaml`
-- `HeartyWakeWordService.kt` — Android foreground service using ONNX Runtime for Android (Gradle dep: `com.microsoft.onnxruntime:onnxruntime-android`), with `BOOT_COMPLETED` receiver, persistent notification with "Pause listening" action, `MethodChannel('com.hearty.app/wake_word')`
-- `features/voice/` — STT via `speech_to_text`, live waveform animation, auto-stop on 2s silence, retry button
+- `HeartyWakeWordService.kt` — Android foreground service using ONNX Runtime for Android (Gradle dep: `com.microsoft.onnxruntime:onnxruntime-android`), with `BOOT_COMPLETED` receiver, persistent notification with "Pause listening" action, `MethodChannel('com.hearty.app/wake_word')` re-bound on every `onStartCommand`
+- **Screen-off wakeup:** Service acquires `SCREEN_BRIGHT_WAKE_LOCK | ACQUIRE_CAUSES_WAKEUP` on detection and fires `ACTION_WAKE_WORD_DETECTED` Intent to `MainActivity`; `MainActivity` applies `setShowWhenLocked`/`setTurnScreenOn` (API 27+), handles via `onNewIntent` + `onCreate`
+- **`WAKE_LOCK` permission** added to `AndroidManifest.xml`
+- **Global Flutter listener** lives in `_ScaffoldWithNavBar` (not `HomeScreen`) — active on all four tabs; `_ScaffoldWithNavBar.initState()` requests mic permission and calls `WakeWordChannel.startService()`
+- `features/voice/` — STT via `speech_to_text` (`listenFor: 60s`, `pauseFor: 5s`), live waveform animation, retry button
 - `features/voice/` — TTS via `flutter_tts` at 0.9 speech rate; interruptible by screen tap
 - Wake chime (`assets/audio/wake_chime.mp3`) played immediately on wake word detection via `just_audio`
-- Full activation flow: wake → chime → overlay (listening) → STT → thinking animation → Claude API → TTS response → optional follow-up → dismiss
+- Full activation flow: wake → chime → overlay (listening) → STT → thinking animation → Claude API → TTS response → one follow-up (routed to `sendFollowUpToApi`) → dismiss (no loop)
 - Non-health query redirect to configured assistant (Settings → Default Assistant)
 
 **Model I/O (confirmed 2026-05-07):** `hey_hearty.onnx` — input `x` [1, 16, 96] float32; output `sigmoid` [1, 1] float32
 
-**Deviation Log:** 2026-05-06 — Switched from Picovoice Porcupine to openWakeWord (open source, ONNX-based). Removed `porcupine_flutter` from pubspec.yaml; ONNX Runtime for Android added as a Gradle dependency instead. No API key required. Asset path changed from `.ppn` to `.onnx`.
+**Deviation Log:**
+- 2026-05-06 — Switched from Picovoice Porcupine to openWakeWord (open source, ONNX-based). Removed `porcupine_flutter` from pubspec.yaml; ONNX Runtime for Android added as a Gradle dependency instead. No API key required. Asset path changed from `.ppn` to `.onnx`.
+- 2026-05-09 — Global wake word listener moved from `HomeScreen` to `_ScaffoldWithNavBar` so it is active on all four tabs, not just Home. Screen-off wakeup implemented via `WAKE_LOCK` + explicit `MainActivity` Intent. Follow-up loop bug fixed (second voice turn routed to `sendFollowUpToApi`, not `sendToChat`). STT silence timeout extended from 2s to 5s.
 
 ---
 
@@ -344,7 +349,7 @@ Completion criteria:
 
 ## Phase 8: Notification System
 
-**Status:** 🔴 Not Started  
+**Status:** 🟢 Completed  
 **Goal:** Implement both notification paths (FCM for server-triggered and local for on-device), register Android notification channels, wire up FCM token delivery to the API, and build the Notification Preferences screen.  
 **Depends on:** Phases 3, 5  
 **Type:** Mixed (manual Firebase project setup + Claude implementation)
@@ -396,23 +401,27 @@ Completion criteria:
 - Run /compact, then start Phase 9 using its activation prompt
 ```
 
-**Deviation Log:** _None_
+**Deviation Log:** 2026-05-08 — No `user_preferences` table exists in Supabase; notification prefs live in `notification_preferences` and health data in `health_profile`. The FastAPI `/api/preferences` endpoint combines both tables into the `UserPreferences` shape. Added Supabase migration `20260508120000_notification_prefs_phase8.sql` to add `fcm_token`, `wake_word_enabled`, `sync_error_alerts_enabled` to `notification_preferences` and `medications` to `health_profile`. The `daily_checkin_time` TIME column maps to `dailyCheckinHour`/`dailyCheckinMinute` in the model. Added `weeklyDigestEnabled`, `syncErrorAlertsEnabled`, `wakeWordEnabled`, `dailyCheckinHour`, `dailyCheckinMinute` to `UserPreferences` model for the Notification Preferences screen.
 
 ---
 
 ## Phase 9: Integration Test
 
-**Status:** 🔴 Not Started  
+**Status:** 🟡 In Progress  
 **Goal:** Run end-to-end integration tests covering the core user flows against a live Supabase + FastAPI environment to confirm the app is shippable.  
 **Depends on:** Phases 1–8  
 **Type:** Claude
 
 **Key deliverables:**
-- Voice log flow: speak a meal → verify log entry created in Supabase
+- Voice log flow (text entry path): type a meal in the voice overlay → verify log entry appears on home screen
+- Voice log flow (voice path): speak a meal via STT → verify log entry appears on home screen
+- Wake word flow: say "Hey Hearty" from a non-Home tab (e.g., History or Settings) with screen on → voice overlay appears
+- Wake word flow (screen off): lock the device → say "Hey Hearty" → screen wakes, app comes to front, voice overlay appears
 - Photo flow: capture food plate → confirm processing status resolves to `complete`
 - Offline flow: disable network, log a meal, re-enable, verify queue drains and entry syncs
 - Auth flow: sign out → sign back in → verify timeline data persists
 - Notification flow: log a meal → confirm FCM post-meal nudge fires within nudge delay window
+- Wellbeing flow: tap "Log your morning wellbeing" → fill energy/mood → verify entry appears on home screen today section
 - All four Flutter widget trees render without `flutter analyze` errors or runtime exceptions in debug mode
 
 ### Activation Prompt
@@ -452,7 +461,15 @@ Completion criteria:
 - The app is shippable — proceed to use superpowers:finishing-a-development-branch
 ```
 
-**Deviation Log:** _None_
+**Deviation Log (bugs found and fixed during Phase 9 testing):**
+- 2026-05-09 — FastAPI `GET /api/wellbeing` was missing (405); added endpoint. `POST /api/chat` did not exist (404); created `hearty-api/app/routers/chat.py` with LiteLLM-backed response and best-effort meal extraction.
+- 2026-05-09 — `_isToday()` in `home_screen.dart` compared UTC API timestamps against local `DateTime.now()` without conversion; fixed with `dt.toLocal()`.
+- 2026-05-09 — "Log your morning wellbeing" card navigated to `/log` (meal screen); created `WellbeingLogScreen` at `/wellbeing/log` with energy/mood sliders.
+- 2026-05-09 — Voice follow-up infinite loop: second voice turn called `sendToChat()` again instead of `sendFollowUpToApi()`; fixed by tracking `previous` status in `ref.listen`.
+- 2026-05-09 — Wake word listener moved from `HomeScreen` to `_ScaffoldWithNavBar`; screen-off wakeup added via `WAKE_LOCK` + `ACTION_WAKE_WORD_DETECTED` Intent (see Phase 4 deviation log for detail).
+- 2026-05-09 — Onboarding row overflow on narrow device (31px); fixed with `Flexible`/`mainAxisSize: min` layout helper.
+- 2026-05-09 — Onboarding health profile not persisted on finish; implemented `_finish()` to call `preferencesProvider.notifier.save()`.
+- 2026-05-09 — Battery optimization button in onboarding did nothing; added `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission to manifest.
 
 ---
 
@@ -462,6 +479,7 @@ _Format: `[date] — Phase X, Task Y — changed X because Y`_
 
 2026-05-08 — Phase 7 — Plan listed separate photo endpoints (`/api/photos/analyze` etc.) but REST API spec (Section 5.13) defines a single `POST /api/photos` endpoint with a `type` field. Implementing against the spec. Also: photo stubs were not added in Phase 3 as previously assumed; Phase 7 creates them from scratch.
 2026-05-08 — Phase 7 — Switched still-photo capture from custom `camera` viewfinder to `image_picker` (native camera app). User gets full device camera controls (flash, focus, zoom) for free; custom viewfinder now only used for barcode scanning. Flash toggle removed from the custom barcode scanner screen. Spec and plan updated to reflect this.
+2026-05-09 — Phase 4/9 — Wake word listener promoted from `HomeScreen`-only to `_ScaffoldWithNavBar` (global across all tabs). Screen-off detection + screen wakeup implemented via `WAKE_LOCK` + `ACTION_WAKE_WORD_DETECTED` Intent. Numerous Phase 9 integration bugs fixed (see Phase 9 deviation log). `WellbeingLogScreen` added at `/wellbeing/log`.
 
 ---
 

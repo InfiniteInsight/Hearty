@@ -64,8 +64,8 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
           setThinking();
         }
       },
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 2),
+      listenFor: const Duration(seconds: 60),
+      pauseFor: const Duration(seconds: 5),
       localeId: 'en-US',
     );
   }
@@ -146,6 +146,25 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       if (!mounted) return;
       setResponse('Got it! I logged "$transcript". How are you feeling?');
     }
+  }
+
+  /// Logs the follow-up transcript as a symptom and acknowledges without looping.
+  Future<void> sendFollowUpToApi() async {
+    final transcript = state.transcript;
+    if (transcript.isEmpty) {
+      dismiss();
+      return;
+    }
+    final ref = _ref;
+    if (ref != null) {
+      try {
+        await ref.read(heartyApiClientProvider).logSymptom(description: transcript);
+      } catch (_) {
+        // Non-fatal — dismiss regardless.
+      }
+    }
+    if (!mounted) return;
+    setResponse('Got it, thanks!', askFollowUp: false);
   }
 
   /// Phase 5 stub — kept for backwards compatibility; delegates to sendToChat.

@@ -1,7 +1,8 @@
 import os
 from datetime import datetime, timezone
+from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from supabase import create_client
 
 from app.auth import get_current_user
@@ -34,3 +35,27 @@ async def log_wellbeing(
 
     result = supabase.table("wellbeing_snapshots").insert(row).execute()
     return WellbeingResponse(**result.data[0])
+
+
+@router.get("/api/wellbeing", status_code=200)
+async def get_wellbeing(
+    user=Depends(get_current_user),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    limit: int = Query(50, le=200),
+) -> list[WellbeingResponse]:
+    now = datetime.now(timezone.utc)
+    start = start_date or now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    end = end_date or now.isoformat()
+
+    result = (
+        supabase.table("wellbeing_snapshots")
+        .select("*")
+        .eq("user_id", user["id"])
+        .gte("logged_at", start)
+        .lte("logged_at", end)
+        .order("logged_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return [WellbeingResponse(**row) for row in (result.data or [])]

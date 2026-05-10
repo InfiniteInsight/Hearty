@@ -59,6 +59,15 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const Divider(),
 
+          // Notifications
+          ListTile(
+            leading: const Icon(Icons.notifications_outlined),
+            title: const Text('Notifications'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/notifications'),
+          ),
+          const Divider(),
+
           // Health Profile (Phase 5 wires the actual screen)
           ListTile(
             leading: const Icon(Icons.health_and_safety),

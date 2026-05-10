@@ -30,8 +30,10 @@ class _HealthProfileScreenState extends ConsumerState<HealthProfileScreen> {
     'Dairy-Free',
     'Low-FODMAP',
     'Vegetarian',
+    'Pescetarian',
     'Vegan',
     'Keto',
+    'Paleo',
   ];
 
   List<String> _allergens = [];

@@ -20,7 +20,9 @@ class _SignInScreenState extends State<SignInScreen> {
     });
 
     try {
-      final googleSignIn = GoogleSignIn();
+      final googleSignIn = GoogleSignIn(
+        serverClientId: '822563687817-ilgg7pf13akhprkvh5i8t6oonmdbrlgh.apps.googleusercontent.com',
+      );
       final googleUser = await googleSignIn.signIn();
 
       if (googleUser == null) {
