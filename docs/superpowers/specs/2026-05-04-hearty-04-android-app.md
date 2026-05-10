@@ -18,7 +18,7 @@ Phase 2 delivers the primary user-facing product: a Flutter Android application 
 Phase 2 covers everything from the Flutter project scaffold to a shippable Android APK. Specifically:
 
 - Flutter project structure and architecture
-- Wake word detection via Porcupine foreground service
+- Wake word detection via openWakeWord (open source, ONNX-based) foreground service
 - Voice capture (speech-to-text) and voice response (text-to-speech)
 - Meal, symptom, and wellbeing logging flows
 - Photo capture with categorization (food plate, barcode, nutrition label, food label)
@@ -115,7 +115,7 @@ hearty_app/
 - Minimal battery impact (~1-2% per hour on modern hardware).
 - Custom wake words trained locally using the openWakeWord Python training pipeline.
 
-**Custom wake word:** "Hey Hearty" — trained locally using openWakeWord. The `.onnx` model file ships bundled in `assets/wake_word/hey_hearty.onnx`.
+**Custom wake word:** "Hey Hearty" — target phrase, to be trained locally using openWakeWord. Currently using `hey_jarvis.onnx` (a pre-built openWakeWord model) as a stand-in while `hey_hearty.onnx` training is completed. The model file ships bundled in `assets/wake_word/`.
 
 **Fallback:** If the user has not configured the wake word service or denies microphone permission, they tap the floating action button on the home screen to activate listening.
 
@@ -292,12 +292,14 @@ Wake word detected
 
 The app handles four distinct photo types, each routed to a different processing backend:
 
-| Type | Detection Method | Backend |
+| Type | Detection Method | API `type` field value |
 |---|---|---|
-| Food Plate | Vision AI (Claude vision) | POST /api/photos/analyze |
-| Barcode | `mobile_scanner` real-time scan | POST /api/photos/barcode |
-| Nutrition Label | OCR (ML Kit on-device) | POST /api/photos/nutrition-label |
-| Food Label / Packaging | OCR (ML Kit on-device) | POST /api/photos/food-label |
+| Food Plate | Vision AI (Claude vision) | `food_plate` |
+| Barcode | `mobile_scanner` real-time scan | `barcode` |
+| Nutrition Label | OCR (ML Kit on-device) | `nutrition_label` |
+| Food Label / Packaging | OCR (ML Kit on-device) | `food_label` |
+
+All four types upload to a single endpoint: `POST /api/photos` (multipart/form-data with `file` + `type` fields). The `type` field drives backend routing.
 
 ### 5.3 Capture Flow
 
@@ -445,7 +447,7 @@ Located at Settings → Notifications. Controls:
 - Sync error alerts: toggle on/off (default: on, not recommended to disable)
 - **Wake word detection:** toggle on/off (default: **on**). When disabled, the `HeartyWakeWordService` foreground service stops and the persistent "Hearty is listening" notification disappears. The floating action button on the home screen remains available as the primary activation method when wake word is off.
 
-All preferences are stored in Supabase (`user_preferences` table) so they sync across devices, and also cached locally for offline access.
+All preferences are stored in Supabase (`notification_preferences` table for notification settings, `health_profile` for allergens/conditions) and surfaced to the app via the `GET /api/preferences` endpoint which combines both tables into a single `UserPreferences` shape.
 
 ### 7.6 Android Notification Channels
 
@@ -680,8 +682,7 @@ All changes sync immediately to Supabase. The health profile is embedded in the 
 | Log symptom | POST | `/api/symptoms` |
 | Log wellbeing | POST | `/api/wellbeing` |
 | Chat with Claude (voice AI) | POST | `/api/chat` |
-| Upload photo | POST | `/api/photos/analyze` |
-| Scan barcode | POST | `/api/photos/barcode` |
+| Upload photo (any type) | POST | `/api/photos` |
 | Fetch history | GET | `/api/meals?start=&end=&limit=` |
 | Fetch trends | GET | `/api/trends` |
 | Get user preferences | GET | `/api/preferences` |
@@ -728,7 +729,7 @@ await Supabase.initialize(
 
 **Platform:** The openWakeWord ONNX model runs inside `HeartyWakeWordService.kt`. Communication with Flutter is via `MethodChannel('com.hearty.app/wake_word')`. No access key or external service required.
 
-**Wake word model file:** `assets/wake_word/hey_hearty.onnx` — trained locally with the openWakeWord Python pipeline, bundled in the app, no network call required at runtime.
+**Wake word model file:** `assets/wake_word/hey_jarvis.onnx` (current stand-in) / `hey_hearty.onnx` (target, pending training) — bundled in the app, no network call required at runtime.
 
 **Sensitivity:** Controlled by the detection threshold applied to the model's output score (range 0.0–1.0; default 0.5). Higher values increase detection rate but also false positives. User-configurable in Settings → Voice Settings.
 
