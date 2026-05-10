@@ -183,6 +183,7 @@ Update the plan: set Phase 0 status to 🟢 Completed and Last Updated to today.
 **Deviation Log:**
 - 2026-05-06 — Switched from Picovoice Porcupine to openWakeWord (open source, ONNX-based). Removed `porcupine_flutter` from pubspec.yaml; ONNX Runtime for Android added as a Gradle dependency instead. No API key required. Asset path changed from `.ppn` to `.onnx`.
 - 2026-05-09 — Global wake word listener moved from `HomeScreen` to `_ScaffoldWithNavBar` so it is active on all four tabs, not just Home. Screen-off wakeup implemented via `WAKE_LOCK` + explicit `MainActivity` Intent. Follow-up loop bug fixed (second voice turn routed to `sendFollowUpToApi`, not `sendToChat`). STT silence timeout extended from 2s to 5s.
+- 2026-05-09 — `hey_hearty.onnx` training not completed. Service currently uses `hey_jarvis.onnx` (a pre-built openWakeWord model for "Hey Jarvis") as a stand-in. Wake word test phrase is "Hey Jarvis" until the custom model is trained and swapped in.
 
 ---
 
@@ -415,8 +416,8 @@ Completion criteria:
 **Key deliverables:**
 - Voice log flow (text entry path): type a meal in the voice overlay → verify log entry appears on home screen
 - Voice log flow (voice path): speak a meal via STT → verify log entry appears on home screen
-- Wake word flow: say "Hey Hearty" from a non-Home tab (e.g., History or Settings) with screen on → voice overlay appears
-- Wake word flow (screen off): lock the device → say "Hey Hearty" → screen wakes, app comes to front, voice overlay appears
+- Wake word flow: say "Hey Jarvis" from a non-Home tab (e.g., History or Settings) with screen on → voice overlay appears (using hey_jarvis.onnx stand-in; update to "Hey Hearty" once custom model is trained)
+- Wake word flow (screen off): lock the device → say "Hey Jarvis" → screen wakes, app comes to front, voice overlay appears
 - Photo flow: capture food plate → confirm processing status resolves to `complete`
 - Offline flow: disable network, log a meal, re-enable, verify queue drains and entry syncs
 - Auth flow: sign out → sign back in → verify timeline data persists

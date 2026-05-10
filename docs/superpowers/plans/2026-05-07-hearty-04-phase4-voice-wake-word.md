@@ -18,6 +18,8 @@ export PATH="$PATH:/home/evan/tools/flutter/bin"
 - `hearty_app/assets/wake_word/hey_hearty.onnx` — model I/O: input `x` [1, 16, 96] float32; output `sigmoid` [1, 1] float32
 - Registered in `pubspec.yaml`
 
+> **Status note (2026-05-09):** `hey_hearty.onnx` training was not completed. The service currently loads `hey_jarvis.onnx` (a pre-built openWakeWord model) as a stand-in. All model paths in this task plan that reference `hey_hearty.onnx` are the intended target; substitute `hey_jarvis.onnx` in the actual code until custom training is done.
+
 ---
 
 ## File Map
