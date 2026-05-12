@@ -1,4 +1,4 @@
-DEVICE_ID ?= ZY22KKLSX6
+DEVICE_ID ?= 0B161JEC205801
 FLUTTER    := /home/evan/tools/flutter/bin/flutter
 DEFINES    := --dart-define-from-file=../.env
 

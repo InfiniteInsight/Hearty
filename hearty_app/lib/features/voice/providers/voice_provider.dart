@@ -100,7 +100,15 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   void setAwaitingFollowUp() {
     if (!mounted) return;
     state = state.copyWith(status: VoiceStatus.awaitingFollowUp);
-    _beginStt();
+    _beginFollowUpStt();
+  }
+
+  Future<void> _beginFollowUpStt() async {
+    // Cancel any lingering Android SpeechRecognizer session from the first turn
+    // and give it time to fully tear down before starting a new listen().
+    if (_stt.isListening) await _stt.cancel();
+    await Future.delayed(const Duration(milliseconds: 350));
+    if (mounted) await _beginStt();
   }
 
   void dismiss() {

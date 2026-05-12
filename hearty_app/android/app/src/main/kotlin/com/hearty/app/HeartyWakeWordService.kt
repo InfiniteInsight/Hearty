@@ -85,8 +85,18 @@ class HeartyWakeWordService : Service() {
                     methodChannel = MethodChannel(messenger, METHOD_CHANNEL)
                     methodChannel?.setMethodCallHandler { call, result ->
                         when (call.method) {
-                            "startListening" -> { isPaused = false; result.success(null) }
-                            "stopListening"  -> { isPaused = true;  result.success(null) }
+                            "startListening" -> {
+                                isPaused = false
+                                // Re-acquire the mic after STT finishes
+                                try { audioRecord?.startRecording() } catch (_: Exception) {}
+                                result.success(null)
+                            }
+                            "stopListening" -> {
+                                isPaused = true
+                                // Actually release the mic so SpeechRecognizer can acquire it
+                                audioRecord?.stop()
+                                result.success(null)
+                            }
                             else -> result.notImplemented()
                         }
                     }
@@ -135,7 +145,7 @@ class HeartyWakeWordService : Service() {
             SAMPLES_PER_CHUNK * 4
         )
         audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.UNPROCESSED,
+            MediaRecorder.AudioSource.MIC,
             SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT,
@@ -162,20 +172,15 @@ class HeartyWakeWordService : Service() {
                 val read = audioRecord?.read(shortBuffer, 0, SAMPLES_PER_CHUNK) ?: 0
                 if (read < SAMPLES_PER_CHUNK) continue
 
-                val floatAudio = FloatArray(SAMPLES_PER_CHUNK) { shortBuffer[it].toFloat() / 32768.0f }
-                val rms = Math.sqrt(floatAudio.map { it * it }.average()).toFloat()
-
-                // Mild normalization: bring quiet phone mic up toward training amplitude
-                // without clipping. Cap gain at 15× to avoid distorting speech peaks.
-                val processAudio = if (rms > 0.001f) {
-                    val gain = minOf(0.05f / rms, 15f)
-                    FloatArray(SAMPLES_PER_CHUNK) { floatAudio[it] * gain }
-                } else {
-                    floatAudio
-                }
+                // openWakeWord expects raw int16 magnitudes as float32 — no normalization.
+                // Dividing by 32768 produces melspectrogram values far outside the range
+                // the embedding model was trained on. The Python reference does .astype(float32)
+                // with no scaling, so we match that exactly.
+                val floatAudio = FloatArray(SAMPLES_PER_CHUNK) { shortBuffer[it].toFloat() }
+                val rms = Math.sqrt(floatAudio.map { (it / 32768.0) * (it / 32768.0) }.average()).toFloat()
 
                 // Stage 1: 1280 samples → mel frames [1, 1, N, 32] where N ≈ 5
-                val newFrames = getMelFrames(processAudio) ?: continue
+                val newFrames = getMelFrames(floatAudio) ?: continue
 
                 // Add new mel frames to the rolling 76-frame buffer.
                 for (frame in newFrames) {
@@ -227,6 +232,9 @@ class HeartyWakeWordService : Service() {
                     val tensor = result[MEL_OUTPUT_NODE].get() as OnnxTensor
                     val allFloats = FloatArray(tensor.floatBuffer.remaining())
                     tensor.floatBuffer.get(allFloats)
+                    // openWakeWord Python reference applies spec/10+2 after the mel model
+                    // to align the output range with what the Google TF embedding model expects.
+                    for (i in allFloats.indices) allFloats[i] = allFloats[i] / 10.0f + 2.0f
                     val nFrames = allFloats.size / MEL_BINS
                     List(nFrames) { i -> allFloats.copyOfRange(i * MEL_BINS, (i + 1) * MEL_BINS) }
                 }
@@ -277,6 +285,8 @@ class HeartyWakeWordService : Service() {
 
     private fun onWakeWordDetected() {
         isPaused = true
+        // Release the mic so Flutter's SpeechRecognizer can acquire it
+        audioRecord?.stop()
         melFrameBuffer.clear()
         embeddingBuffer.clear()
 

@@ -4,14 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../voice/providers/voice_provider.dart';
 import '../../voice/screens/voice_overlay_screen.dart';
+import '../../../core/audio/chime_player.dart';
+import '../../../features/wake_word/wake_word_channel.dart';
 import '../../../core/api/providers/meals_provider.dart';
 import '../../../core/api/providers/symptoms_provider.dart';
 import '../../../core/api/providers/wellbeing_provider.dart';
 import '../../../core/api/models/meal_log.dart';
 import '../../../core/api/models/symptom_log.dart';
 import '../../../core/api/models/wellbeing_log.dart';
+import '../../../core/api/models/wellbeing_period.dart';
 import '../../../core/sync/sync_service.dart';
-import '../../../app/router.dart';
 
 // ---------------------------------------------------------------------------
 // Top-level helpers
@@ -251,6 +253,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _openVoiceOverlay(BuildContext context) async {
+    // Stop the wake word service's AudioRecord so SpeechRecognizer can grab the mic.
+    await WakeWordChannel.stopListening().catchError((_) {});
+    await ChimePlayer.instance.play();
+    if (!context.mounted) return;
     ref.read(voiceProvider.notifier).startListening();
     await showModalBottomSheet<void>(
       context: context,
@@ -258,6 +264,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => const VoiceOverlayScreen(),
     );
+    // Refresh timeline so newly logged entries appear immediately.
+    ref.invalidate(mealsProvider);
+    ref.invalidate(symptomsProvider);
+    ref.invalidate(wellbeingProvider);
+    // Resume wake word detection after the voice session ends.
+    WakeWordChannel.startListening().catchError((_) {});
   }
 }
 
@@ -353,7 +365,7 @@ class _TimelineBody extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Wellbeing snapshot card
+// Wellbeing snapshot card — three-column layout
 // ---------------------------------------------------------------------------
 
 class _WellbeingSnapshotCard extends StatelessWidget {
@@ -361,70 +373,100 @@ class _WellbeingSnapshotCard extends StatelessWidget {
 
   const _WellbeingSnapshotCard({required this.wellbeingEntries});
 
+  WellbeingLog? _latestForPeriod(WellbeingPeriod period) {
+    final filtered = wellbeingEntries.where((e) => e.period == period).toList()
+      ..sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
+    return filtered.isEmpty ? null : filtered.first;
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (wellbeingEntries.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        child: Card(
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => context.pushNamed(Routes.wellbeingLog),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(Icons.favorite_border,
-                      color: Theme.of(context).colorScheme.primary),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text('Log your morning wellbeing'),
-                  ),
-                  const Icon(Icons.chevron_right),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    final avgEnergy =
-        wellbeingEntries.map((w) => w.energy).reduce((a, b) => a + b) /
-            wellbeingEntries.length;
-    final avgMood =
-        wellbeingEntries.map((w) => w.mood).reduce((a, b) => a + b) /
-            wellbeingEntries.length;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Card(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Today's wellbeing",
+                "Today's Wellbeing",
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Icon(Icons.bolt, color: Colors.amber),
-                  const SizedBox(width: 8),
-                  Text('Energy  ${avgEnergy.toStringAsFixed(1)} / 5'),
-                ],
+              IntrinsicHeight(
+                child: Row(
+                  children: [
+                    _PeriodSlot(
+                      period: WellbeingPeriod.morning,
+                      entry: _latestForPeriod(WellbeingPeriod.morning),
+                    ),
+                    const VerticalDivider(width: 1),
+                    _PeriodSlot(
+                      period: WellbeingPeriod.midday,
+                      entry: _latestForPeriod(WellbeingPeriod.midday),
+                    ),
+                    const VerticalDivider(width: 1),
+                    _PeriodSlot(
+                      period: WellbeingPeriod.evening,
+                      entry: _latestForPeriod(WellbeingPeriod.evening),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.sentiment_satisfied_alt,
-                      color: Colors.pink),
-                  const SizedBox(width: 8),
-                  Text('Mood  ${avgMood.toStringAsFixed(1)} / 5'),
-                ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PeriodSlot extends StatelessWidget {
+  final WellbeingPeriod period;
+  final WellbeingLog? entry;
+
+  const _PeriodSlot({required this.period, required this.entry});
+
+  void _onTap(BuildContext context) {
+    if (entry != null) {
+      context.push('/wellbeing/log?period=${period.name}&id=${entry!.id}');
+    } else {
+      context.push('/wellbeing/log?period=${period.name}');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Expanded(
+      child: InkWell(
+        onTap: () => _onTap(context),
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                period.label,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
               ),
+              const SizedBox(height: 6),
+              if (entry != null) ...[
+                Text('⚡${entry!.energy}',
+                    style: Theme.of(context).textTheme.bodyMedium),
+                Text('😊${entry!.mood}',
+                    style: Theme.of(context).textTheme.bodyMedium),
+              ] else
+                Text(
+                  '+ Log',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.primary,
+                      ),
+                ),
             ],
           ),
         ),

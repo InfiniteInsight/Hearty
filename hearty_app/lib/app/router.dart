@@ -25,6 +25,10 @@ import '../features/logging/screens/onboarding_screen.dart';
 import '../features/photos/screens/camera_screen.dart';
 import '../features/settings/screens/notification_preferences_screen.dart';
 import '../features/wellbeing/screens/wellbeing_log_screen.dart';
+import '../core/api/models/wellbeing_period.dart';
+import '../core/api/providers/meals_provider.dart';
+import '../core/api/providers/symptoms_provider.dart';
+import '../core/api/providers/wellbeing_provider.dart';
 
 /// Global navigator key — used by [NotificationService] to push deep links
 /// when a notification is tapped from background/terminated state.
@@ -160,7 +164,17 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/wellbeing/log',
         name: Routes.wellbeingLog,
-        builder: (context, state) => const WellbeingLogScreen(),
+        builder: (context, state) {
+          final periodStr = state.uri.queryParameters['period'];
+          final period = switch (periodStr) {
+            'morning' => WellbeingPeriod.morning,
+            'midday' => WellbeingPeriod.midday,
+            'evening' => WellbeingPeriod.evening,
+            _ => null,
+          };
+          final id = state.uri.queryParameters['id'];
+          return WellbeingLogScreen(initialPeriod: period, entryId: id);
+        },
       ),
     ],
   );
@@ -231,6 +245,10 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
         backgroundColor: Colors.transparent,
         builder: (_) => const VoiceOverlayScreen(),
       );
+      // Refresh timeline so newly logged entries appear immediately.
+      ref.invalidate(mealsProvider);
+      ref.invalidate(symptomsProvider);
+      ref.invalidate(wellbeingProvider);
       ref.read(wakeWordDetectedProvider.notifier).setDetected(false);
       WakeWordChannel.startListening().catchError((_) {});
     });

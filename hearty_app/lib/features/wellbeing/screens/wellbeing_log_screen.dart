@@ -2,21 +2,49 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/api/hearty_api_client.dart';
 import '../../../core/api/providers/wellbeing_provider.dart';
+import '../../../core/api/models/wellbeing_period.dart';
 
 class WellbeingLogScreen extends ConsumerStatefulWidget {
-  const WellbeingLogScreen({super.key});
+  final WellbeingPeriod? initialPeriod;
+  final String? entryId;
+
+  const WellbeingLogScreen({
+    super.key,
+    this.initialPeriod,
+    this.entryId,
+  });
 
   @override
   ConsumerState<WellbeingLogScreen> createState() => _WellbeingLogScreenState();
 }
 
 class _WellbeingLogScreenState extends ConsumerState<WellbeingLogScreen> {
+  late WellbeingPeriod _period;
   int _energy = 3;
   int _mood = 3;
   final _notesController = TextEditingController();
   bool _saving = false;
+
+  bool get _isEditing => widget.entryId != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _period = widget.initialPeriod ?? WellbeingPeriod.inferFromLocalHour();
+
+    if (widget.entryId != null) {
+      final entries = ref.read(wellbeingProvider).valueOrNull ?? [];
+      final matches = entries.where((e) => e.id == widget.entryId);
+      if (matches.isNotEmpty) {
+        final entry = matches.first;
+        _energy = entry.energy;
+        _mood = entry.mood;
+        _notesController.text = entry.notes ?? '';
+        if (entry.period != null) _period = entry.period!;
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -26,15 +54,26 @@ class _WellbeingLogScreenState extends ConsumerState<WellbeingLogScreen> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
+    final notes = _notesController.text.trim().isEmpty
+        ? null
+        : _notesController.text.trim();
     try {
-      await ref.read(heartyApiClientProvider).logWellbeing(
-            energy: _energy,
-            mood: _mood,
-            notes: _notesController.text.trim().isEmpty
-                ? null
-                : _notesController.text.trim(),
-          );
-      ref.invalidate(wellbeingProvider);
+      if (_isEditing) {
+        await ref.read(wellbeingProvider.notifier).updateWellbeing(
+              widget.entryId!,
+              energy: _energy,
+              mood: _mood,
+              notes: notes,
+              period: _period,
+            );
+      } else {
+        await ref.read(wellbeingProvider.notifier).logWellbeing(
+              energy: _energy,
+              mood: _mood,
+              notes: notes,
+              period: _period,
+            );
+      }
       if (mounted) context.pop();
     } catch (e) {
       if (mounted) {
@@ -50,10 +89,24 @@ class _WellbeingLogScreenState extends ConsumerState<WellbeingLogScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Morning Wellbeing')),
+      appBar: AppBar(
+        title: Text(_isEditing ? 'Edit Wellbeing' : 'Log Wellbeing'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
+          // Period selector
+          SegmentedButton<WellbeingPeriod>(
+            segments: WellbeingPeriod.values
+                .map((p) => ButtonSegment<WellbeingPeriod>(
+                      value: p,
+                      label: Text(p.label),
+                    ))
+                .toList(),
+            selected: {_period},
+            onSelectionChanged: (s) => setState(() => _period = s.first),
+          ),
+          const SizedBox(height: 24),
           _ScaleRow(
             label: 'Energy',
             icon: Icons.bolt,
@@ -116,11 +169,9 @@ class _ScaleRow extends StatelessWidget {
           children: [
             Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: 8),
-            Text(label,
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(label, style: Theme.of(context).textTheme.titleMedium),
             const Spacer(),
-            Text('$value / 5',
-                style: Theme.of(context).textTheme.bodyMedium),
+            Text('$value / 5', style: Theme.of(context).textTheme.bodyMedium),
           ],
         ),
         Row(

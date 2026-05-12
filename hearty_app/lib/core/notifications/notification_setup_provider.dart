@@ -2,6 +2,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/hearty_api_client.dart';
+import '../api/models/user_preferences.dart';
+import '../api/models/wellbeing_period.dart';
 import '../api/providers/preferences_provider.dart';
 import '../auth/auth_repository.dart';
 import 'notification_service.dart';
@@ -21,20 +23,32 @@ final notificationSetupProvider = Provider<void>((ref) {
       .listen((_) => Future.microtask(() => _syncToken(ref)));
   ref.onDispose(sub.cancel);
 
-  // Schedule / cancel daily check-in whenever preferences change.
+  // Schedule / cancel all three check-ins whenever preferences change.
   ref.listen(preferencesProvider, (_, next) {
-    next.whenData((prefs) {
-      if (prefs.dailyCheckinEnabled) {
-        NotificationService.scheduleDailyCheckin(
-          prefs.dailyCheckinHour,
-          prefs.dailyCheckinMinute,
-        );
-      } else {
-        NotificationService.cancelDailyCheckin();
-      }
-    });
+    next.whenData((prefs) => _scheduleAllCheckins(prefs));
   });
 });
+
+void _scheduleAllCheckins(UserPreferences prefs) {
+  NotificationService.scheduleCheckinNotification(
+    period: WellbeingPeriod.morning,
+    hour: prefs.morningCheckinHour,
+    minute: prefs.morningCheckinMinute,
+    enabled: prefs.morningCheckinEnabled,
+  );
+  NotificationService.scheduleCheckinNotification(
+    period: WellbeingPeriod.midday,
+    hour: prefs.middayCheckinHour,
+    minute: prefs.middayCheckinMinute,
+    enabled: prefs.middayCheckinEnabled,
+  );
+  NotificationService.scheduleCheckinNotification(
+    period: WellbeingPeriod.evening,
+    hour: prefs.eveningCheckinHour,
+    minute: prefs.eveningCheckinMinute,
+    enabled: prefs.eveningCheckinEnabled,
+  );
+}
 
 Future<void> _syncToken(Ref ref) async {
   try {

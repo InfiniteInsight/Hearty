@@ -10,6 +10,7 @@ import '../offline/offline_database.dart';
 import 'models/meal_log.dart';
 import 'models/symptom_log.dart';
 import 'models/wellbeing_log.dart';
+import 'models/wellbeing_period.dart';
 import 'models/trends_data.dart';
 import 'models/user_preferences.dart';
 import 'offline_exception.dart';
@@ -209,11 +210,13 @@ class HeartyApiClient {
     int? energy,
     int? mood,
     String? notes,
+    WellbeingPeriod? period,
   }) async {
     final body = <String, dynamic>{
       'energy_level': energy,
       'mood': mood,
       'notes': notes,
+      if (period != null) 'period': period.name,
     }..removeWhere((_, v) => v == null);
     try {
       final response = await _dio.post<Map<String, dynamic>>(
@@ -230,10 +233,30 @@ class HeartyApiClient {
           mood: mood ?? 3,
           notes: notes,
           loggedAt: DateTime.now(),
+          period: period,
         );
       }
       rethrow;
     }
+  }
+
+  Future<WellbeingLog> updateWellbeing(
+    String id, {
+    int? energy,
+    int? mood,
+    String? notes,
+    WellbeingPeriod? period,
+  }) async {
+    final body = <String, dynamic>{};
+    if (energy != null) body['energy_level'] = energy;
+    if (mood != null) body['mood'] = mood;
+    if (notes != null) body['notes'] = notes;
+    if (period != null) body['period'] = period.name;
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/api/wellbeing/$id',
+      data: body,
+    );
+    return WellbeingLog.fromJson(response.data!);
   }
 
   Future<List<WellbeingLog>> fetchWellbeing({
@@ -280,16 +303,28 @@ class HeartyApiClient {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Trends
+  // Trends (Plan 11: Unified Signal Engine)
   // ──────────────────────────────────────────────────────────────────────────
 
   Future<TrendsData> fetchTrends({int days = 30}) {
     return _call(() async {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/api/trends',
-        queryParameters: {'analysis_period_days': days},
-      );
-      return TrendsData.fromJson(response.data!);
+      final response = await _dio.get<Map<String, dynamic>>('/api/trends');
+      return TrendsData.fromSignalsJson(response.data!);
+    });
+  }
+
+  Future<Map<String, dynamic>> triggerAnalysis() {
+    return _call(() async {
+      final response = await _dio.post<Map<String, dynamic>>('/api/trends/analyze');
+      return response.data!;
+    });
+  }
+
+  Future<Map<String, dynamic>> getAnalyzeStatus() {
+    return _call(() async {
+      final response =
+          await _dio.get<Map<String, dynamic>>('/api/trends/analyze/status');
+      return response.data!;
     });
   }
 

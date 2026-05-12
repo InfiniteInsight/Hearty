@@ -27,6 +27,16 @@ class UserPreferencesSchema(BaseModel):
     daily_checkin_hour: int = 8
     daily_checkin_minute: int = 0
     fcm_token: Optional[str] = None
+    # Per-slot check-in preferences
+    morning_checkin_enabled: bool = True
+    morning_checkin_hour: int = 8
+    morning_checkin_minute: int = 0
+    midday_checkin_enabled: bool = True
+    midday_checkin_hour: int = 13
+    midday_checkin_minute: int = 0
+    evening_checkin_enabled: bool = True
+    evening_checkin_hour: int = 20
+    evening_checkin_minute: int = 0
 
 
 def _get_or_create_notif_prefs(user_id: str) -> dict:
@@ -80,6 +90,15 @@ def _row_to_schema(hp: dict, np: dict) -> UserPreferencesSchema:
         daily_checkin_hour=hour,
         daily_checkin_minute=minute,
         fcm_token=np.get("fcm_token"),
+        morning_checkin_enabled=np.get("morning_checkin_enabled") if np.get("morning_checkin_enabled") is not None else True,
+        morning_checkin_hour=np.get("morning_checkin_hour") if np.get("morning_checkin_hour") is not None else 8,
+        morning_checkin_minute=np.get("morning_checkin_minute") if np.get("morning_checkin_minute") is not None else 0,
+        midday_checkin_enabled=np.get("midday_checkin_enabled") if np.get("midday_checkin_enabled") is not None else True,
+        midday_checkin_hour=np.get("midday_checkin_hour") if np.get("midday_checkin_hour") is not None else 13,
+        midday_checkin_minute=np.get("midday_checkin_minute") if np.get("midday_checkin_minute") is not None else 0,
+        evening_checkin_enabled=np.get("evening_checkin_enabled") if np.get("evening_checkin_enabled") is not None else True,
+        evening_checkin_hour=np.get("evening_checkin_hour") if np.get("evening_checkin_hour") is not None else 20,
+        evening_checkin_minute=np.get("evening_checkin_minute") if np.get("evening_checkin_minute") is not None else 0,
     )
 
 
@@ -107,6 +126,15 @@ async def update_preferences(
         "sync_error_alerts_enabled": body.sync_error_alerts_enabled,
         "wake_word_enabled": body.wake_word_enabled,
         "fcm_token": body.fcm_token,
+        "morning_checkin_enabled": body.morning_checkin_enabled,
+        "morning_checkin_hour": body.morning_checkin_hour,
+        "morning_checkin_minute": body.morning_checkin_minute,
+        "midday_checkin_enabled": body.midday_checkin_enabled,
+        "midday_checkin_hour": body.midday_checkin_hour,
+        "midday_checkin_minute": body.midday_checkin_minute,
+        "evening_checkin_enabled": body.evening_checkin_enabled,
+        "evening_checkin_hour": body.evening_checkin_hour,
+        "evening_checkin_minute": body.evening_checkin_minute,
     }
     notif_row = {k: v for k, v in notif_row.items() if v is not None or k == "fcm_token"}
     np_result = (
