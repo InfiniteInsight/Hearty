@@ -43,6 +43,9 @@ async def log_symptoms(
         }
         rows.append({k: v for k, v in row.items() if v is not None})
 
+    if not rows:
+        return []
+
     result = supabase.table("symptoms").insert(rows).execute()
     return [SymptomResponse(**r) for r in result.data]
 

@@ -86,12 +86,13 @@ class WellbeingRequest(BaseModel):
     exercise_minutes: Optional[int] = None
     notes: Optional[str] = None
     logged_at: Optional[datetime] = None
+    period: Optional[Literal['morning', 'midday', 'evening']] = None
 
 class WellbeingResponse(WellbeingRequest):
     id: UUID
     created_at: datetime
 
-# ─── Trends ───────────────────────────────────────────────────────────────────
+# ─── Trends (legacy — kept for /api/summary until Plan 11 Phase 7 cleanup) ───
 
 class TriggerFood(BaseModel):
     food_name: str
@@ -118,6 +119,41 @@ class SummaryResponse(BaseModel):
     meals_logged: int
     top_symptoms: List[dict]
     top_triggers: List[TriggerFood]
+
+# ─── Signals (Plan 11: Unified Signal Engine) ─────────────────────────────────
+
+class SignalChannel(BaseModel):
+    outcome_type: Literal["symptom", "wellbeing"]
+    outcome_name: str
+    direction: Literal["harmful", "beneficial"]
+    peak_window_minutes: Optional[int] = None
+    meal_slot: Optional[str] = None
+    wellbeing_slot: Optional[str] = None
+    relative_risk: Optional[float] = None
+    score_delta: Optional[float] = None
+    evidence_count: int
+
+class FoodSignal(BaseModel):
+    category: str
+    unified_score: float
+    channels: List[SignalChannel]
+    convergent: bool
+
+class SignalsResponse(BaseModel):
+    signals: List[FoodSignal]
+    analyzed_at: Optional[datetime]
+    total_meals_analyzed: int
+    total_symptoms_analyzed: int
+    total_wellbeing_analyzed: int
+
+class AnalyzeResponse(BaseModel):
+    status: Literal["started", "completed"]
+    analyzed_at: datetime
+    new_signals_count: int
+
+class AnalyzeStatusResponse(BaseModel):
+    last_analyzed_at: Optional[datetime]
+    has_new_data: bool
 
 # ─── Health Profile ───────────────────────────────────────────────────────────
 

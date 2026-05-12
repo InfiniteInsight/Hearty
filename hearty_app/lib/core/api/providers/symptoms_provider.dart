@@ -8,8 +8,8 @@ class SymptomsNotifier extends AsyncNotifier<List<SymptomLog>> {
   Future<List<SymptomLog>> build() async {
     final client = ref.watch(heartyApiClientProvider);
     final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
-    return client.fetchSymptoms(start: startOfDay, end: now);
+    final startOfDay = DateTime(now.year, now.month, now.day).toUtc();
+    return client.fetchSymptoms(start: startOfDay, end: now.toUtc());
   }
 
   Future<void> logSymptom(String description, {int? severity}) async {

@@ -8,6 +8,7 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../../app/router.dart';
+import '../api/models/wellbeing_period.dart';
 
 /// Top-level FCM background handler — isolate constraint: must be top-level
 /// and marked @pragma so the tree-shaker preserves it.
@@ -126,9 +127,29 @@ class NotificationService {
     });
   }
 
-  /// Schedule (or reschedule) the daily check-in local notification.
-  static Future<void> scheduleDailyCheckin(int hour, int minute) async {
-    await _localNotifs.cancel(_kCheckinNotifId);
+  static int _notifId(WellbeingPeriod period) => switch (period) {
+        WellbeingPeriod.morning => 1001,
+        WellbeingPeriod.midday => 1002,
+        WellbeingPeriod.evening => 1003,
+      };
+
+  static String _notifTitle(WellbeingPeriod period) => switch (period) {
+        WellbeingPeriod.morning => 'Good morning — how are you feeling?',
+        WellbeingPeriod.midday => 'Midday check-in',
+        WellbeingPeriod.evening => 'Evening check-in',
+      };
+
+  /// Schedule (or cancel) a single period check-in notification.
+  static Future<void> scheduleCheckinNotification({
+    required WellbeingPeriod period,
+    required int hour,
+    required int minute,
+    required bool enabled,
+  }) async {
+    final id = _notifId(period);
+    await _localNotifs.cancel(id);
+    if (!enabled) return;
+
     final now = tz.TZDateTime.now(tz.local);
     var scheduled =
         tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
@@ -138,12 +159,13 @@ class NotificationService {
     final androidPlugin = _localNotifs
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
-    final canExact = await androidPlugin?.canScheduleExactNotifications() ?? false;
+    final canExact =
+        await androidPlugin?.canScheduleExactNotifications() ?? false;
 
     await _localNotifs.zonedSchedule(
-      _kCheckinNotifId,
-      'Good morning — how did you sleep?',
-      'Tap to log your morning wellbeing.',
+      id,
+      _notifTitle(period),
+      'Tap to log your ${period.name} wellbeing.',
       scheduled,
       const NotificationDetails(
         android: AndroidNotificationDetails(
@@ -157,7 +179,18 @@ class NotificationService {
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
-      payload: '/log',
+      payload: '/wellbeing/log?period=${period.name}',
+    );
+  }
+
+  /// Schedule (or reschedule) the daily check-in local notification.
+  /// Kept for backward compatibility — delegates to scheduleCheckinNotification.
+  static Future<void> scheduleDailyCheckin(int hour, int minute) async {
+    await scheduleCheckinNotification(
+      period: WellbeingPeriod.morning,
+      hour: hour,
+      minute: minute,
+      enabled: true,
     );
   }
 

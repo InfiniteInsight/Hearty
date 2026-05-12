@@ -1,3 +1,6 @@
+# DEPRECATED — superseded by signal_engine.py (Plan 11: Unified Signal Engine).
+# Still called by the legacy update_food_triggers_table path until Plan 11 Phase 7 cleanup.
+# Do not add new logic here.
 import os
 from datetime import datetime, timezone, timedelta
 

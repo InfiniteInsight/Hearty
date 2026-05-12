@@ -1,50 +1,127 @@
 class TrendsData {
   final List<SymptomFrequencyPoint> symptomFrequency;
-  final List<TriggerFood> topTriggerFoods;
+  final List<FoodSignal> signals;
   final List<WellbeingPoint> wellbeingTrend;
   final Map<String, int> mealTypeDistribution;
+  final DateTime? analyzedAt;
 
   const TrendsData({
     required this.symptomFrequency,
-    required this.topTriggerFoods,
+    required this.signals,
     required this.wellbeingTrend,
     required this.mealTypeDistribution,
+    this.analyzedAt,
   });
 
-  factory TrendsData.fromJson(Map<String, dynamic> json) {
-    // Backend returns TrendsResponse shape with triggers list.
-    final triggers = (json['triggers'] as List<dynamic>? ?? [])
-        .map((t) => TriggerFood.fromJson(t as Map<String, dynamic>))
+  factory TrendsData.fromSignalsJson(Map<String, dynamic> json) {
+    final signals = (json['signals'] as List<dynamic>? ?? [])
+        .map((s) => FoodSignal.fromJson(s as Map<String, dynamic>))
         .toList();
 
-    final symptomFreq = (json['symptom_frequency'] as List<dynamic>? ?? [])
-        .map((p) => SymptomFrequencyPoint.fromJson(p as Map<String, dynamic>))
-        .toList();
-
-    final wellbeing = (json['wellbeing_trend'] as List<dynamic>? ?? [])
-        .map((p) => WellbeingPoint.fromJson(p as Map<String, dynamic>))
-        .toList();
-
-    final mealDist = <String, int>{};
-    final rawDist = json['meal_type_distribution'] as Map<String, dynamic>?;
-    rawDist?.forEach((k, v) => mealDist[k] = (v as num).toInt());
+    final analyzedAtStr = json['analyzed_at'] as String?;
+    final analyzedAt =
+        analyzedAtStr != null ? DateTime.tryParse(analyzedAtStr) : null;
 
     return TrendsData(
-      symptomFrequency: symptomFreq,
-      topTriggerFoods: triggers,
-      wellbeingTrend: wellbeing,
-      mealTypeDistribution: mealDist,
+      symptomFrequency: [],
+      signals: signals,
+      wellbeingTrend: [],
+      mealTypeDistribution: {},
+      analyzedAt: analyzedAt,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'symptom_frequency':
-            symptomFrequency.map((p) => p.toJson()).toList(),
-        'top_trigger_foods': topTriggerFoods.map((t) => t.toJson()).toList(),
-        'wellbeing_trend': wellbeingTrend.map((p) => p.toJson()).toList(),
-        'meal_type_distribution': mealTypeDistribution,
+        'signals': signals.map((s) => s.toJson()).toList(),
+        'analyzed_at': analyzedAt?.toIso8601String(),
       };
 }
+
+// ── Signal models (Plan 11) ──────────────────────────────────────────────────
+
+class SignalChannel {
+  final String outcomeType;
+  final String outcomeName;
+  final String direction;
+  final int? peakWindowMinutes;
+  final String? mealSlot;
+  final String? wellbeingSlot;
+  final double? relativeRisk;
+  final double? scoreDelta;
+  final int evidenceCount;
+
+  const SignalChannel({
+    required this.outcomeType,
+    required this.outcomeName,
+    required this.direction,
+    this.peakWindowMinutes,
+    this.mealSlot,
+    this.wellbeingSlot,
+    this.relativeRisk,
+    this.scoreDelta,
+    required this.evidenceCount,
+  });
+
+  factory SignalChannel.fromJson(Map<String, dynamic> json) {
+    return SignalChannel(
+      outcomeType: json['outcome_type'] as String,
+      outcomeName: json['outcome_name'] as String,
+      direction: json['direction'] as String,
+      peakWindowMinutes: json['peak_window_minutes'] as int?,
+      mealSlot: json['meal_slot'] as String?,
+      wellbeingSlot: json['wellbeing_slot'] as String?,
+      relativeRisk: (json['relative_risk'] as num?)?.toDouble(),
+      scoreDelta: (json['score_delta'] as num?)?.toDouble(),
+      evidenceCount: (json['evidence_count'] as num).toInt(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'outcome_type': outcomeType,
+        'outcome_name': outcomeName,
+        'direction': direction,
+        'peak_window_minutes': peakWindowMinutes,
+        'meal_slot': mealSlot,
+        'wellbeing_slot': wellbeingSlot,
+        'relative_risk': relativeRisk,
+        'score_delta': scoreDelta,
+        'evidence_count': evidenceCount,
+      };
+}
+
+class FoodSignal {
+  final String category;
+  final double unifiedScore;
+  final List<SignalChannel> channels;
+  final bool convergent;
+
+  const FoodSignal({
+    required this.category,
+    required this.unifiedScore,
+    required this.channels,
+    required this.convergent,
+  });
+
+  factory FoodSignal.fromJson(Map<String, dynamic> json) {
+    return FoodSignal(
+      category: json['category'] as String,
+      unifiedScore: (json['unified_score'] as num).toDouble(),
+      channels: (json['channels'] as List<dynamic>)
+          .map((c) => SignalChannel.fromJson(c as Map<String, dynamic>))
+          .toList(),
+      convergent: json['convergent'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'category': category,
+        'unified_score': unifiedScore,
+        'channels': channels.map((c) => c.toJson()).toList(),
+        'convergent': convergent,
+      };
+}
+
+// ── Chart data models (unchanged) ────────────────────────────────────────────
 
 class SymptomFrequencyPoint {
   final DateTime date;
@@ -69,27 +146,6 @@ class SymptomFrequencyPoint {
         'date': date.toIso8601String(),
         'symptom_type': symptomType,
         'count': count,
-      };
-}
-
-class TriggerFood {
-  final String food;
-  final double confidenceScore;
-
-  const TriggerFood({required this.food, required this.confidenceScore});
-
-  factory TriggerFood.fromJson(Map<String, dynamic> json) {
-    return TriggerFood(
-      // Backend uses food_name
-      food: (json['food_name'] as String?) ?? (json['food'] as String?) ?? '',
-      confidenceScore:
-          ((json['confidence_score'] as num?) ?? 0.0).toDouble(),
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-        'food': food,
-        'confidence_score': confidenceScore,
       };
 }
 

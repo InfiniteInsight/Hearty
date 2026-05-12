@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import com.hearty.app.AnalysisWorker
 
 class MainActivity : FlutterActivity() {
 
@@ -43,6 +44,21 @@ class MainActivity : FlutterActivity() {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             startForegroundService(Intent(this, HeartyWakeWordService::class.java))
         }
+
+        // Register nightly analysis job (deduped by WorkManager KEEP policy)
+        AnalysisWorker.enqueuePeriodic(this, AnalysisWorker.DEFAULT_BASE_URL, authToken = null)
+
+        // Method channel for Flutter to trigger an idle analysis run after logging
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.hearty.app/analysis")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "enqueueIdleAnalysis" -> {
+                        AnalysisWorker.enqueueIdle(this, AnalysisWorker.DEFAULT_BASE_URL, authToken = null)
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.hearty.app/wake_word_control")
             .setMethodCallHandler { call, result ->

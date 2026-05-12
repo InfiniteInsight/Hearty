@@ -4,20 +4,31 @@ import '../hearty_api_client.dart';
 import '../models/trends_data.dart';
 
 class TrendsNotifier extends AsyncNotifier<TrendsData> {
-  int _days = 30;
-
   @override
   Future<TrendsData> build() async {
     final client = ref.watch(heartyApiClientProvider);
-    return client.fetchTrends(days: _days);
+    return client.fetchTrends();
   }
 
-  Future<void> setDays(int days) async {
-    _days = days;
+  Future<void> refresh() async {
     final client = ref.read(heartyApiClientProvider);
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => client.fetchTrends(days: _days));
+    state = await AsyncValue.guard(() => client.fetchTrends());
   }
+
+  Future<void> triggerAnalysis() async {
+    final client = ref.read(heartyApiClientProvider);
+    state = const AsyncLoading();
+    try {
+      await client.triggerAnalysis();
+      state = await AsyncValue.guard(() => client.fetchTrends());
+    } catch (e, st) {
+      state = AsyncError(e, st);
+    }
+  }
+
+  // Kept for backward compat with any callers passing days.
+  Future<void> setDays(int days) => refresh();
 }
 
 final trendsProvider =
