@@ -12,6 +12,9 @@ import 'core/notifications/notification_setup_provider.dart';
 import 'core/offline/offline_database.dart';
 import 'core/sync/sync_service.dart';
 
+const _kSyncTaskName = 'hearty_sync';
+const _kSyncTaskTag = 'com.hearty.app.sync';
+
 /// WorkManager callback — must be a top-level function.
 ///
 /// Full sync in background requires reconstructing auth + Dio without Riverpod,
@@ -23,9 +26,23 @@ void callbackDispatcher() {
   Workmanager().executeTask((taskName, inputData) async {
     final db = OfflineDatabase();
     try {
-      await (db.update(db.offlineQueue)
-            ..where((q) => q.status.equals('syncing')))
-          .write(const OfflineQueueCompanion(status: Value('pending')));
+      // Reset any rows stuck in a transient 'syncing' state back to 'pending'
+      // so they are retried on the next foreground sync cycle.
+      await db.customUpdate(
+        'UPDATE local_meals SET sync_status = ? WHERE sync_status = ?',
+        variables: [Variable('pending'), Variable('syncing')],
+        updates: {db.localMeals},
+      );
+      await db.customUpdate(
+        'UPDATE local_symptoms SET sync_status = ? WHERE sync_status = ?',
+        variables: [Variable('pending'), Variable('syncing')],
+        updates: {db.localSymptoms},
+      );
+      await db.customUpdate(
+        'UPDATE local_wellbeing SET sync_status = ? WHERE sync_status = ?',
+        variables: [Variable('pending'), Variable('syncing')],
+        updates: {db.localWellbeing},
+      );
     } finally {
       await db.close();
     }
@@ -48,8 +65,8 @@ Future<void> main() async {
   await NotificationService.init();
   await Workmanager().initialize(callbackDispatcher);
   await Workmanager().registerPeriodicTask(
-    kSyncTaskName,
-    kSyncTaskTag,
+    _kSyncTaskName,
+    _kSyncTaskTag,
     frequency: const Duration(minutes: 15),
     existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
     constraints: Constraints(networkType: NetworkType.connected),
