@@ -1,10 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/api/hearty_api_client.dart';
 import '../../../core/api/offline_exception.dart';
 import '../../../core/api/providers/meals_provider.dart' show syncTriggerProvider;
+import '../../../core/offline/local_voice_queue_dao.dart';
 import '../models/voice_state.dart';
+
+const _uuid = Uuid();
 
 final voiceProvider = StateNotifierProvider<VoiceNotifier, VoiceState>((ref) {
   return VoiceNotifier(ref: ref);
@@ -145,8 +149,17 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       ref.read(syncTriggerProvider).schedule();
     } on OfflineException {
       if (!mounted) return;
+      final ref = _ref;
+      if (ref != null) {
+        final dao = ref.read(localVoiceQueueDaoProvider);
+        await dao.insertPending(
+          id: _uuid.v4(),
+          transcript: transcript,
+          loggedAt: DateTime.now(),
+        );
+      }
       setResponse(
-        "I couldn't connect to Hearty right now. Try again when you're back online.",
+        "You're offline, but I saved that. I'll log it when you reconnect.",
         askFollowUp: false,
       );
     } catch (_) {
