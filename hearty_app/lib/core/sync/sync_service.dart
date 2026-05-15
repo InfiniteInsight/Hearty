@@ -218,21 +218,21 @@ class SyncService implements SyncTrigger {
     try {
       final client = _ref.read(heartyApiClientProvider);
       final now = DateTime.now();
-      final twoDaysAgo = DateTime(now.year, now.month, now.day - 1).toUtc();
+      final yesterday = DateTime(now.year, now.month, now.day - 1).toUtc();
 
-      final meals = await client.fetchMeals(start: twoDaysAgo, end: now.toUtc());
+      final meals = await client.fetchMeals(start: yesterday, end: now.toUtc());
       final mealDao = LocalMealDao(_db);
       for (final m in meals) {
         await mealDao.upsertFromServer(m);
       }
 
-      final symptoms = await client.fetchSymptoms(start: twoDaysAgo, end: now.toUtc());
+      final symptoms = await client.fetchSymptoms(start: yesterday, end: now.toUtc());
       final symptomDao = LocalSymptomDao(_db);
       for (final s in symptoms) {
         await symptomDao.upsertFromServer(s);
       }
 
-      final wellbeing = await client.fetchWellbeing(start: twoDaysAgo, end: now.toUtc());
+      final wellbeing = await client.fetchWellbeing(start: yesterday, end: now.toUtc());
       final wellbeingDao = LocalWellbeingDao(_db);
       for (final w in wellbeing) {
         await wellbeingDao.upsertFromServer(w);
