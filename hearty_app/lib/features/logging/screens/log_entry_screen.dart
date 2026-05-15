@@ -258,7 +258,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
                   child: TextField(
                     controller: _textController,
                     decoration: InputDecoration(
-                      hintText: 'Or type what you ate...',
+                      hintText: 'Or type what you ate or how you feel...',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
