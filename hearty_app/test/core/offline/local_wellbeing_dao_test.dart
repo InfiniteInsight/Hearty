@@ -1,7 +1,6 @@
 // test/core/offline/local_wellbeing_dao_test.dart
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hearty_app/core/api/models/wellbeing_log.dart';
 import 'package:hearty_app/core/offline/offline_database.dart';
 import 'package:hearty_app/core/offline/local_wellbeing_dao.dart';
 
