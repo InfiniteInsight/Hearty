@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import '../../offline/offline_database.dart';
+
 class MealLog {
   final String id;
   final String description;
@@ -36,6 +40,20 @@ class MealLog {
       foods: foodNames,
       loggedAt: DateTime.parse(json['logged_at'] as String),
       claudeNote: json['claude_note'] as String?,
+    );
+  }
+
+  factory MealLog.fromLocal(LocalMeal row) {
+    final foods = (jsonDecode(row.foods) as List<dynamic>)
+        .map((e) => e.toString())
+        .toList();
+    return MealLog(
+      id: row.id,
+      description: row.description,
+      mealType: row.mealType,
+      foods: foods,
+      loggedAt: DateTime.fromMillisecondsSinceEpoch(row.loggedAt),
+      claudeNote: row.claudeNote,
     );
   }
 
