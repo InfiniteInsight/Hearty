@@ -1,7 +1,7 @@
 # Offline-First Local Cache
 
 **Date:** 2026-05-14
-**Status:** Approved for implementation
+**Status:** Implemented (schema v3)
 
 ## Problem
 
@@ -14,8 +14,16 @@ The app functions fully offline. Data logged without connectivity is immediately
 ## Out of Scope
 
 - **Photos** — real-time upload, no meaningful offline behavior; gracefully unavailable when offline
-- **Voice** — real-time session, gracefully unavailable when offline
 - **History beyond 7 days** — synced records older than 7 days are pruned from local storage
+
+## Partially In Scope: Voice
+
+Voice is a real-time session and cannot be fully offline. However, the meal log that the chat endpoint creates on the server is now recoverable when offline:
+
+- **Online:** voice transcript → `POST /api/chat` → server logs the meal → sync pulls it into local DB → UI updates
+- **Offline:** transcript saved to `local_voice_queue` → user hears *"You're offline, but I saved that. I'll log it when you reconnect."* → on next sync, each queued transcript is replayed through `/api/chat` with the original `logged_at` timestamp → meal appears in UI
+
+The original timestamp is preserved: `local_voice_queue` stores `logged_at` in unix ms, and the sync service passes it to the chat API as `logged_at` in the request body. The server uses it when inserting the meal row.
 
 ---
 
@@ -86,12 +94,21 @@ The existing `offline_queue` table is retired and replaced by proper entity tabl
 | `data` | TEXT | JSON blob of `TrendsData` |
 | `cached_at` | INTEGER | Unix ms |
 
+### `local_voice_queue`
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | TEXT PK | Local UUID |
+| `transcript` | TEXT | Raw speech-to-text string |
+| `logged_at` | INTEGER | Unix ms — time the user spoke, preserved on replay |
+| `sync_status` | TEXT | `pending` \| `failed` (no `synced` — done rows are deleted) |
+
 ### Key Design Decisions
 
 - **Local UUIDs are stable** — the UI always uses the local `id`. The `server_id` is populated silently after sync. No ID churn in provider state.
 - **`server_id` determines sync action** — `null` → POST (create); non-null → PATCH (update). Handles wellbeing edits correctly.
 - **Preferences conflict rule** — if local preferences are `pending`, skip the pull for preferences during that sync cycle. Push first, pull on the next cycle.
 - **Pruning** — after each sync, delete `synced` records with `logged_at` older than 7 days. Pending records are kept regardless of age.
+- **Voice queue entries are deleted on success** — unlike entity tables, `local_voice_queue` rows are hard-deleted by `markDone()` rather than marked `synced`. They don't need to persist after replay because the resulting meal row lives in `local_meals` after the pull phase.
 
 ---
 
@@ -126,18 +143,25 @@ Stays as `AsyncNotifier`. On `build()`, reads from the local `local_preferences`
 
 Stays as `AsyncNotifier`. On `build()`, reads from `local_trends_cache`. Shows `cached_at` timestamp so the user knows how fresh it is. Refreshed by the sync service when online.
 
+### Voice Provider
+
+After a successful `client.chat()` call, `VoiceNotifier.sendToChat()` calls `syncTriggerProvider.schedule()` so the resulting server-side meal is pulled into the local DB immediately, making it appear in the home screen without a restart.
+
+When `OfflineException` is thrown, the transcript is saved to `local_voice_queue` instead and the user receives an offline acknowledgment.
+
 ### DAO Layer
 
 One DAO per entity, colocated with the existing offline database:
 
 ```
 lib/core/offline/
-  offline_database.dart       (extended with new tables, offline_queue retired)
-  local_meal_dao.dart         (watchToday, insert, markSynced, upsertFromServer, prune)
+  offline_database.dart         (extended with new tables, offline_queue retired)
+  local_meal_dao.dart           (watchToday, insert, markSynced, upsertFromServer, prune)
   local_symptom_dao.dart
   local_wellbeing_dao.dart
-  local_preferences_dao.dart  (readRow, writeRow, markSynced)
-  local_trends_dao.dart       (readCache, writeCache)
+  local_preferences_dao.dart    (readRow, writeRow, markSynced)
+  local_trends_dao.dart         (readCache, writeCache)
+  local_voice_queue_dao.dart    (insertPending, getPending, markDone, markFailed)
   sync_service.dart
 ```
 
@@ -163,11 +187,19 @@ For each record where sync_status = 'pending' (meals, symptoms, wellbeing, prefe
   if server_id == null:
     POST /api/[entity]
     on success → server_id = response.id, sync_status = 'synced'
-    on failure → leave as pending (retried on next trigger)
+    on 4xx → sync_status = 'failed'
+    on network error → leave as pending (retried on next trigger)
   if server_id != null:
     PATCH /api/[entity]/[server_id]
     on success → sync_status = 'synced'
-    on failure → leave as pending
+    on 4xx → sync_status = 'failed'
+    on network error → leave as pending
+
+For each record in local_voice_queue where sync_status = 'pending':
+  POST /api/chat  { message: transcript, logged_at: <original unix ms as ISO 8601 UTC> }
+  on success → delete row (markDone)
+  on 4xx → sync_status = 'failed'
+  on network error → leave as pending
 
 if any records were newly synced:
   signal native layer → enqueueIdleAnalysis (via method channel)
