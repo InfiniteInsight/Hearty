@@ -68,19 +68,31 @@ class LocalTrendsCache extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+class LocalVoiceQueue extends Table {
+  TextColumn get id => text()();
+  TextColumn get transcript => text()();
+  IntColumn get loggedAt => integer()(); // unix ms
+  TextColumn get syncStatus =>
+      text().withDefault(const Constant('pending'))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(tables: [
   LocalMeals,
   LocalSymptoms,
   LocalWellbeing,
   LocalPreferences,
   LocalTrendsCache,
+  LocalVoiceQueue,
 ])
 class OfflineDatabase extends _$OfflineDatabase {
   OfflineDatabase() : super(_openConnection());
   OfflineDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -92,6 +104,9 @@ class OfflineDatabase extends _$OfflineDatabase {
             await migrator.createTable(localWellbeing);
             await migrator.createTable(localPreferences);
             await migrator.createTable(localTrendsCache);
+          }
+          if (from <= 2) {
+            await migrator.createTable(localVoiceQueue);
           }
         },
       );

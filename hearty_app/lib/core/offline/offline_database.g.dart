@@ -1993,6 +1993,319 @@ class LocalTrendsCacheCompanion extends UpdateCompanion<LocalTrendsCacheData> {
   }
 }
 
+class $LocalVoiceQueueTable extends LocalVoiceQueue
+    with TableInfo<$LocalVoiceQueueTable, LocalVoiceQueueData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalVoiceQueueTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _transcriptMeta = const VerificationMeta(
+    'transcript',
+  );
+  @override
+  late final GeneratedColumn<String> transcript = GeneratedColumn<String>(
+    'transcript',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _loggedAtMeta = const VerificationMeta(
+    'loggedAt',
+  );
+  @override
+  late final GeneratedColumn<int> loggedAt = GeneratedColumn<int>(
+    'logged_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<String> syncStatus = GeneratedColumn<String>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, transcript, loggedAt, syncStatus];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_voice_queue';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalVoiceQueueData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('transcript')) {
+      context.handle(
+        _transcriptMeta,
+        transcript.isAcceptableOrUnknown(data['transcript']!, _transcriptMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_transcriptMeta);
+    }
+    if (data.containsKey('logged_at')) {
+      context.handle(
+        _loggedAtMeta,
+        loggedAt.isAcceptableOrUnknown(data['logged_at']!, _loggedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_loggedAtMeta);
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalVoiceQueueData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalVoiceQueueData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      transcript: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}transcript'],
+      )!,
+      loggedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}logged_at'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_status'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalVoiceQueueTable createAlias(String alias) {
+    return $LocalVoiceQueueTable(attachedDatabase, alias);
+  }
+}
+
+class LocalVoiceQueueData extends DataClass
+    implements Insertable<LocalVoiceQueueData> {
+  final String id;
+  final String transcript;
+  final int loggedAt;
+  final String syncStatus;
+  const LocalVoiceQueueData({
+    required this.id,
+    required this.transcript,
+    required this.loggedAt,
+    required this.syncStatus,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['transcript'] = Variable<String>(transcript);
+    map['logged_at'] = Variable<int>(loggedAt);
+    map['sync_status'] = Variable<String>(syncStatus);
+    return map;
+  }
+
+  LocalVoiceQueueCompanion toCompanion(bool nullToAbsent) {
+    return LocalVoiceQueueCompanion(
+      id: Value(id),
+      transcript: Value(transcript),
+      loggedAt: Value(loggedAt),
+      syncStatus: Value(syncStatus),
+    );
+  }
+
+  factory LocalVoiceQueueData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalVoiceQueueData(
+      id: serializer.fromJson<String>(json['id']),
+      transcript: serializer.fromJson<String>(json['transcript']),
+      loggedAt: serializer.fromJson<int>(json['loggedAt']),
+      syncStatus: serializer.fromJson<String>(json['syncStatus']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'transcript': serializer.toJson<String>(transcript),
+      'loggedAt': serializer.toJson<int>(loggedAt),
+      'syncStatus': serializer.toJson<String>(syncStatus),
+    };
+  }
+
+  LocalVoiceQueueData copyWith({
+    String? id,
+    String? transcript,
+    int? loggedAt,
+    String? syncStatus,
+  }) => LocalVoiceQueueData(
+    id: id ?? this.id,
+    transcript: transcript ?? this.transcript,
+    loggedAt: loggedAt ?? this.loggedAt,
+    syncStatus: syncStatus ?? this.syncStatus,
+  );
+  LocalVoiceQueueData copyWithCompanion(LocalVoiceQueueCompanion data) {
+    return LocalVoiceQueueData(
+      id: data.id.present ? data.id.value : this.id,
+      transcript: data.transcript.present
+          ? data.transcript.value
+          : this.transcript,
+      loggedAt: data.loggedAt.present ? data.loggedAt.value : this.loggedAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalVoiceQueueData(')
+          ..write('id: $id, ')
+          ..write('transcript: $transcript, ')
+          ..write('loggedAt: $loggedAt, ')
+          ..write('syncStatus: $syncStatus')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, transcript, loggedAt, syncStatus);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalVoiceQueueData &&
+          other.id == this.id &&
+          other.transcript == this.transcript &&
+          other.loggedAt == this.loggedAt &&
+          other.syncStatus == this.syncStatus);
+}
+
+class LocalVoiceQueueCompanion extends UpdateCompanion<LocalVoiceQueueData> {
+  final Value<String> id;
+  final Value<String> transcript;
+  final Value<int> loggedAt;
+  final Value<String> syncStatus;
+  final Value<int> rowid;
+  const LocalVoiceQueueCompanion({
+    this.id = const Value.absent(),
+    this.transcript = const Value.absent(),
+    this.loggedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalVoiceQueueCompanion.insert({
+    required String id,
+    required String transcript,
+    required int loggedAt,
+    this.syncStatus = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       transcript = Value(transcript),
+       loggedAt = Value(loggedAt);
+  static Insertable<LocalVoiceQueueData> custom({
+    Expression<String>? id,
+    Expression<String>? transcript,
+    Expression<int>? loggedAt,
+    Expression<String>? syncStatus,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (transcript != null) 'transcript': transcript,
+      if (loggedAt != null) 'logged_at': loggedAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalVoiceQueueCompanion copyWith({
+    Value<String>? id,
+    Value<String>? transcript,
+    Value<int>? loggedAt,
+    Value<String>? syncStatus,
+    Value<int>? rowid,
+  }) {
+    return LocalVoiceQueueCompanion(
+      id: id ?? this.id,
+      transcript: transcript ?? this.transcript,
+      loggedAt: loggedAt ?? this.loggedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (transcript.present) {
+      map['transcript'] = Variable<String>(transcript.value);
+    }
+    if (loggedAt.present) {
+      map['logged_at'] = Variable<int>(loggedAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<String>(syncStatus.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalVoiceQueueCompanion(')
+          ..write('id: $id, ')
+          ..write('transcript: $transcript, ')
+          ..write('loggedAt: $loggedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$OfflineDatabase extends GeneratedDatabase {
   _$OfflineDatabase(QueryExecutor e) : super(e);
   $OfflineDatabaseManager get managers => $OfflineDatabaseManager(this);
@@ -2005,6 +2318,9 @@ abstract class _$OfflineDatabase extends GeneratedDatabase {
   late final $LocalTrendsCacheTable localTrendsCache = $LocalTrendsCacheTable(
     this,
   );
+  late final $LocalVoiceQueueTable localVoiceQueue = $LocalVoiceQueueTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2015,6 +2331,7 @@ abstract class _$OfflineDatabase extends GeneratedDatabase {
     localWellbeing,
     localPreferences,
     localTrendsCache,
+    localVoiceQueue,
   ];
 }
 
@@ -3134,6 +3451,201 @@ typedef $$LocalTrendsCacheTableProcessedTableManager =
       LocalTrendsCacheData,
       PrefetchHooks Function()
     >;
+typedef $$LocalVoiceQueueTableCreateCompanionBuilder =
+    LocalVoiceQueueCompanion Function({
+      required String id,
+      required String transcript,
+      required int loggedAt,
+      Value<String> syncStatus,
+      Value<int> rowid,
+    });
+typedef $$LocalVoiceQueueTableUpdateCompanionBuilder =
+    LocalVoiceQueueCompanion Function({
+      Value<String> id,
+      Value<String> transcript,
+      Value<int> loggedAt,
+      Value<String> syncStatus,
+      Value<int> rowid,
+    });
+
+class $$LocalVoiceQueueTableFilterComposer
+    extends Composer<_$OfflineDatabase, $LocalVoiceQueueTable> {
+  $$LocalVoiceQueueTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get transcript => $composableBuilder(
+    column: $table.transcript,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get loggedAt => $composableBuilder(
+    column: $table.loggedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalVoiceQueueTableOrderingComposer
+    extends Composer<_$OfflineDatabase, $LocalVoiceQueueTable> {
+  $$LocalVoiceQueueTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get transcript => $composableBuilder(
+    column: $table.transcript,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get loggedAt => $composableBuilder(
+    column: $table.loggedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalVoiceQueueTableAnnotationComposer
+    extends Composer<_$OfflineDatabase, $LocalVoiceQueueTable> {
+  $$LocalVoiceQueueTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get transcript => $composableBuilder(
+    column: $table.transcript,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get loggedAt =>
+      $composableBuilder(column: $table.loggedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+}
+
+class $$LocalVoiceQueueTableTableManager
+    extends
+        RootTableManager<
+          _$OfflineDatabase,
+          $LocalVoiceQueueTable,
+          LocalVoiceQueueData,
+          $$LocalVoiceQueueTableFilterComposer,
+          $$LocalVoiceQueueTableOrderingComposer,
+          $$LocalVoiceQueueTableAnnotationComposer,
+          $$LocalVoiceQueueTableCreateCompanionBuilder,
+          $$LocalVoiceQueueTableUpdateCompanionBuilder,
+          (
+            LocalVoiceQueueData,
+            BaseReferences<
+              _$OfflineDatabase,
+              $LocalVoiceQueueTable,
+              LocalVoiceQueueData
+            >,
+          ),
+          LocalVoiceQueueData,
+          PrefetchHooks Function()
+        > {
+  $$LocalVoiceQueueTableTableManager(
+    _$OfflineDatabase db,
+    $LocalVoiceQueueTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalVoiceQueueTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalVoiceQueueTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalVoiceQueueTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> transcript = const Value.absent(),
+                Value<int> loggedAt = const Value.absent(),
+                Value<String> syncStatus = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalVoiceQueueCompanion(
+                id: id,
+                transcript: transcript,
+                loggedAt: loggedAt,
+                syncStatus: syncStatus,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String transcript,
+                required int loggedAt,
+                Value<String> syncStatus = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalVoiceQueueCompanion.insert(
+                id: id,
+                transcript: transcript,
+                loggedAt: loggedAt,
+                syncStatus: syncStatus,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalVoiceQueueTableProcessedTableManager =
+    ProcessedTableManager<
+      _$OfflineDatabase,
+      $LocalVoiceQueueTable,
+      LocalVoiceQueueData,
+      $$LocalVoiceQueueTableFilterComposer,
+      $$LocalVoiceQueueTableOrderingComposer,
+      $$LocalVoiceQueueTableAnnotationComposer,
+      $$LocalVoiceQueueTableCreateCompanionBuilder,
+      $$LocalVoiceQueueTableUpdateCompanionBuilder,
+      (
+        LocalVoiceQueueData,
+        BaseReferences<
+          _$OfflineDatabase,
+          $LocalVoiceQueueTable,
+          LocalVoiceQueueData
+        >,
+      ),
+      LocalVoiceQueueData,
+      PrefetchHooks Function()
+    >;
 
 class $OfflineDatabaseManager {
   final _$OfflineDatabase _db;
@@ -3148,4 +3660,6 @@ class $OfflineDatabaseManager {
       $$LocalPreferencesTableTableManager(_db, _db.localPreferences);
   $$LocalTrendsCacheTableTableManager get localTrendsCache =>
       $$LocalTrendsCacheTableTableManager(_db, _db.localTrendsCache);
+  $$LocalVoiceQueueTableTableManager get localVoiceQueue =>
+      $$LocalVoiceQueueTableTableManager(_db, _db.localVoiceQueue);
 }
