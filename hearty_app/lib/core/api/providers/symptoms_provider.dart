@@ -1,31 +1,30 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
-import '../hearty_api_client.dart';
+import '../../offline/local_symptom_dao.dart';
 import '../models/symptom_log.dart';
+import 'meals_provider.dart' show syncTriggerProvider;
 
-class SymptomsNotifier extends AsyncNotifier<List<SymptomLog>> {
+const _uuid = Uuid();
+
+class SymptomsNotifier extends StreamNotifier<List<SymptomLog>> {
   @override
-  Future<List<SymptomLog>> build() async {
-    final client = ref.watch(heartyApiClientProvider);
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day).toUtc();
-    return client.fetchSymptoms(start: startOfDay, end: now.toUtc());
+  Stream<List<SymptomLog>> build() {
+    return ref.watch(localSymptomDaoProvider).watchToday();
   }
 
   Future<void> logSymptom(String description, {int? severity}) async {
-    final client = ref.read(heartyApiClientProvider);
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final newSymptom = await client.logSymptom(
-        description: description,
-        severity: severity,
-      );
-      final current = state.valueOrNull ?? [];
-      return [newSymptom, ...current];
-    });
+    final dao = ref.read(localSymptomDaoProvider);
+    await dao.insertLocal(
+      localId: _uuid.v4(),
+      description: description,
+      severity: severity ?? 1,
+      loggedAt: DateTime.now(),
+    );
+    ref.read(syncTriggerProvider).schedule();
   }
 }
 
 final symptomsProvider =
-    AsyncNotifierProvider<SymptomsNotifier, List<SymptomLog>>(
+    StreamNotifierProvider<SymptomsNotifier, List<SymptomLog>>(
         SymptomsNotifier.new);
