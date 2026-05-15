@@ -36,6 +36,7 @@ Keep all responses under 2 sentences. Be warm but concise."""
 class ChatRequest(BaseModel):
     message: str
     health_context: Optional[dict] = None
+    logged_at: Optional[datetime] = None
 
 
 class ChatResponse(BaseModel):
@@ -63,7 +64,7 @@ async def chat(
             "description": body.message,
             "meal_type": inferred_meal_type,
             "foods": foods,
-            "logged_at": datetime.now(timezone.utc).isoformat(),
+            "logged_at": (body.logged_at or datetime.now(timezone.utc)).isoformat(),
             "input_method": "voice",
         }
         row = {k: v for k, v in row.items() if v is not None}

@@ -204,6 +204,7 @@ class HeartyApiClient {
   Future<String> chat({
     required String message,
     Map<String, dynamic>? healthContext,
+    DateTime? loggedAt,
   }) {
     return _call(() async {
       final response = await _dio.post<Map<String, dynamic>>(
@@ -211,6 +212,7 @@ class HeartyApiClient {
         data: <String, dynamic>{
           'message': message,
           'health_context': healthContext,
+          'logged_at': loggedAt?.toUtc().toIso8601String(),
         }..removeWhere((_, v) => v == null),
       );
       final data = response.data!;

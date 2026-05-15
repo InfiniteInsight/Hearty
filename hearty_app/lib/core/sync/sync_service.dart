@@ -221,7 +221,10 @@ class SyncService implements SyncTrigger {
 
     for (final row in pending) {
       try {
-        await _ref.read(heartyApiClientProvider).chat(message: row.transcript);
+        await _ref.read(heartyApiClientProvider).chat(
+              message: row.transcript,
+              loggedAt: DateTime.fromMillisecondsSinceEpoch(row.loggedAt),
+            );
         await dao.markDone(row.id);
         pushed = true;
       } on DioException catch (e) {
