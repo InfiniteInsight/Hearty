@@ -1,3 +1,5 @@
+import '../../offline/offline_database.dart';
+
 class SymptomLog {
   final String id;
   final String description;
@@ -12,6 +14,16 @@ class SymptomLog {
     this.linkedMealId,
     required this.loggedAt,
   });
+
+  factory SymptomLog.fromLocal(LocalSymptom row) {
+    return SymptomLog(
+      id: row.id,
+      description: row.description,
+      severity: row.severity,
+      linkedMealId: row.linkedMealId,
+      loggedAt: DateTime.fromMillisecondsSinceEpoch(row.loggedAt),
+    );
+  }
 
   factory SymptomLog.fromJson(Map<String, dynamic> json) {
     return SymptomLog(
