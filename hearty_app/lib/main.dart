@@ -7,6 +7,7 @@ import 'package:workmanager/workmanager.dart';
 
 import 'app/router.dart';
 import 'app/theme.dart';
+import 'core/api/providers/meals_provider.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/notifications/notification_setup_provider.dart';
 import 'core/offline/offline_database.dart';
@@ -71,7 +72,12 @@ Future<void> main() async {
     existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
     constraints: Constraints(networkType: NetworkType.connected),
   );
-  runApp(const ProviderScope(child: HeartyApp()));
+  runApp(ProviderScope(
+    overrides: [
+      syncTriggerProvider.overrideWith((ref) => ref.watch(syncServiceProvider)),
+    ],
+    child: const HeartyApp(),
+  ));
   // Wire up deep-link routing from notification taps after the widget tree
   // (and GoRouter) is built.
   NotificationService.setupTapHandlers();
