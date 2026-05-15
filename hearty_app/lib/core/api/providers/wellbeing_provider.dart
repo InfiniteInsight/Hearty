@@ -1,19 +1,18 @@
-import 'package:flutter/services.dart';
+// lib/core/api/providers/wellbeing_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
-import '../hearty_api_client.dart';
+import '../../offline/local_wellbeing_dao.dart';
 import '../models/wellbeing_log.dart';
 import '../models/wellbeing_period.dart';
+import 'meals_provider.dart' show syncTriggerProvider;
 
-const _kAnalysisChannel = MethodChannel('com.hearty.app/analysis');
+const _uuid = Uuid();
 
-class WellbeingNotifier extends AsyncNotifier<List<WellbeingLog>> {
+class WellbeingNotifier extends StreamNotifier<List<WellbeingLog>> {
   @override
-  Future<List<WellbeingLog>> build() async {
-    final client = ref.watch(heartyApiClientProvider);
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day).toUtc();
-    return client.fetchWellbeing(start: startOfDay, end: now.toUtc());
+  Stream<List<WellbeingLog>> build() {
+    return ref.watch(localWellbeingDaoProvider).watchToday();
   }
 
   Future<void> logWellbeing({
@@ -22,26 +21,16 @@ class WellbeingNotifier extends AsyncNotifier<List<WellbeingLog>> {
     String? notes,
     WellbeingPeriod? period,
   }) async {
-    final client = ref.read(heartyApiClientProvider);
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final newEntry = await client.logWellbeing(
-        energy: energy,
-        mood: mood,
-        notes: notes,
-        period: period,
-      );
-      // Signal native layer to enqueue idle analysis now that new data exists.
-      _enqueueIdleAnalysis();
-      final current = state.valueOrNull ?? [];
-      return [newEntry, ...current];
-    });
-  }
-
-  void _enqueueIdleAnalysis() {
-    _kAnalysisChannel
-        .invokeMethod<void>('enqueueIdleAnalysis')
-        .ignore();
+    final dao = ref.read(localWellbeingDaoProvider);
+    await dao.insertLocal(
+      localId: _uuid.v4(),
+      energy: energy ?? 3,
+      mood: mood ?? 3,
+      notes: notes,
+      period: period?.name,
+      loggedAt: DateTime.now(),
+    );
+    ref.read(syncTriggerProvider).schedule();
   }
 
   Future<void> updateWellbeing(
@@ -51,22 +40,12 @@ class WellbeingNotifier extends AsyncNotifier<List<WellbeingLog>> {
     String? notes,
     WellbeingPeriod? period,
   }) async {
-    final client = ref.read(heartyApiClientProvider);
-    final previous = state.valueOrNull ?? [];
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final updated = await client.updateWellbeing(
-        id,
-        energy: energy,
-        mood: mood,
-        notes: notes,
-        period: period,
-      );
-      return previous.map((e) => e.id == id ? updated : e).toList();
-    });
+    final dao = ref.read(localWellbeingDaoProvider);
+    await dao.updateLocal(id, energy: energy, mood: mood, notes: notes, period: period);
+    ref.read(syncTriggerProvider).schedule();
   }
 }
 
 final wellbeingProvider =
-    AsyncNotifierProvider<WellbeingNotifier, List<WellbeingLog>>(
+    StreamNotifierProvider<WellbeingNotifier, List<WellbeingLog>>(
         WellbeingNotifier.new);
