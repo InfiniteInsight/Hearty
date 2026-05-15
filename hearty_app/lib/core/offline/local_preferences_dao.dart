@@ -34,8 +34,11 @@ class LocalPreferencesDao extends DatabaseAccessor<OfflineDatabase> {
   }
 
   Future<bool> isPending() async {
-    final row = await (select(db.localPreferences)).getSingleOrNull();
-    return row?.syncStatus == 'pending';
+    final status = await db.customSelect(
+      'SELECT sync_status FROM local_preferences WHERE id = 1',
+      readsFrom: {db.localPreferences},
+    ).map((row) => row.read<String>('sync_status')).getSingleOrNull();
+    return status == 'pending';
   }
 }
 

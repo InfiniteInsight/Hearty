@@ -18,6 +18,8 @@ class LocalTrendsDao extends DatabaseAccessor<OfflineDatabase> {
         jsonDecode(row.data) as Map<String, dynamic>);
   }
 
+  // Only signals and analyzedAt are persisted — TrendsData.toJson() is
+  // intentionally scoped to the signals engine output (see fromSignalsJson).
   Future<void> write(TrendsData trends) {
     return db.into(db.localTrendsCache).insertOnConflictUpdate(
           LocalTrendsCacheCompanion(
