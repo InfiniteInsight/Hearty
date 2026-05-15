@@ -1,3 +1,4 @@
+import '../../offline/offline_database.dart';
 import 'wellbeing_period.dart';
 
 class WellbeingLog {
@@ -16,6 +17,22 @@ class WellbeingLog {
     required this.loggedAt,
     this.period,
   });
+
+  factory WellbeingLog.fromLocal(LocalWellbeingData row) {
+    return WellbeingLog(
+      id: row.id,
+      energy: row.energy,
+      mood: row.mood,
+      notes: row.notes,
+      loggedAt: DateTime.fromMillisecondsSinceEpoch(row.loggedAt),
+      period: switch (row.period) {
+        'morning' => WellbeingPeriod.morning,
+        'midday' => WellbeingPeriod.midday,
+        'evening' => WellbeingPeriod.evening,
+        _ => null,
+      },
+    );
+  }
 
   factory WellbeingLog.fromJson(Map<String, dynamic> json) {
     return WellbeingLog(
