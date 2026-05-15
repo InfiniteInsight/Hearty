@@ -3,6 +3,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import '../../../core/api/hearty_api_client.dart';
 import '../../../core/api/offline_exception.dart';
+import '../../../core/api/providers/meals_provider.dart' show syncTriggerProvider;
 import '../models/voice_state.dart';
 
 final voiceProvider = StateNotifierProvider<VoiceNotifier, VoiceState>((ref) {
@@ -119,16 +120,13 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
   /// Sends the current transcript to the Hearty chat API.
   /// Falls back gracefully when offline or when [_ref] is not available.
-  Future<void> sendToChat({String? defaultAssistantLabel}) async {
+  Future<void> sendToChat() async {
     final transcript = state.transcript;
     if (transcript.isEmpty) return;
 
-    // Non-health redirect (same logic as the old simulateApiResponse).
     const nonHealthKeywords = ['weather', 'news', 'music', 'sports', 'stock', 'remind'];
-    final isNonHealth = defaultAssistantLabel != null &&
-        nonHealthKeywords.any((k) => transcript.toLowerCase().contains(k));
-    if (isNonHealth) {
-      await redirectToAssistant(defaultAssistantLabel);
+    if (nonHealthKeywords.any((k) => transcript.toLowerCase().contains(k))) {
+      setResponse("That's outside what I track. I focus on food, symptoms, and wellbeing.", askFollowUp: false);
       return;
     }
 
@@ -144,6 +142,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       final reply = await client.chat(message: transcript);
       if (!mounted) return;
       setResponse(reply.isNotEmpty ? reply : 'Got it! How are you feeling?');
+      ref.read(syncTriggerProvider).schedule();
     } on OfflineException {
       if (!mounted) return;
       setResponse(
@@ -176,16 +175,8 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   /// Phase 5 stub — kept for backwards compatibility; delegates to sendToChat.
-  Future<void> simulateApiResponse({String? defaultAssistantLabel}) async {
-    await sendToChat(defaultAssistantLabel: defaultAssistantLabel);
-  }
-
-  /// Speaks the redirect response for a non-health query.
-  Future<void> redirectToAssistant(String assistantLabel) async {
-    final response = assistantLabel == 'None'
-        ? "That's outside what I track. I focus on food, symptoms, and wellbeing."
-        : 'For that, try asking $assistantLabel.';
-    setResponse(response, askFollowUp: false);
+  Future<void> simulateApiResponse() async {
+    await sendToChat();
   }
 
   @override
