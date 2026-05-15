@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../core/api/models/meal_log.dart';
 import '../../../core/api/offline_exception.dart';
 import '../../../core/api/providers/meals_provider.dart';
 import '../../photos/models/photo_type.dart';
@@ -221,9 +220,6 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
     final isListening = voiceState.status == VoiceStatus.listening ||
         voiceState.status == VoiceStatus.awaitingFollowUp;
 
-    final mealsAsync = ref.watch(mealsProvider);
-    final recentChipLabels = _buildChipLabels(mealsAsync.valueOrNull ?? []);
-
     final reviewText = _reviewText;
 
     return Scaffold(
@@ -279,21 +275,6 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
               ],
             ),
 
-            const SizedBox(height: 16),
-
-            // ── Recent meals chips ────────────────────────────────────────
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: recentChipLabels
-                  .map(
-                    (label) => ActionChip(
-                      label: Text(label),
-                      onPressed: () => _submitText(label),
-                    ),
-                  )
-                  .toList(),
-            ),
 
             const SizedBox(height: 24),
 
@@ -314,31 +295,6 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Chip label helpers
-  // ---------------------------------------------------------------------------
-
-  static const _fallbackChips = ['Coffee', 'Oatmeal', 'Water'];
-
-  List<String> _buildChipLabels(List<MealLog> meals) {
-    final seen = <String>{};
-    final result = <String>[];
-    for (final meal in meals) {
-      if (result.length >= 5) break;
-      final desc = meal.description;
-      if (seen.add(desc)) {
-        result.add(desc);
-      }
-    }
-    // Pad with fallbacks (skip duplicates).
-    for (final fallback in _fallbackChips) {
-      if (result.length >= 5) break;
-      if (seen.add(fallback)) {
-        result.add(fallback);
-      }
-    }
-    return result;
-  }
 }
 
 // ---------------------------------------------------------------------------
