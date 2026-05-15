@@ -14,6 +14,7 @@ import '../offline/local_meal_dao.dart';
 import '../offline/local_preferences_dao.dart';
 import '../offline/local_symptom_dao.dart';
 import '../offline/local_trends_dao.dart';
+import '../offline/local_voice_queue_dao.dart';
 import '../offline/local_wellbeing_dao.dart';
 import '../offline/offline_database.dart';
 
@@ -90,6 +91,7 @@ class SyncService implements SyncTrigger {
     pushedAny |= await _pushSymptoms();
     pushedAny |= await _pushWellbeing();
     pushedAny |= await _pushPreferences();
+    pushedAny |= await _pushVoiceQueue();
     return pushedAny;
   }
 
@@ -210,6 +212,30 @@ class SyncService implements SyncTrigger {
     } catch (_) {
       return false;
     }
+  }
+
+  Future<bool> _pushVoiceQueue() async {
+    final dao = LocalVoiceQueueDao(_db);
+    final pending = await dao.getPending();
+    bool pushed = false;
+
+    for (final row in pending) {
+      try {
+        await _ref.read(heartyApiClientProvider).chat(message: row.transcript);
+        await dao.markDone(row.id);
+        pushed = true;
+      } on DioException catch (e) {
+        final status = e.response?.statusCode;
+        if (status != null && status >= 400 && status < 500) {
+          await dao.markFailed(row.id);
+        }
+        // Network error: leave as pending for next cycle
+      } catch (_) {
+        // Leave as pending
+      }
+    }
+
+    return pushed;
   }
 
   // ── Pull ────────────────────────────────────────────────────────────────────
