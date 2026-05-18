@@ -40,4 +40,27 @@ void main() {
         .getSingle();
     expect(row.syncStatus, 'failed');
   });
+
+  test('watchPending emits pending entries and updates when one is removed', () async {
+    await dao.insertPending(
+      id: 'vq-watch-1',
+      transcript: 'I had oatmeal',
+      loggedAt: DateTime.now(),
+    );
+    await dao.insertPending(
+      id: 'vq-watch-2',
+      transcript: 'And a coffee',
+      loggedAt: DateTime.now(),
+    );
+
+    // First emission: both entries present.
+    final first = await dao.watchPending().first;
+    expect(first.length, 2);
+
+    // After markDone, stream should emit with one entry removed.
+    await dao.markDone('vq-watch-1');
+    final second = await dao.watchPending().first;
+    expect(second.length, 1);
+    expect(second.first.id, 'vq-watch-2');
+  });
 }

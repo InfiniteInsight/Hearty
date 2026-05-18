@@ -22,6 +22,13 @@ class LocalVoiceQueueDao extends DatabaseAccessor<OfflineDatabase> {
         );
   }
 
+  Stream<List<LocalVoiceQueueData>> watchPending() {
+    return (select(db.localVoiceQueue)
+          ..where((v) => v.syncStatus.equals('pending'))
+          ..orderBy([(v) => OrderingTerm.desc(v.loggedAt)]))
+        .watch();
+  }
+
   Future<List<LocalVoiceQueueData>> getPending() {
     return (select(db.localVoiceQueue)
           ..where((v) => v.syncStatus.equals('pending'))
