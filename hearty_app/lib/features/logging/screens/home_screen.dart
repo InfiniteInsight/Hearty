@@ -2,17 +2,15 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../voice/providers/voice_provider.dart';
-import '../../voice/screens/voice_overlay_screen.dart';
-import '../../../core/audio/chime_player.dart';
-import '../../../features/wake_word/wake_word_channel.dart';
 import '../../../core/api/providers/meals_provider.dart';
 import '../../../core/api/providers/symptoms_provider.dart';
 import '../../../core/api/providers/wellbeing_provider.dart';
+import '../../../core/api/providers/voice_queue_provider.dart';
 import '../../../core/api/models/meal_log.dart';
 import '../../../core/api/models/symptom_log.dart';
 import '../../../core/api/models/wellbeing_log.dart';
 import '../../../core/api/models/wellbeing_period.dart';
+import '../../../core/offline/offline_database.dart';
 import '../../../core/sync/sync_service.dart';
 
 // ---------------------------------------------------------------------------
@@ -59,6 +57,14 @@ final class _WellbeingEntry extends _TimelineEntry {
   DateTime get loggedAt => wellbeing.loggedAt;
 }
 
+final class _VoiceQueueEntry extends _TimelineEntry {
+  final LocalVoiceQueueData item;
+  _VoiceQueueEntry(this.item);
+  @override
+  DateTime get loggedAt =>
+      DateTime.fromMillisecondsSinceEpoch(item.loggedAt);
+}
+
 // ---------------------------------------------------------------------------
 // HomeScreen
 // ---------------------------------------------------------------------------
@@ -90,6 +96,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final mealsAsync = ref.watch(mealsProvider);
     final symptomsAsync = ref.watch(symptomsProvider);
     final wellbeingAsync = ref.watch(wellbeingProvider);
+    final voiceQueueAsync = ref.watch(voiceQueueProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -138,7 +145,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               if (hasFailed) _failedBanner(context),
               Expanded(
                 child: _buildBody(
-                    context, mealsAsync, symptomsAsync, wellbeingAsync),
+                    context, mealsAsync, symptomsAsync, wellbeingAsync, voiceQueueAsync),
               ),
             ],
           ),
@@ -151,10 +158,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
         ],
       ),
-      floatingActionButton: _QuickLogFab(
-        onVoiceTap: () => _openVoiceOverlay(context),
-        onTextTap: () => context.push('/log'),
-        onCameraTap: () => context.push('/log'),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.push('/log'),
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -164,6 +170,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     AsyncValue<List<MealLog>> mealsAsync,
     AsyncValue<List<SymptomLog>> symptomsAsync,
     AsyncValue<List<WellbeingLog>> wellbeingAsync,
+    AsyncValue<List<LocalVoiceQueueData>> voiceQueueAsync,
   ) {
     // Show spinner while any provider is loading.
     if (mealsAsync.isLoading ||
@@ -192,11 +199,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final meals = mealsAsync.value ?? [];
     final symptoms = symptomsAsync.value ?? [];
     final wellbeing = wellbeingAsync.value ?? [];
+    // voiceQueue loading/error is non-blocking — show empty list on failure.
+    final voiceQueue = voiceQueueAsync.value ?? [];
 
     return _TimelineBody(
       meals: meals,
       symptoms: symptoms,
       wellbeing: wellbeing,
+      voiceQueue: voiceQueue,
     );
   }
 
@@ -252,25 +262,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Future<void> _openVoiceOverlay(BuildContext context) async {
-    // Stop the wake word service's AudioRecord so SpeechRecognizer can grab the mic.
-    await WakeWordChannel.stopListening().catchError((_) {});
-    await ChimePlayer.instance.play();
-    if (!context.mounted) return;
-    ref.read(voiceProvider.notifier).startListening();
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const VoiceOverlayScreen(),
-    );
-    // Refresh timeline so newly logged entries appear immediately.
-    ref.invalidate(mealsProvider);
-    ref.invalidate(symptomsProvider);
-    ref.invalidate(wellbeingProvider);
-    // Resume wake word detection after the voice session ends.
-    WakeWordChannel.startListening().catchError((_) {});
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -281,11 +272,13 @@ class _TimelineBody extends StatelessWidget {
   final List<MealLog> meals;
   final List<SymptomLog> symptoms;
   final List<WellbeingLog> wellbeing;
+  final List<LocalVoiceQueueData> voiceQueue;
 
   const _TimelineBody({
     required this.meals,
     required this.symptoms,
     required this.wellbeing,
+    required this.voiceQueue,
   });
 
   /// Returns true if [dt] falls on today's date (date parts only).
@@ -316,12 +309,13 @@ class _TimelineBody extends StatelessWidget {
     final unlinkedSymptoms =
         todaySymptoms.where((s) => s.linkedMealId == null).toList();
 
-    // Build flat timeline entries: meals + unlinked symptoms + wellbeing.
+    // Build flat timeline entries: meals + unlinked symptoms + wellbeing + pending voice queue.
     final List<_TimelineEntry> entries = [
       for (final m in todayMeals)
         _MealEntry(m, linkedMap[m.id] ?? const []),
       for (final s in unlinkedSymptoms) _SymptomEntry(s),
       for (final w in todayWellbeing) _WellbeingEntry(w),
+      for (final q in voiceQueue) _VoiceQueueEntry(q),
     ];
 
     // Sort descending (newest first).
@@ -360,6 +354,7 @@ class _TimelineBody extends StatelessWidget {
       _SymptomEntry(:final symptom) => _SymptomRow(symptom: symptom),
       _WellbeingEntry(:final wellbeing) =>
         _WellbeingRow(wellbeing: wellbeing),
+      _VoiceQueueEntry(:final item) => _VoiceQueueCard(item: item),
     };
   }
 }
@@ -618,86 +613,57 @@ class _WellbeingRow extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// FAB — unchanged from original
+// Voice queue pending card
 // ---------------------------------------------------------------------------
 
-class _QuickLogFab extends StatefulWidget {
-  final VoidCallback onVoiceTap;
-  final VoidCallback onTextTap;
-  final VoidCallback onCameraTap;
+class _VoiceQueueCard extends StatelessWidget {
+  final LocalVoiceQueueData item;
 
-  const _QuickLogFab({
-    required this.onVoiceTap,
-    required this.onTextTap,
-    required this.onCameraTap,
-  });
+  const _VoiceQueueCard({required this.item});
 
-  @override
-  State<_QuickLogFab> createState() => _QuickLogFabState();
-}
-
-class _QuickLogFabState extends State<_QuickLogFab> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (_expanded) ...[
-          _SubFab(icon: Icons.mic, label: 'Voice', onTap: () {
-            setState(() => _expanded = false);
-            widget.onVoiceTap();
-          }),
-          const SizedBox(height: 8),
-          _SubFab(icon: Icons.edit, label: 'Text', onTap: () {
-            setState(() => _expanded = false);
-            widget.onTextTap();
-          }),
-          const SizedBox(height: 8),
-          _SubFab(icon: Icons.camera_alt, label: 'Camera', onTap: () {
-            setState(() => _expanded = false);
-            widget.onCameraTap();
-          }),
-          const SizedBox(height: 12),
-        ],
-        FloatingActionButton(
-          onPressed: () => setState(() => _expanded = !_expanded),
-          child: Icon(_expanded ? Icons.close : Icons.add),
+  void _showExplanation(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Voice note queued'),
+        content: const Text(
+          "Hearty couldn't reach the server when you recorded this. "
+          "It'll be processed and appear here as a proper log entry once you reconnect.",
         ),
-      ],
-    );
-  }
-}
-
-class _SubFab extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _SubFab({required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xDD000000),
-            borderRadius: BorderRadius.circular(8),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
           ),
-          child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loggedAt = DateTime.fromMillisecondsSinceEpoch(item.loggedAt);
+    return ListTile(
+      leading: Icon(
+        Icons.mic,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      title: Text(
+        item.transcript,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
-        const SizedBox(width: 8),
-        FloatingActionButton.small(
-          heroTag: label,
-          onPressed: onTap,
-          child: Icon(icon),
+      ),
+      subtitle: Text(_formatTime(loggedAt)),
+      trailing: IconButton(
+        icon: Icon(
+          Icons.help_outline,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
-      ],
+        onPressed: () => _showExplanation(context),
+        tooltip: 'What is this?',
+      ),
     );
   }
 }
+
