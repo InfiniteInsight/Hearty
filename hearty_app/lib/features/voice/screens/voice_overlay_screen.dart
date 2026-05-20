@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../settings/providers/default_assistant_provider.dart';
 import '../models/voice_state.dart';
 import '../providers/voice_provider.dart';
 import '../widgets/waveform_animation.dart';
@@ -39,8 +38,7 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
         if (previous == VoiceStatus.awaitingFollowUp) {
           ref.read(voiceProvider.notifier).sendFollowUpToApi();
         } else {
-          final assistantLabel = ref.read(defaultAssistantProvider).label;
-          ref.read(voiceProvider.notifier).sendToChat(defaultAssistantLabel: assistantLabel);
+          ref.read(voiceProvider.notifier).sendToChat();
         }
       }
     });
