@@ -8,7 +8,7 @@
 
 **Tech Stack:** Drift 2.26, Riverpod StreamNotifier, connectivity_plus 6.1, uuid 4.5 (all already in pubspec.yaml)
 
-**Status:** Fully implemented (Tasks 1–17 complete)
+**Status:** Fully implemented (Tasks 1–17 complete). `SyncService._pushVoiceQueue()` was added beyond this plan's Task 12 template, as part of the voice queue visibility feature (2026-05-18). The actual `sync_service.dart` is the authoritative implementation.
 
 **Spec:** `docs/superpowers/specs/2026-05-14-offline-first-cache-design.md`
 

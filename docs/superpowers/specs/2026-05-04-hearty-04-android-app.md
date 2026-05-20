@@ -151,6 +151,8 @@ The wake-word listener (`ref.listen(wakeWordDetectedProvider, ...)`) lives in `_
 
 `_ScaffoldWithNavBar.initState()` requests microphone permission and calls `WakeWordChannel.startService()`. Because this runs on every app launch (not just on the Home tab), the service is started and the MethodChannel is refreshed even when the user navigates directly to another tab.
 
+> **Implementation note (as of Phase 4):** The listener is currently wired in `HomeScreen` rather than `_ScaffoldWithNavBar`. This means the voice overlay only opens when the user is on the Home tab. Moving the listener to the shell scaffold is a known gap to address in a future pass.
+
 ### 3.4 Activation Flow
 
 ```
@@ -180,11 +182,13 @@ The wake-word listener (`ref.listen(wakeWordDetectedProvider, ...)`) lives in `_
 
 ### 3.4 Non-Health Query Handling
 
-Claude includes a system-level instruction to classify every incoming query as health-related or not. If not health-related, Claude responds with a fixed template:
+`VoiceNotifier` checks the transcript for a set of non-health keywords (`weather`, `news`, `music`, `sports`, `stock`, `remind`) before sending to the API. If matched, it responds inline with a fixed message:
 
-> "For that, try asking [configured assistant]."
+> "That's outside what I track. I focus on food, symptoms, and wellbeing."
 
-The configured assistant is set in the Settings screen (default: Google Assistant). The app dismisses the overlay after speaking this response. Hearty does not attempt to answer general queries, search the web, set timers, or perform any non-health actions — this keeps the AI context clean and prevents scope creep in the system prompt.
+The overlay dismisses after speaking. Hearty does not attempt to answer general queries, search the web, set timers, or perform any non-health actions — this keeps the AI context clean and prevents scope creep in the system prompt.
+
+> **Design note:** An earlier design used a user-configured "Default Assistant" setting (Google Assistant / Gemini / Siri) to personalise the redirect response. This was simplified to the fixed-message approach to reduce settings surface area.
 
 ---
 
@@ -418,15 +422,17 @@ This is the core behavioral loop that makes Hearty useful over time.
 
 **Single notification per meal:** Only one follow-up notification fires per meal log entry. If the user has already logged a symptom or wellbeing snapshot in the window between meal logging and the notification, the backend cancels the scheduled FCM send.
 
-### 7.3 Daily Check-In
+### 7.3 Check-In Notifications
 
-A local notification fires each morning at a user-configured time (default: 8:00 AM).
+Three independent daily check-in slots, each with its own toggle and time picker:
 
-**Content:**
-- **Title:** "Good morning — how did you sleep?"
-- **Body:** "Tap to log your morning wellbeing."
+| Slot | Default time | Title |
+|------|-------------|-------|
+| Morning | 8:00 AM | "Good morning — how are you feeling?" |
+| Midday | 12:30 PM | "Midday check-in" |
+| Evening | 8:00 PM | "Evening check-in" |
 
-Enabled by default. User can disable or change the time in Settings → Notifications.
+All three are enabled by default. Users can disable any slot or change its time in Settings → Notifications. Each slot maps to a `WellbeingPeriod` (`morning` / `midday` / `evening`) so the resulting wellbeing log entry carries a period label.
 
 ### 7.4 Weekly Digest
 
@@ -627,7 +633,6 @@ All changes sync immediately to Supabase. The health profile is embedded in the 
 - **Account:** Signed in as [email] · Sign Out
 - **Health Profile** → navigates to Health Profile screen
 - **Notifications** → navigates to Notification Preferences screen
-- **Default Assistant** — picker: Google Assistant | Gemini | Siri | None (for non-health redirect)
 - **Voice Settings** — TTS speech rate slider, TTS pitch slider, STT silence threshold
 - **Data Export** — "Export my data" button (opens format picker: JSON / CSV; sends download via API)
 - **About** — version, privacy policy link, open source licenses
@@ -769,8 +774,20 @@ await Supabase.initialize(
 <!-- Notifications (Android 13+) -->
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+<!-- Exact alarms for scheduled check-in notifications -->
+<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
 <!-- Vibration for notification feedback -->
 <uses-permission android:name="android.permission.VIBRATE" />
+
+<!-- Battery optimisation exemption request (wake word service reliability) -->
+<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+<!-- Full-screen intent required on Android 12+ to launch activity from background service -->
+<uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
+<!-- Turn screen on when wake word fires from screen-off state -->
+<uses-permission android:name="android.permission.TURN_SCREEN_ON" />
 ```
 
 ---

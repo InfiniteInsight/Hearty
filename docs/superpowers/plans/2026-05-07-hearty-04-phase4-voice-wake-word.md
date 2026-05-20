@@ -68,7 +68,7 @@ export PATH="$PATH:/home/evan/tools/flutter/bin"
 - Modify: `hearty_app/android/app/build.gradle.kts`
 - Modify: `hearty_app/android/app/src/main/AndroidManifest.xml`
 
-- [ ] **Step 1: Add ONNX Runtime dependency to build.gradle.kts**
+- [x] **Step 1: Add ONNX Runtime dependency to build.gradle.kts**
 
 Open `hearty_app/android/app/build.gradle.kts`. After the `flutter { source = "../.." }` block, add:
 
@@ -125,7 +125,7 @@ dependencies {
 }
 ```
 
-- [ ] **Step 2: Add HeartyWakeWordService and BootReceiver to AndroidManifest.xml**
+- [x] **Step 2: Add HeartyWakeWordService and BootReceiver to AndroidManifest.xml**
 
 Open `hearty_app/android/app/src/main/AndroidManifest.xml`. Add the service and receiver inside the `<application>` tag, after the `<activity>` block and before the `</application>` closing tag:
 
@@ -192,7 +192,7 @@ The `<application>` tag section should now look like:
     </application>
 ```
 
-- [ ] **Step 3: Verify Gradle sync resolves**
+- [x] **Step 3: Verify Gradle sync resolves**
 
 Run:
 ```bash
@@ -201,7 +201,7 @@ cd hearty_app && export ANDROID_HOME=/home/evan/tools/android-sdk && /home/evan/
 
 Expected: no errors. (Full build is verified in later tasks.)
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app
@@ -225,7 +225,7 @@ Models 1 and 2 are provided by the openWakeWord Python package and are the same 
 - Create: `hearty_app/assets/wake_word/embedding_model.onnx`
 - Modify: `hearty_app/pubspec.yaml`
 
-- [ ] **Step 1: Extract auxiliary models from the installed openWakeWord Python package**
+- [x] **Step 1: Extract auxiliary models from the installed openWakeWord Python package**
 
 The openWakeWord package was used to train the model, so it should already be installed. Run:
 
@@ -265,7 +265,7 @@ print('Copied melspectrogram.onnx and embedding_model.onnx')
 
 Expected: `Copied melspectrogram.onnx and embedding_model.onnx`
 
-- [ ] **Step 2: Inspect model I/O shapes (record these — Kotlin code depends on them)**
+- [x] **Step 2: Inspect model I/O shapes (record these — Kotlin code depends on them)**
 
 Run:
 ```bash
@@ -288,7 +288,7 @@ Note down the exact input/output node names and shapes. You will use them in Tas
 
 The exact shapes determine buffer sizing in the Kotlin code. If shapes differ from these examples, adjust the `SAMPLES_PER_CHUNK`, `MEL_FRAMES`, and `EMBEDDING_DIM` constants in Task 3 accordingly.
 
-- [ ] **Step 3: Register all wake_word assets in pubspec.yaml**
+- [x] **Step 3: Register all wake_word assets in pubspec.yaml**
 
 Open `hearty_app/pubspec.yaml`. Update the `assets` section under `flutter:` to:
 
@@ -305,13 +305,13 @@ flutter:
 
 (The `assets/audio/wake_chime.mp3` will be added in Task 6 but register it now to avoid a two-step pubspec edit.)
 
-- [ ] **Step 4: Create the audio assets directory**
+- [x] **Step 4: Create the audio assets directory**
 
 ```bash
 mkdir -p hearty_app/assets/audio
 ```
 
-- [ ] **Step 5: Verify flutter pub get still passes**
+- [x] **Step 5: Verify flutter pub get still passes**
 
 ```bash
 cd hearty_app && /home/evan/tools/flutter/bin/flutter pub get
@@ -319,7 +319,7 @@ cd hearty_app && /home/evan/tools/flutter/bin/flutter pub get
 
 Expected: `Running "flutter pub get" in hearty_app...` then success.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app
@@ -331,20 +331,36 @@ git commit -m "feat: bundle openWakeWord auxiliary models (melspectrogram, embed
 
 ## Task 3: HeartyWakeWordService.kt — Foreground Service + ONNX Pipeline
 
+> **STATUS: IMPLEMENTED** — see `hearty_app/android/app/src/main/kotlin/com/hearty/app/HeartyWakeWordService.kt`
+>
+> The implementation differs significantly from the template below. Use the actual file as the source of truth. Key differences:
+>
+> | Dimension | Original plan | Actual implementation |
+> |-----------|---------------|----------------------|
+> | Chunk size | 16000 samples (1s non-overlapping) | 1280 samples (80ms sliding window) |
+> | Detection loop | One embedding per second | Sliding mel frame buffer (76 frames), embedding every 80ms |
+> | Audio context | None | 480-sample prior-chunk context prepended to each mel call |
+> | Post-mel transform | None | `spec / 10 + 2` (aligns with openWakeWord Python reference) |
+> | Audio source | `MIC` | `VOICE_RECOGNITION` (STT compatibility) |
+> | Embedding output node | `output_0` | `conv2d_19` (actual hey_jarvis.onnx node) |
+> | Classifier nodes | `x` / `sigmoid` | `x.1` / `53` (actual hey_jarvis.onnx nodes) |
+> | Screen wakeup | Direct `startActivity()` | `fullScreenIntent` notification (Android 12+ background restriction) |
+> | Permission check | None | Checks `RECORD_AUDIO` at `onStartCommand`, stops self if denied |
+>
+> **Why sliding window:** The original 1-second non-overlapping approach produced effectively zero classifier scores because most 1-second windows contained no wake phrase. The 80ms sliding window matches the openWakeWord Python streaming pipeline and feeds the classifier a rolling buffer of 76 mel frames, giving it continuous coverage.
+
 **Files:**
 - Create: `hearty_app/android/app/src/main/kotlin/com/hearty/app/HeartyWakeWordService.kt`
 
 This service runs the 3-stage wake word pipeline continuously:
 1. Captures 16kHz PCM audio using `AudioRecord`
-2. Every `SAMPLES_PER_CHUNK` samples (1 second): runs mel spectrogram ONNX model
-3. Feeds mel features into embedding ONNX model to get a 96-dim embedding
-4. Adds embedding to a rolling buffer of 16 embeddings
-5. When the buffer has 16 embeddings: runs the wake word classifier
-6. If score > threshold: signals Flutter via MethodChannel
+2. Every 1280 samples (80ms): prepends 480-sample audio context, runs mel spectrogram model
+3. Appends new mel frames to a rolling 76-frame buffer; applies `spec/10+2` transform
+4. Once buffer is primed: runs embedding model → 96-dim embedding
+5. Adds embedding to a rolling buffer of 16 embeddings
+6. Runs wake word classifier; if score ≥ threshold: fires `fullScreenIntent` + MethodChannel call
 
-**IMPORTANT:** Before writing this file, look up the actual node names from the Step 2 output in Task 2. Replace `MEL_INPUT_NODE`, `MEL_OUTPUT_NODE`, `EMBED_INPUT_NODE`, `EMBED_OUTPUT_NODE` with the actual names you found.
-
-- [ ] **Step 1: Write HeartyWakeWordService.kt**
+- [x] **Step 1: Write HeartyWakeWordService.kt**
 
 Create `hearty_app/android/app/src/main/kotlin/com/hearty/app/HeartyWakeWordService.kt`:
 
@@ -614,7 +630,7 @@ class HeartyWakeWordService : Service() {
 }
 ```
 
-- [ ] **Step 2: Verify the file compiles (flutter build apk --debug will check Kotlin)**
+- [x] **Step 2: Verify the file compiles (flutter build apk --debug will check Kotlin)**
 
 Run a quick Kotlin syntax check. The full build is deferred until device testing; just confirm the file exists and has no obvious syntax error by running:
 
@@ -626,7 +642,7 @@ cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-a
 
 Expected: `No issues found!` or only Dart-side warnings (not Kotlin errors at this stage — Kotlin is compiled during `flutter build`).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app
@@ -642,7 +658,7 @@ git commit -m "feat: HeartyWakeWordService — 3-stage ONNX wake word detection"
 - Create: `hearty_app/android/app/src/main/kotlin/com/hearty/app/BootReceiver.kt`
 - Modify: `hearty_app/android/app/src/main/kotlin/com/hearty/app/MainActivity.kt`
 
-- [ ] **Step 1: Write BootReceiver.kt**
+- [x] **Step 1: Write BootReceiver.kt**
 
 Create `hearty_app/android/app/src/main/kotlin/com/hearty/app/BootReceiver.kt`:
 
@@ -663,7 +679,7 @@ class BootReceiver : BroadcastReceiver() {
 }
 ```
 
-- [ ] **Step 2: Update MainActivity.kt to start the service and wire MethodChannel**
+- [x] **Step 2: Update MainActivity.kt to start the service and wire MethodChannel**
 
 Replace `hearty_app/android/app/src/main/kotlin/com/hearty/app/MainActivity.kt` with:
 
@@ -789,7 +805,7 @@ override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 }
 ```
 
-- [ ] **Step 3: flutter analyze**
+- [x] **Step 3: flutter analyze**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app/hearty_app
@@ -798,7 +814,7 @@ cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-a
 
 Expected: `No issues found!`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app
@@ -817,7 +833,7 @@ git commit -m "feat: BootReceiver + MainActivity engine wiring for wake word ser
 - Create: `hearty_app/lib/features/wake_word/providers/wake_word_provider.dart`
 - Create: `hearty_app/test/features/wake_word/wake_word_provider_test.dart`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `hearty_app/test/features/wake_word/wake_word_provider_test.dart`:
 
@@ -852,7 +868,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run test to confirm it fails**
+- [x] **Step 2: Run test to confirm it fails**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app/hearty_app
@@ -861,7 +877,7 @@ cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-a
 
 Expected: FAIL with `Target of URI hasn't been created`.
 
-- [ ] **Step 3: Write WakeWordChannel**
+- [x] **Step 3: Write WakeWordChannel**
 
 Create `hearty_app/lib/features/wake_word/wake_word_channel.dart`:
 
@@ -890,7 +906,7 @@ class WakeWordChannel {
 }
 ```
 
-- [ ] **Step 4: Write WakeWordProvider**
+- [x] **Step 4: Write WakeWordProvider**
 
 Create `hearty_app/lib/features/wake_word/providers/wake_word_provider.dart`:
 
@@ -916,7 +932,7 @@ class WakeWordNotifier extends StateNotifier<bool> {
 }
 ```
 
-- [ ] **Step 5: Run tests to confirm they pass**
+- [x] **Step 5: Run tests to confirm they pass**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app/hearty_app
@@ -925,7 +941,7 @@ cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-a
 
 Expected: `All tests passed!`
 
-- [ ] **Step 6: flutter analyze**
+- [x] **Step 6: flutter analyze**
 
 ```bash
 /home/evan/tools/flutter/bin/flutter analyze 2>&1 | tail -5
@@ -933,7 +949,7 @@ Expected: `All tests passed!`
 
 Expected: `No issues found!`
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app
@@ -949,7 +965,7 @@ git commit -m "feat: WakeWordChannel + WakeWordProvider — Flutter side of wake
 - Create: `hearty_app/assets/audio/wake_chime.mp3`
 - Create: `hearty_app/lib/core/audio/chime_player.dart`
 
-- [ ] **Step 1: Generate a wake chime MP3**
+- [x] **Step 1: Generate a wake chime MP3**
 
 Run one of the following (use the first command that succeeds):
 
@@ -991,7 +1007,7 @@ ls -lh /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-
 
 Expected: file exists, size > 0 bytes.
 
-- [ ] **Step 2: Write ChimePlayer**
+- [x] **Step 2: Write ChimePlayer**
 
 Create `hearty_app/lib/core/audio/chime_player.dart`:
 
@@ -1027,7 +1043,7 @@ class ChimePlayer {
 }
 ```
 
-- [ ] **Step 3: flutter analyze**
+- [x] **Step 3: flutter analyze**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app/hearty_app
@@ -1036,7 +1052,7 @@ cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-a
 
 Expected: `No issues found!`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app
@@ -1053,7 +1069,7 @@ git commit -m "feat: wake chime audio asset + ChimePlayer"
 - Create: `hearty_app/lib/features/voice/providers/voice_provider.dart`
 - Create: `hearty_app/test/features/voice/voice_provider_test.dart`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `hearty_app/test/features/voice/voice_provider_test.dart`:
 
@@ -1112,7 +1128,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run test to confirm failure**
+- [x] **Step 2: Run test to confirm failure**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app/hearty_app
@@ -1121,7 +1137,7 @@ cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-a
 
 Expected: FAIL with `Target of URI hasn't been created`.
 
-- [ ] **Step 3: Write VoiceState model**
+- [x] **Step 3: Write VoiceState model**
 
 Create `hearty_app/lib/features/voice/models/voice_state.dart`:
 
@@ -1152,7 +1168,7 @@ class VoiceState {
 }
 ```
 
-- [ ] **Step 4: Write VoiceProvider**
+- [x] **Step 4: Write VoiceProvider**
 
 Create `hearty_app/lib/features/voice/providers/voice_provider.dart`:
 
@@ -1231,7 +1247,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 }
 ```
 
-- [ ] **Step 5: Run tests to confirm they pass**
+- [x] **Step 5: Run tests to confirm they pass**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app/hearty_app
@@ -1240,7 +1256,7 @@ cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-a
 
 Expected: `All tests passed!`
 
-- [ ] **Step 6: flutter analyze**
+- [x] **Step 6: flutter analyze**
 
 ```bash
 /home/evan/tools/flutter/bin/flutter analyze 2>&1 | tail -5
@@ -1248,7 +1264,7 @@ Expected: `All tests passed!`
 
 Expected: `No issues found!`
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app
@@ -1259,7 +1275,9 @@ git commit -m "feat: VoiceState + VoiceProvider — STT state machine"
 
 ---
 
-## Task 8: TTS Integration + Follow-Up Logic
+## Task 8: TTS Integration + Follow-Up Logic + API Wiring
+
+> **STATUS: IMPLEMENTED** — the actual `voice_provider.dart` goes further than this task's template. `simulateApiResponse()` is a compatibility shim that delegates to `sendToChat()`, which makes a real `heartyApiClientProvider.chat()` call. Offline fallback saves the transcript to `local_voice_queue` via `localVoiceQueueDaoProvider`. `sendFollowUpToApi()` logs the follow-up turn as a symptom. Phase 5 API integration was effectively pulled forward here.
 
 **Files:**
 - Modify: `hearty_app/lib/features/voice/providers/voice_provider.dart`
@@ -1267,7 +1285,7 @@ git commit -m "feat: VoiceState + VoiceProvider — STT state machine"
 
 TTS is added to `VoiceNotifier`. When `setResponse()` is called, the provider speaks the response via `flutter_tts`, then optionally transitions to `awaitingFollowUp`.
 
-- [ ] **Step 1: Add TTS tests**
+- [x] **Step 1: Add TTS tests**
 
 Append to `hearty_app/test/features/voice/voice_provider_test.dart`:
 
@@ -1279,7 +1297,7 @@ Append to `hearty_app/test/features/voice/voice_provider_test.dart`:
     });
 ```
 
-- [ ] **Step 2: Run added test to confirm it fails**
+- [x] **Step 2: Run added test to confirm it fails**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app/hearty_app
@@ -1288,7 +1306,7 @@ cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-a
 
 Expected: FAIL with `The method 'stopSpeaking' isn't defined`.
 
-- [ ] **Step 3: Update VoiceProvider with TTS**
+- [x] **Step 3: Update VoiceProvider with TTS**
 
 Replace the contents of `hearty_app/lib/features/voice/providers/voice_provider.dart` with:
 
@@ -1399,7 +1417,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 }
 ```
 
-- [ ] **Step 4: Run all voice tests**
+- [x] **Step 4: Run all voice tests**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app/hearty_app
@@ -1408,7 +1426,7 @@ cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-a
 
 Expected: `All tests passed!`
 
-- [ ] **Step 5: flutter analyze**
+- [x] **Step 5: flutter analyze**
 
 ```bash
 /home/evan/tools/flutter/bin/flutter analyze 2>&1 | tail -5
@@ -1416,7 +1434,7 @@ Expected: `All tests passed!`
 
 Expected: `No issues found!`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app
@@ -1435,7 +1453,7 @@ git commit -m "feat: TTS integration + follow-up logic in VoiceProvider"
 - Create: `hearty_app/lib/features/voice/screens/voice_overlay_screen.dart`
 - Create: `hearty_app/test/features/voice/voice_overlay_screen_test.dart`
 
-- [ ] **Step 1: Write the failing widget tests**
+- [x] **Step 1: Write the failing widget tests**
 
 Create `hearty_app/test/features/voice/voice_overlay_screen_test.dart`:
 
@@ -1541,7 +1559,7 @@ class _StubVoiceNotifier extends VoiceNotifier {
 }
 ```
 
-- [ ] **Step 2: Run failing tests**
+- [x] **Step 2: Run failing tests**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app/hearty_app
@@ -1550,7 +1568,7 @@ cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-a
 
 Expected: FAIL with `Target of URI hasn't been created`.
 
-- [ ] **Step 3: Write WaveformAnimation widget**
+- [x] **Step 3: Write WaveformAnimation widget**
 
 Create `hearty_app/lib/features/voice/widgets/waveform_animation.dart`:
 
@@ -1636,7 +1654,7 @@ class _WaveformPainter extends CustomPainter {
 }
 ```
 
-- [ ] **Step 4: Write ThinkingAnimation widget**
+- [x] **Step 4: Write ThinkingAnimation widget**
 
 Create `hearty_app/lib/features/voice/widgets/thinking_animation.dart`:
 
@@ -1701,7 +1719,7 @@ class _ThinkingAnimationState extends State<ThinkingAnimation>
 }
 ```
 
-- [ ] **Step 5: Write VoiceOverlayScreen**
+- [x] **Step 5: Write VoiceOverlayScreen**
 
 Create `hearty_app/lib/features/voice/screens/voice_overlay_screen.dart`:
 
@@ -1856,7 +1874,7 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
 }
 ```
 
-- [ ] **Step 6: Run widget tests**
+- [x] **Step 6: Run widget tests**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app/hearty_app
@@ -1865,7 +1883,7 @@ cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-a
 
 Expected: `All tests passed!`
 
-- [ ] **Step 7: flutter analyze**
+- [x] **Step 7: flutter analyze**
 
 ```bash
 /home/evan/tools/flutter/bin/flutter analyze 2>&1 | tail -5
@@ -1873,7 +1891,7 @@ Expected: `All tests passed!`
 
 Expected: `No issues found!`
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app
@@ -1892,7 +1910,7 @@ git commit -m "feat: VoiceOverlayScreen + waveform/thinking animations"
 
 This task wires the wake word detection signal and the FAB/voice button to open `VoiceOverlayScreen` and start the voice session.
 
-- [ ] **Step 1: Update HomeScreen with wake word listener + Quick Log FAB**
+- [x] **Step 1: Update HomeScreen with wake word listener + Quick Log FAB**
 
 Replace `hearty_app/lib/features/logging/screens/home_screen.dart` with:
 
@@ -2037,7 +2055,7 @@ class _SubFab extends StatelessWidget {
 }
 ```
 
-- [ ] **Step 2: Update LogEntryScreen with voice button**
+- [x] **Step 2: Update LogEntryScreen with voice button**
 
 Replace `hearty_app/lib/features/logging/screens/log_entry_screen.dart` with:
 
@@ -2112,7 +2130,7 @@ class LogEntryScreen extends ConsumerWidget {
 }
 ```
 
-- [ ] **Step 3: Add `setResponse` API wiring stub to VoiceProvider**
+- [x] **Step 3: Add `setResponse` API wiring stub to VoiceProvider**
 
 The voice overlay needs the caller to trigger the API call when `status` transitions to `thinking`. This is done by the screen listening to the provider. The full API integration happens in Phase 5 (`/api/chat`). For now, add a stub that simulates a response for testing:
 
@@ -2141,7 +2159,7 @@ Add to `_VoiceOverlayScreenState.build`, after the existing `ref.listen` block:
     });
 ```
 
-- [ ] **Step 4: flutter analyze**
+- [x] **Step 4: flutter analyze**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app/hearty_app
@@ -2150,7 +2168,7 @@ cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-a
 
 Expected: `No issues found!`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app
@@ -2163,172 +2181,36 @@ git commit -m "feat: Home screen FAB + Log Entry voice button wired to VoiceOver
 
 ---
 
-## Task 11: Default Assistant Preference + Non-Health Query Redirect
+## Task 11: Non-Health Query Handling
+
+> **STATUS: IMPLEMENTED** — approach differs from original plan. `default_assistant_provider.dart` and the Default Assistant Settings picker were not built. Instead, `VoiceNotifier.sendToChat()` uses keyword-based detection.
 
 **Files:**
-- Modify: `hearty_app/lib/features/settings/screens/settings_screen.dart`
 - Modify: `hearty_app/lib/features/voice/providers/voice_provider.dart`
+- Modify: `hearty_app/lib/features/settings/screens/settings_screen.dart`
 
-The Default Assistant setting lets the user choose where non-health queries are redirected. The VoiceProvider reads this setting and speaks the redirect response.
+**Actual implementation:**
 
-- [ ] **Step 1: Add Default Assistant provider**
-
-Create `hearty_app/lib/features/settings/providers/default_assistant_provider.dart`:
-
-```dart
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-enum DefaultAssistant { googleAssistant, gemini, none }
-
-extension DefaultAssistantLabel on DefaultAssistant {
-  String get label {
-    switch (this) {
-      case DefaultAssistant.googleAssistant: return 'Google Assistant';
-      case DefaultAssistant.gemini: return 'Gemini';
-      case DefaultAssistant.none: return 'None';
-    }
-  }
-}
-
-final defaultAssistantProvider =
-    StateProvider<DefaultAssistant>((ref) => DefaultAssistant.googleAssistant);
-```
-
-- [ ] **Step 2: Update SettingsScreen to show Default Assistant + Voice Settings**
-
-Replace the contents of `hearty_app/lib/features/settings/screens/settings_screen.dart` with:
+`VoiceNotifier.sendToChat()` checks the transcript against a hardcoded keyword list before calling the API:
 
 ```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-import '../../../core/auth/auth_repository.dart';
-import '../providers/default_assistant_provider.dart';
-
-class SettingsScreen extends ConsumerWidget {
-  const SettingsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final currentUser = ref.watch(currentUserProvider);
-    final defaultAssistant = ref.watch(defaultAssistantProvider);
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        children: [
-          // Account section
-          ListTile(
-            leading: const Icon(Icons.account_circle),
-            title: const Text('Account'),
-            subtitle: Text(currentUser?.email ?? ''),
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Sign Out'),
-            onTap: () async {
-              await Supabase.instance.client.auth.signOut();
-              await GoogleSignIn().signOut();
-            },
-          ),
-          const Divider(),
-
-          // Default Assistant
-          const ListTile(
-            title: Text('Default Assistant',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('Where non-health queries are redirected'),
-          ),
-          ...DefaultAssistant.values.map((assistant) => RadioListTile<DefaultAssistant>(
-                title: Text(assistant.label),
-                value: assistant,
-                groupValue: defaultAssistant,
-                onChanged: (value) {
-                  if (value != null) {
-                    ref.read(defaultAssistantProvider.notifier).state = value;
-                  }
-                },
-              )),
-          const Divider(),
-
-          // Health Profile navigation (Phase 5 wires the actual screen)
-          ListTile(
-            leading: const Icon(Icons.health_and_safety),
-            title: const Text('Health Profile'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
-          ),
-          const Divider(),
-
-          // About
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('About'),
-            subtitle: Text('Hearty v1.0.0'),
-          ),
-        ],
-      ),
-    );
-  }
+const nonHealthKeywords = ['weather', 'news', 'music', 'sports', 'stock', 'remind'];
+if (nonHealthKeywords.any((k) => transcript.toLowerCase().contains(k))) {
+  setResponse(
+    "That's outside what I track. I focus on food, symptoms, and wellbeing.",
+    askFollowUp: false,
+  );
+  return;
 }
 ```
 
-- [ ] **Step 3: Add non-health redirect to VoiceProvider**
+`SettingsScreen` navigates to Notifications and Health Profile but does not include a Default Assistant picker. The `default_assistant_provider.dart` file was created and then removed.
 
-The API response from `/api/chat` will indicate whether a query was health-related. For Phase 4 the stub response handles this. Add a `redirectToAssistant` method that produces the redirect response.
-
-In `hearty_app/lib/features/voice/providers/voice_provider.dart`, add the redirect method to `VoiceNotifier`:
-
-```dart
-  /// Speaks the redirect response for a non-health query.
-  /// [assistantLabel] is the user-configured default assistant name (e.g., "Google Assistant").
-  Future<void> redirectToAssistant(String assistantLabel) async {
-    final response = assistantLabel == 'None'
-        ? "That's outside what I track. I focus on food, symptoms, and wellbeing."
-        : "For that, try asking $assistantLabel.";
-    await setResponse(response, askFollowUp: false);
-  }
-```
-
-Update `simulateApiResponse` in `VoiceNotifier` to also demonstrate the non-health path (the real check will come from the Claude API in Phase 5):
-
-```dart
-  Future<void> simulateApiResponse() async {
-    final transcript = state.transcript;
-    if (transcript.isEmpty) return;
-    // Phase 5: replace with real POST /api/chat call.
-    // The API returns { "response": "...", "is_health_related": true/false }
-    await setResponse('Got it! I logged "$transcript". How are you feeling?');
-  }
-```
-
-- [ ] **Step 4: flutter analyze**
-
-```bash
-cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app/hearty_app
-/home/evan/tools/flutter/bin/flutter analyze 2>&1 | tail -5
-```
-
-Expected: `No issues found!`
-
-- [ ] **Step 5: Run all tests**
-
-```bash
-/home/evan/tools/flutter/bin/flutter test 2>&1 | tail -10
-```
-
-Expected: all tests pass, no failures.
-
-- [ ] **Step 6: Commit**
-
-```bash
-cd /home/evan/projects/food-journal-assistant/.claude/worktrees/feat+hearty-04-android-app
-git add hearty_app/lib/features/settings/ \
-        hearty_app/lib/features/voice/providers/voice_provider.dart
-git commit -m "feat: Default Assistant preference + non-health query redirect"
-```
+- [x] **Step 1: Implement keyword-based non-health detection in VoiceProvider** *(done — see `sendToChat()`)*
+- [x] **Step 2: SettingsScreen with Notifications + Health Profile navigation** *(done — no Default Assistant picker)*
+- [x] **Step 3: flutter analyze**
+- [x] **Step 4: Run all tests**
+- [x] **Step 5: Commit**
 
 ---
 
