@@ -25,6 +25,17 @@ class _HealthProfileScreenState extends ConsumerState<HealthProfileScreen> {
     'Sesame',
   ];
 
+  static const _commonConditions = [
+    'IBS',
+    'Celiac Disease',
+    'Crohn\'s Disease',
+    'Ulcerative Colitis',
+    'GERD',
+    'SIBO',
+    'Diverticulitis',
+    'Lactose Intolerance',
+  ];
+
   static const _fixedProtocols = [
     'Gluten-Free',
     'Dairy-Free',
@@ -42,7 +53,6 @@ class _HealthProfileScreenState extends ConsumerState<HealthProfileScreen> {
   List<String> _medications = [];
   bool _isSaving = false;
 
-  final _conditionController = TextEditingController();
   final _medicationController = TextEditingController();
 
   @override
@@ -63,7 +73,6 @@ class _HealthProfileScreenState extends ConsumerState<HealthProfileScreen> {
 
   @override
   void dispose() {
-    _conditionController.dispose();
     _medicationController.dispose();
     super.dispose();
   }
@@ -146,7 +155,9 @@ class _HealthProfileScreenState extends ConsumerState<HealthProfileScreen> {
         ],
       ),
     );
-    controller.dispose();
+    // Defer dispose until after the close animation completes — disposing
+    // immediately races with the exit animation which still holds a listener.
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
   }
 
   Widget _sectionHeader(String title) {
@@ -215,63 +226,53 @@ class _HealthProfileScreenState extends ConsumerState<HealthProfileScreen> {
   }
 
   Widget _buildConditionsSection() {
+    final customConditions =
+        _conditions.where((c) => !_commonConditions.contains(c)).toList();
+    final allChipConditions = [..._commonConditions, ...customConditions];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionHeader('Conditions'),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: TextField(
-            controller: _conditionController,
-            decoration: InputDecoration(
-              hintText: 'Add a condition (e.g. IBS)',
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.send),
-                onPressed: () {
-                  final text = _conditionController.text.trim();
-                  if (text.isNotEmpty) {
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              ...allChipConditions.map(
+                (condition) => FilterChip(
+                  label: Text(condition),
+                  selected: _conditions.contains(condition),
+                  onSelected: (selected) {
                     setState(() {
-                      _conditions = [..._conditions, text];
-                      _conditionController.clear();
+                      if (selected) {
+                        if (!_conditions.contains(condition)) {
+                          _conditions = [..._conditions, condition];
+                        }
+                      } else {
+                        _conditions =
+                            _conditions.where((c) => c != condition).toList();
+                      }
                     });
-                  }
-                },
+                  },
+                ),
               ),
-            ),
-            textInputAction: TextInputAction.done,
-            onSubmitted: (text) {
-              text = text.trim();
-              if (text.isNotEmpty) {
-                setState(() {
-                  _conditions = [..._conditions, text];
-                  _conditionController.clear();
-                });
-              }
-            },
+              ActionChip(
+                avatar: const Icon(Icons.add),
+                label: const Text('Add'),
+                onPressed: () => _showAddDialog(
+                  title: 'Add Condition',
+                  onConfirm: (text) {
+                    if (!_conditions.contains(text)) {
+                      setState(() => _conditions = [..._conditions, text]);
+                    }
+                  },
+                ),
+              ),
+            ],
           ),
         ),
-        if (_conditions.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: _conditions
-                  .map(
-                    (condition) => InputChip(
-                      label: Text(condition),
-                      onDeleted: () {
-                        setState(() {
-                          _conditions = _conditions
-                              .where((c) => c != condition)
-                              .toList();
-                        });
-                      },
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
       ],
     );
   }
@@ -415,8 +416,8 @@ class _HealthProfileScreenState extends ConsumerState<HealthProfileScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildAllergensSection(),
-            _buildConditionsSection(),
             _buildProtocolsSection(),
+            _buildConditionsSection(),
             _buildMedicationsSection(),
             const SizedBox(height: 24),
           ],
