@@ -159,7 +159,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         );
       }
       setResponse(
-        "You're offline, but I saved that. I'll log it when you reconnect.",
+        "You're offline or Hearty is down. I'll save that and log it when you reconnect.",
         askFollowUp: false,
       );
     } catch (_) {

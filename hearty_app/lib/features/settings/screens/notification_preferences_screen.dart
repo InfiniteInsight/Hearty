@@ -167,9 +167,9 @@ class _PreferencesFormState extends ConsumerState<_PreferencesForm> {
           ),
           Slider(
             value: _nudgeDelay.toDouble(),
-            min: 30,
+            min: 5,
             max: 90,
-            divisions: 12,
+            divisions: 17,
             label: '$_nudgeDelay min',
             onChanged: (v) =>
                 setState(() => _nudgeDelay = (v / 5).round() * 5),

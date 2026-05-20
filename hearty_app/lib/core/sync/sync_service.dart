@@ -67,6 +67,12 @@ class SyncService implements SyncTrigger {
 
   Future<void> _runCycle() async {
     if (_syncing) return;
+
+    final connectivity = await Connectivity().checkConnectivity();
+    if (connectivity.every((r) => r == ConnectivityResult.none)) {
+      return;
+    }
+
     _syncing = true;
     _dirty = false;
     _ref.read(isSyncingProvider.notifier).state = true;

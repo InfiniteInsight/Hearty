@@ -7,7 +7,7 @@ ADB := /home/evan/tools/android-sdk/platform-tools/adb
 .PHONY: run build logs stop api tunnel
 
 tunnel:
-	$(ADB) reverse tcp:8080 tcp:8080
+	$(ADB) -s $(DEVICE_ID) reverse tcp:8080 tcp:8080
 
 run: tunnel
 	cd hearty_app && $(FLUTTER) run --device-id $(DEVICE_ID) $(DEFINES)
