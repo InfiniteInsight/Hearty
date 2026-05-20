@@ -44,6 +44,10 @@ class HeartyWakeWordService : Service() {
         const val DEFAULT_THRESHOLD = 0.5f
         const val TAG = "HeartyWakeWord"
 
+        // The openWakeWord Python streaming pipeline prepends 3 STFT hops (3×160 = 480 samples)
+        // of prior audio to each chunk so mel windows span chunk boundaries correctly.
+        const val MEL_CONTEXT_SAMPLES = 480
+
         var flutterBinaryMessenger: BinaryMessenger? = null
     }
 
@@ -60,6 +64,8 @@ class HeartyWakeWordService : Service() {
     // Sliding mel frame buffer — grows up to MEL_WINDOW_FRAMES, then rolls.
     private val melFrameBuffer = LinkedList<FloatArray>()
     private val embeddingBuffer = LinkedList<FloatArray>()
+    // Rolling context: last 480 samples of the previous chunk, prepended to every mel call.
+    private var rawAudioContext = FloatArray(MEL_CONTEXT_SAMPLES)
     private var methodChannel: MethodChannel? = null
 
     override fun onCreate() {
@@ -145,7 +151,7 @@ class HeartyWakeWordService : Service() {
             SAMPLES_PER_CHUNK * 4
         )
         audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.MIC,
+            MediaRecorder.AudioSource.VOICE_RECOGNITION,
             SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT,
@@ -173,14 +179,18 @@ class HeartyWakeWordService : Service() {
                 if (read < SAMPLES_PER_CHUNK) continue
 
                 // openWakeWord expects raw int16 magnitudes as float32 — no normalization.
-                // Dividing by 32768 produces melspectrogram values far outside the range
-                // the embedding model was trained on. The Python reference does .astype(float32)
-                // with no scaling, so we match that exactly.
                 val floatAudio = FloatArray(SAMPLES_PER_CHUNK) { shortBuffer[it].toFloat() }
                 val rms = Math.sqrt(floatAudio.map { (it / 32768.0) * (it / 32768.0) }.average()).toFloat()
 
-                // Stage 1: 1280 samples → mel frames [1, 1, N, 32] where N ≈ 5
-                val newFrames = getMelFrames(floatAudio) ?: continue
+                // Prepend 480 samples of prior audio so the STFT windows span chunk boundaries
+                // correctly — mirrors the Python streaming pipeline's raw_data_buffer slicing.
+                val melInput = FloatArray(MEL_CONTEXT_SAMPLES + SAMPLES_PER_CHUNK)
+                rawAudioContext.copyInto(melInput, 0)
+                floatAudio.copyInto(melInput, MEL_CONTEXT_SAMPLES)
+                floatAudio.copyInto(rawAudioContext, 0, SAMPLES_PER_CHUNK - MEL_CONTEXT_SAMPLES, SAMPLES_PER_CHUNK)
+
+                // Stage 1: context+chunk → mel frames, then apply spec/10+2 transform.
+                val newFrames = getMelFrames(melInput) ?: continue
 
                 // Add new mel frames to the rolling 76-frame buffer.
                 for (frame in newFrames) {
@@ -221,6 +231,7 @@ class HeartyWakeWordService : Service() {
         detectionThread?.interrupt(); detectionThread = null
         melFrameBuffer.clear()
         embeddingBuffer.clear()
+        rawAudioContext = FloatArray(MEL_CONTEXT_SAMPLES)
     }
 
     // Returns each mel frame as a FloatArray of MEL_BINS floats.
@@ -285,37 +296,45 @@ class HeartyWakeWordService : Service() {
 
     private fun onWakeWordDetected() {
         isPaused = true
-        // Release the mic so Flutter's SpeechRecognizer can acquire it
         audioRecord?.stop()
         melFrameBuffer.clear()
         embeddingBuffer.clear()
 
-        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
-        @Suppress("DEPRECATION")
-        val wl = pm.newWakeLock(
-            android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK or
-                    android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP or
-                    android.os.PowerManager.ON_AFTER_RELEASE,
-            "Hearty:WakeWordWake"
+        val launchIntent = Intent(this@HeartyWakeWordService, MainActivity::class.java).apply {
+            action = MainActivity.ACTION_WAKE_WORD_DETECTED
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, launchIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        wl.acquire(5_000L)
+
+        // Android 12+ blocks startActivity() from background services.
+        // fullScreenIntent is the standard workaround — the system either launches
+        // the activity directly or shows a heads-up notification the user can tap.
+        val triggerNotification = Notification.Builder(this, CHANNEL_ID)
+            .setContentTitle("Hey Jarvis detected")
+            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setCategory(Notification.CATEGORY_CALL)
+            .setFullScreenIntent(pendingIntent, true)
+            .build()
+        getSystemService(NotificationManager::class.java)
+            .notify(NOTIFICATION_ID + 1, triggerNotification)
 
         android.os.Handler(android.os.Looper.getMainLooper()).post {
-            val launchIntent = Intent(this@HeartyWakeWordService, MainActivity::class.java).apply {
-                action = MainActivity.ACTION_WAKE_WORD_DETECTED
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                        Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
-            startActivity(launchIntent)
             methodChannel?.invokeMethod("wakeWordDetected", null)
-            wl.release()
         }
     }
 
     private fun createNotificationChannel() {
-        val channel = NotificationChannel(CHANNEL_ID, "Wake Word Detection", NotificationManager.IMPORTANCE_LOW)
-            .apply { description = "Hearty wake word detection service" }
+        val channel = NotificationChannel(CHANNEL_ID, "Wake Word Detection", NotificationManager.IMPORTANCE_HIGH)
+            .apply {
+                description = "Hearty wake word detection service"
+                setSound(null, null)
+                enableVibration(false)
+            }
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
