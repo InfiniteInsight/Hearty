@@ -30,7 +30,7 @@
 - Modify: `lib/core/offline/local_voice_queue_dao.dart`
 - Modify: `test/core/offline/local_voice_queue_dao_test.dart`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add one test to the existing test file at `test/core/offline/local_voice_queue_dao_test.dart`. Append it after the existing `markFailed` test:
 
@@ -59,7 +59,7 @@ Add one test to the existing test file at `test/core/offline/local_voice_queue_d
   });
 ```
 
-- [ ] **Step 2: Run the test to confirm it fails**
+- [x] **Step 2: Run the test to confirm it fails**
 
 ```bash
 cd hearty_app && flutter test test/core/offline/local_voice_queue_dao_test.dart
@@ -67,7 +67,7 @@ cd hearty_app && flutter test test/core/offline/local_voice_queue_dao_test.dart
 
 Expected: Error — `The method 'watchPending' isn't defined`.
 
-- [ ] **Step 3: Implement `watchPending()`**
+- [x] **Step 3: Implement `watchPending()`**
 
 In `lib/core/offline/local_voice_queue_dao.dart`, add the method after `insertPending`:
 
@@ -136,7 +136,7 @@ final localVoiceQueueDaoProvider = Provider<LocalVoiceQueueDao>((ref) {
 });
 ```
 
-- [ ] **Step 4: Run all voice queue tests to confirm they pass**
+- [x] **Step 4: Run all voice queue tests to confirm they pass**
 
 ```bash
 cd hearty_app && flutter test test/core/offline/local_voice_queue_dao_test.dart
@@ -144,7 +144,7 @@ cd hearty_app && flutter test test/core/offline/local_voice_queue_dao_test.dart
 
 Expected: All 4 tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add hearty_app/lib/core/offline/local_voice_queue_dao.dart \
@@ -159,7 +159,7 @@ git commit -m "feat: add watchPending() stream to LocalVoiceQueueDao"
 **Files:**
 - Create: `lib/core/api/providers/voice_queue_provider.dart`
 
-- [ ] **Step 1: Create the provider**
+- [x] **Step 1: Create the provider**
 
 ```dart
 // lib/core/api/providers/voice_queue_provider.dart
@@ -181,7 +181,7 @@ final voiceQueueProvider =
         VoiceQueueNotifier.new);
 ```
 
-- [ ] **Step 2: Verify it compiles**
+- [x] **Step 2: Verify it compiles**
 
 ```bash
 cd hearty_app && flutter analyze lib/core/api/providers/voice_queue_provider.dart
@@ -189,7 +189,7 @@ cd hearty_app && flutter analyze lib/core/api/providers/voice_queue_provider.dar
 
 Expected: No errors.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add hearty_app/lib/core/api/providers/voice_queue_provider.dart
@@ -203,7 +203,7 @@ git commit -m "feat: add VoiceQueueProvider streaming pending voice queue entrie
 **Files:**
 - Modify: `lib/features/logging/screens/home_screen.dart`
 
-- [ ] **Step 1: Add the import**
+- [x] **Step 1: Add the import**
 
 At the top of `lib/features/logging/screens/home_screen.dart`, add alongside the existing provider imports:
 
@@ -212,7 +212,7 @@ import '../../../core/api/providers/voice_queue_provider.dart';
 import '../../../core/offline/offline_database.dart';
 ```
 
-- [ ] **Step 2: Add `_VoiceQueueEntry` to the sealed class**
+- [x] **Step 2: Add `_VoiceQueueEntry` to the sealed class**
 
 After the existing `_WellbeingEntry` class (around line 56), add:
 
@@ -226,7 +226,7 @@ final class _VoiceQueueEntry extends _TimelineEntry {
 }
 ```
 
-- [ ] **Step 3: Watch `voiceQueueProvider` in `_HomeScreenState.build()`**
+- [x] **Step 3: Watch `voiceQueueProvider` in `_HomeScreenState.build()`**
 
 In `_HomeScreenState.build()`, add after the existing three provider watches:
 
@@ -241,7 +241,7 @@ child: _buildBody(
     context, mealsAsync, symptomsAsync, wellbeingAsync, voiceQueueAsync),
 ```
 
-- [ ] **Step 4: Update `_buildBody` signature and loading/error logic**
+- [x] **Step 4: Update `_buildBody` signature and loading/error logic**
 
 Replace the existing `_buildBody` method signature and guards:
 
@@ -291,7 +291,7 @@ Replace the existing `_buildBody` method signature and guards:
 
 Note: `voiceQueueAsync` loading/error states are intentionally not blocking — if it fails to load, the timeline shows without pending cards rather than showing an error screen.
 
-- [ ] **Step 5: Update `_TimelineBody` to accept and render voice queue entries**
+- [x] **Step 5: Update `_TimelineBody` to accept and render voice queue entries**
 
 Add `voiceQueue` to the constructor and merge it into the entries list. Replace the existing `_TimelineBody` class:
 
@@ -384,7 +384,7 @@ class _TimelineBody extends StatelessWidget {
 }
 ```
 
-- [ ] **Step 6: Add `_VoiceQueueCard` widget**
+- [x] **Step 6: Add `_VoiceQueueCard` widget**
 
 Add this widget after the `_WellbeingRow` widget at the bottom of the file:
 
@@ -445,7 +445,7 @@ class _VoiceQueueCard extends StatelessWidget {
 }
 ```
 
-- [ ] **Step 7: Verify the full file compiles**
+- [x] **Step 7: Verify the full file compiles**
 
 ```bash
 cd hearty_app && flutter analyze lib/features/logging/screens/home_screen.dart
@@ -453,7 +453,7 @@ cd hearty_app && flutter analyze lib/features/logging/screens/home_screen.dart
 
 Expected: No errors.
 
-- [ ] **Step 8: Run all tests**
+- [x] **Step 8: Run all tests**
 
 ```bash
 cd hearty_app && flutter test
@@ -461,7 +461,7 @@ cd hearty_app && flutter test
 
 Expected: All tests pass.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add hearty_app/lib/features/logging/screens/home_screen.dart
@@ -472,17 +472,17 @@ git commit -m "feat: show pending voice queue entries in home timeline"
 
 ## Task 4: Smoke Test
 
-- [ ] **Step 1: Build and run**
+- [x] **Step 1: Build and run**
 
 ```bash
 make run
 ```
 
-- [ ] **Step 2: Test online flow (no visible change)**
+- [x] **Step 2: Test online flow (no visible change)**
 
 Dictate a voice note while online. It should be processed immediately — no pending card should appear in the timeline. The real entry (meal/symptom) should appear after the sync pull.
 
-- [ ] **Step 3: Test offline flow**
+- [x] **Step 3: Test offline flow**
 
 1. Stop the API server so the app is effectively offline.
 2. Dictate a voice note — you'll hear "You're offline or Hearty is down..."
@@ -490,7 +490,7 @@ Dictate a voice note while online. It should be processed immediately — no pen
 4. Tap the `?` button — the explanation dialog should appear.
 5. Restart the API server. Within ~30 seconds the sync runs, the card disappears, and the real entry appears in its place.
 
-- [ ] **Step 4: Commit any fixes**
+- [x] **Step 4: Commit any fixes**
 
 ```bash
 git add -p

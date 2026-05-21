@@ -413,7 +413,7 @@ The sync service (`core/sync/sync_service.dart`) subscribes to connectivity chan
 
 This is the core behavioral loop that makes Hearty useful over time.
 
-**Trigger:** When the user logs a meal, the FastAPI backend schedules a follow-up FCM push notification for `meal_logged_at + nudge_delay_minutes` (default: 45 minutes, user-configurable from 30–90 minutes).
+**Trigger:** When the user logs a meal, the FastAPI backend schedules a follow-up FCM push notification for `meal_logged_at + nudge_delay_minutes` (default: 45 minutes, user-configurable from 5–90 minutes).
 
 **Notification content:**
 - **Title:** "How are you feeling?"
