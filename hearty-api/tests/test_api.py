@@ -117,3 +117,54 @@ def test_photo_stub(api_base, headers):
         data={"type": "meal"}
     )
     assert r.status_code == 501
+
+
+def test_update_meal(api_base, headers):
+    # Create
+    r = httpx.post(f"{api_base}/api/meals", headers=headers, json={
+        "description": "pancakes with syrup", "offline_id": str(uuid.uuid4())
+    }, timeout=30)
+    assert r.status_code == 201
+    meal_id = r.json()["id"]
+
+    # Patch
+    r2 = httpx.patch(f"{api_base}/api/meals/{meal_id}", headers=headers,
+                     json={"description": "pancakes with maple syrup"}, timeout=30)
+    assert r2.status_code == 200
+    body = r2.json()
+    assert body["description"] == "pancakes with maple syrup"
+    assert isinstance(body["foods"], list)
+
+    # Cleanup
+    httpx.delete(f"{api_base}/api/meals/{meal_id}", headers=headers)
+
+
+def test_delete_meal(api_base, headers):
+    r = httpx.post(f"{api_base}/api/meals", headers=headers, json={
+        "description": "toast to delete", "offline_id": str(uuid.uuid4())
+    }, timeout=30)
+    assert r.status_code == 201
+    meal_id = r.json()["id"]
+
+    r2 = httpx.delete(f"{api_base}/api/meals/{meal_id}", headers=headers)
+    assert r2.status_code == 204
+
+    # Verify gone: PATCH on deleted ID returns 404
+    r3 = httpx.patch(f"{api_base}/api/meals/{meal_id}", headers=headers,
+                     json={"description": "ghost"}, timeout=30)
+    assert r3.status_code == 404
+
+
+def test_delete_meal_wrong_user(api_base, headers):
+    r = httpx.post(f"{api_base}/api/meals", headers=headers, json={
+        "description": "private meal", "offline_id": str(uuid.uuid4())
+    }, timeout=30)
+    assert r.status_code == 201
+    meal_id = r.json()["id"]
+
+    # Attempt delete without auth header → 403 or 401
+    r2 = httpx.delete(f"{api_base}/api/meals/{meal_id}")
+    assert r2.status_code in (401, 403)
+
+    # Cleanup
+    httpx.delete(f"{api_base}/api/meals/{meal_id}", headers=headers)

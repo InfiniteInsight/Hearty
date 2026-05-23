@@ -1,8 +1,10 @@
 import os
 from datetime import datetime, timezone, timedelta
 from typing import Optional
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from pydantic import BaseModel
 from supabase import create_client
 
 from app.auth import get_current_user
@@ -116,3 +118,57 @@ async def get_meals(
         for m in meals_data
     ]
     return MealsListResponse(total=total, meals=meals)
+
+
+class MealUpdateRequest(BaseModel):
+    description: str
+
+
+@router.patch("/api/meals/{meal_id}", status_code=200)
+async def update_meal(
+    meal_id: UUID,
+    body: MealUpdateRequest,
+    user=Depends(get_current_user),
+) -> MealResponse:
+    existing = (
+        supabase.table("meals")
+        .select("id,user_id")
+        .eq("id", str(meal_id))
+        .eq("user_id", user["id"])
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Meal not found")
+
+    extracted = ai_extraction.extract_meal(body.description)
+    foods = extracted.get("foods", [])
+    inferred_meal_type = extracted.get("inferred_meal_type")
+
+    updates: dict = {"description": body.description, "foods": foods}
+    if inferred_meal_type:
+        updates["meal_type"] = inferred_meal_type
+
+    result = (
+        supabase.table("meals")
+        .update(updates)
+        .eq("id", str(meal_id))
+        .execute()
+    )
+    return MealResponse(**result.data[0])
+
+
+@router.delete("/api/meals/{meal_id}", status_code=204)
+async def delete_meal(
+    meal_id: UUID,
+    user=Depends(get_current_user),
+):
+    existing = (
+        supabase.table("meals")
+        .select("id,user_id")
+        .eq("id", str(meal_id))
+        .eq("user_id", user["id"])
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Meal not found")
+    supabase.table("meals").delete().eq("id", str(meal_id)).execute()
