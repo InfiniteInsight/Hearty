@@ -93,6 +93,22 @@ class HeartyApiClient {
     });
   }
 
+  Future<MealLog> updateMeal(String id, String description) async {
+    return _call(() async {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        '/api/meals/$id',
+        data: {'description': description},
+      );
+      return MealLog.fromJson(response.data!);
+    });
+  }
+
+  Future<void> deleteMeal(String id) async {
+    await _call(() async {
+      await _dio.delete<void>('/api/meals/$id');
+    });
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // Symptoms
   // ──────────────────────────────────────────────────────────────────────────
@@ -136,6 +152,22 @@ class HeartyApiClient {
     });
   }
 
+  Future<SymptomLog> updateSymptom(String id, String description) async {
+    return _call(() async {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        '/api/symptoms/$id',
+        data: {'description': description},
+      );
+      return SymptomLog.fromJson(response.data!);
+    });
+  }
+
+  Future<void> deleteSymptom(String id) async {
+    await _call(() async {
+      await _dio.delete<void>('/api/symptoms/$id');
+    });
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // Wellbeing
   // ──────────────────────────────────────────────────────────────────────────
@@ -176,6 +208,12 @@ class HeartyApiClient {
       data: body,
     );
     return WellbeingLog.fromJson(response.data!);
+  }
+
+  Future<void> deleteWellbeing(String id) async {
+    await _call(() async {
+      await _dio.delete<void>('/api/wellbeing/$id');
+    });
   }
 
   Future<List<WellbeingLog>> fetchWellbeing({
