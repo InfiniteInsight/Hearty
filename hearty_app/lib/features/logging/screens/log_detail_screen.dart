@@ -83,6 +83,37 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
     }
   }
 
+  Future<void> _confirmDelete(
+    Future<void> Function() onDelete,
+    Future<void> Function() onInvalidate,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete this entry?'),
+        content: const Text("This can't be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              'Delete',
+              style: TextStyle(color: Theme.of(ctx).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await onDelete();
+      await onInvalidate();
+      if (mounted) context.pop();
+    }
+  }
+
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
   static const _months = [
@@ -186,7 +217,55 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
     final meals = ref.watch(mealsProvider).valueOrNull ?? [];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Log Entry')),
+      appBar: AppBar(
+        title: const Text('Log Entry'),
+        actions: [
+          switch (_entry) {
+            MealLog m => IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: 'Edit',
+                onPressed: () => context.push(
+                  '/meals/edit',
+                  extra: {'id': m.id, 'description': m.description},
+                ),
+              ),
+            SymptomLog s => IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: 'Edit',
+                onPressed: () => context.push(
+                  '/symptoms/edit',
+                  extra: {'id': s.id, 'description': s.description},
+                ),
+              ),
+            WellbeingLog w => IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: 'Edit',
+                onPressed: () => context.push('/wellbeing/log?id=${w.id}'),
+              ),
+            _ => const SizedBox.shrink(),
+          },
+          IconButton(
+            icon: Icon(Icons.delete_outline,
+                color: Theme.of(context).colorScheme.error),
+            tooltip: 'Delete',
+            onPressed: () => switch (_entry) {
+              MealLog m => _confirmDelete(
+                  () => ref.read(heartyApiClientProvider).deleteMeal(m.id),
+                  () async => ref.invalidate(mealsProvider),
+                ),
+              SymptomLog s => _confirmDelete(
+                  () => ref.read(heartyApiClientProvider).deleteSymptom(s.id),
+                  () async => ref.invalidate(symptomsProvider),
+                ),
+              WellbeingLog w => _confirmDelete(
+                  () => ref.read(heartyApiClientProvider).deleteWellbeing(w.id),
+                  () async => ref.invalidate(wellbeingProvider),
+                ),
+              _ => Future.value(),
+            },
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: switch (_entry) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/hearty_api_client.dart';
 import '../../../core/api/providers/wellbeing_provider.dart';
 import '../../../core/api/models/wellbeing_period.dart';
 
@@ -86,11 +87,48 @@ class _WellbeingLogScreenState extends ConsumerState<WellbeingLogScreen> {
     }
   }
 
+  Future<void> _deleteEntry() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete this entry?'),
+        content: const Text("This can't be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              'Delete',
+              style: TextStyle(color: Theme.of(ctx).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await ref.read(heartyApiClientProvider).deleteWellbeing(widget.entryId!);
+      ref.invalidate(wellbeingProvider);
+      if (mounted) context.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Wellbeing' : 'Log Wellbeing'),
+        actions: [
+          if (_isEditing)
+            IconButton(
+              icon: Icon(Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.error),
+              tooltip: 'Delete',
+              onPressed: _deleteEntry,
+            ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(24),
