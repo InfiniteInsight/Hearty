@@ -10,6 +10,7 @@ import '../../../core/api/models/meal_log.dart';
 import '../../../core/api/models/symptom_log.dart';
 import '../../../core/api/models/wellbeing_log.dart';
 import '../../../core/api/models/wellbeing_period.dart';
+import '../../../core/api/hearty_api_client.dart';
 import '../../../core/offline/offline_database.dart';
 import '../../../core/sync/sync_service.dart';
 
@@ -474,7 +475,7 @@ class _PeriodSlot extends StatelessWidget {
 // Meal card
 // ---------------------------------------------------------------------------
 
-class _MealCard extends StatelessWidget {
+class _MealCard extends ConsumerWidget {
   final MealLog meal;
   final List<SymptomLog> linkedSymptoms;
 
@@ -490,7 +491,7 @@ class _MealCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -503,6 +504,13 @@ class _MealCard extends StatelessWidget {
               ? const Icon(Icons.info_outline, size: 20)
               : null,
           onTap: () => context.push('/log/${meal.id}'),
+          onLongPress: () => _showEntryActions(
+            context, ref,
+            editRoute: '/meals/edit',
+            editExtra: {'id': meal.id, 'description': meal.description},
+            onDelete: () => ref.read(heartyApiClientProvider).deleteMeal(meal.id),
+            onInvalidate: () async => ref.invalidate(mealsProvider),
+          ),
         ),
         // Linked symptoms indented under this meal.
         for (final symptom in linkedSymptoms)
@@ -519,7 +527,7 @@ class _MealCard extends StatelessWidget {
 // Symptom row
 // ---------------------------------------------------------------------------
 
-class _SymptomRow extends StatelessWidget {
+class _SymptomRow extends ConsumerWidget {
   final SymptomLog symptom;
 
   const _SymptomRow({required this.symptom});
@@ -531,7 +539,7 @@ class _SymptomRow extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return ListTile(
       leading: Icon(
         Icons.warning_amber_rounded,
@@ -549,6 +557,13 @@ class _SymptomRow extends StatelessWidget {
         side: BorderSide.none,
       ),
       onTap: () => context.push('/log/${symptom.id}'),
+      onLongPress: () => _showEntryActions(
+        context, ref,
+        editRoute: '/symptoms/edit',
+        editExtra: {'id': symptom.id, 'description': symptom.description},
+        onDelete: () => ref.read(heartyApiClientProvider).deleteSymptom(symptom.id),
+        onInvalidate: () async => ref.invalidate(symptomsProvider),
+      ),
     );
   }
 }
@@ -557,7 +572,7 @@ class _SymptomRow extends StatelessWidget {
 // Wellbeing row
 // ---------------------------------------------------------------------------
 
-class _WellbeingRow extends StatelessWidget {
+class _WellbeingRow extends ConsumerWidget {
   final WellbeingLog wellbeing;
 
   const _WellbeingRow({required this.wellbeing});
@@ -569,7 +584,7 @@ class _WellbeingRow extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final subtitleParts = [_formatTime(wellbeing.loggedAt)];
     if (wellbeing.notes != null && wellbeing.notes!.isNotEmpty) {
       subtitleParts.add(wellbeing.notes!);
@@ -608,6 +623,13 @@ class _WellbeingRow extends StatelessWidget {
       ),
       subtitle: Text(subtitleParts.join(' · ')),
       onTap: () => context.push('/log/${wellbeing.id}'),
+      onLongPress: () => _showEntryActions(
+        context, ref,
+        editRoute: '/wellbeing/log?id=${wellbeing.id}',
+        editExtra: {},
+        onDelete: () => ref.read(heartyApiClientProvider).deleteWellbeing(wellbeing.id),
+        onInvalidate: () async => ref.invalidate(wellbeingProvider),
+      ),
     );
   }
 }
@@ -664,6 +686,87 @@ class _VoiceQueueCard extends StatelessWidget {
         tooltip: 'What is this?',
       ),
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Edit / delete helpers
+// ---------------------------------------------------------------------------
+
+void _showEntryActions(
+  BuildContext context,
+  WidgetRef ref, {
+  required String editRoute,
+  required Map<String, String> editExtra,
+  required Future<void> Function() onDelete,
+  required Future<void> Function() onInvalidate,
+}) {
+  showModalBottomSheet<void>(
+    context: context,
+    builder: (ctx) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.edit_outlined),
+            title: const Text('Edit'),
+            onTap: () {
+              Navigator.of(ctx).pop();
+              if (editExtra.isEmpty) {
+                context.push(editRoute);
+              } else {
+                context.push(editRoute, extra: editExtra);
+              }
+            },
+          ),
+          ListTile(
+            leading: Icon(
+              Icons.delete_outline,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            title: Text(
+              'Delete',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+            onTap: () {
+              Navigator.of(ctx).pop();
+              _confirmDelete(context, onDelete, onInvalidate);
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Future<void> _confirmDelete(
+  BuildContext context,
+  Future<void> Function() onDelete,
+  Future<void> Function() onInvalidate,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Delete this entry?'),
+      content: const Text("This can't be undone."),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: Text(
+            'Delete',
+            style: TextStyle(color: Theme.of(ctx).colorScheme.error),
+          ),
+        ),
+      ],
+    ),
+  );
+  if (confirmed == true) {
+    await onDelete();
+    await onInvalidate();
   }
 }
 
