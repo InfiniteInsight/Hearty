@@ -25,6 +25,8 @@ import '../features/logging/screens/onboarding_screen.dart';
 import '../features/photos/screens/camera_screen.dart';
 import '../features/settings/screens/notification_preferences_screen.dart';
 import '../features/settings/screens/voice_settings_screen.dart';
+import '../features/logging/screens/edit_meal_screen.dart';
+import '../features/logging/screens/edit_symptom_screen.dart';
 import '../features/wellbeing/screens/wellbeing_log_screen.dart';
 import '../core/api/models/wellbeing_period.dart';
 import '../core/api/providers/meals_provider.dart';
@@ -49,6 +51,8 @@ class Routes {
   static const String notificationPreferences = 'notification-preferences';
   static const String voiceSettings = 'voice-settings';
   static const String wellbeingLog = 'wellbeing-log';
+  static const String editMeal = 'edit-meal';
+  static const String editSymptom = 'edit-symptom';
 }
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -167,6 +171,28 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/settings/voice',
         name: Routes.voiceSettings,
         builder: (context, state) => const VoiceSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/meals/edit',
+        name: Routes.editMeal,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, String>;
+          return EditMealScreen(
+            id: extra['id']!,
+            initialDescription: extra['description']!,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/symptoms/edit',
+        name: Routes.editSymptom,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, String>;
+          return EditSymptomScreen(
+            id: extra['id']!,
+            initialDescription: extra['description']!,
+          );
+        },
       ),
       GoRoute(
         path: '/wellbeing/log',
