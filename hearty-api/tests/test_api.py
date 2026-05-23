@@ -198,3 +198,14 @@ def test_delete_symptom(api_base, headers):
     r3 = httpx.patch(f"{api_base}/api/symptoms/{symptom_id}", headers=headers,
                      json={"description": "ghost"}, timeout=30)
     assert r3.status_code == 404
+
+
+def test_delete_wellbeing(api_base, headers):
+    r = httpx.post(f"{api_base}/api/wellbeing", headers=headers, json={
+        "energy_level": 3, "mood": 4
+    })
+    assert r.status_code == 201
+    entry_id = r.json()["id"]
+
+    r2 = httpx.delete(f"{api_base}/api/wellbeing/{entry_id}", headers=headers)
+    assert r2.status_code == 204

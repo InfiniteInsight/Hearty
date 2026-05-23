@@ -99,3 +99,20 @@ async def get_wellbeing(
         .execute()
     )
     return [WellbeingResponse(**row) for row in (result.data or [])]
+
+
+@router.delete("/api/wellbeing/{entry_id}", status_code=204)
+async def delete_wellbeing(
+    entry_id: UUID,
+    user=Depends(get_current_user),
+):
+    existing = (
+        supabase.table("wellbeing_snapshots")
+        .select("id,user_id")
+        .eq("id", str(entry_id))
+        .eq("user_id", user["id"])
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    supabase.table("wellbeing_snapshots").delete().eq("id", str(entry_id)).execute()
