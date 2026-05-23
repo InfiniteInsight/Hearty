@@ -42,7 +42,11 @@ class HeartyWakeWordService : Service() {
         const val MEL_WINDOW_FRAMES = 76   // frames the embedding model expects
         const val EMBEDDING_BUFFER_SIZE = 16
         const val EMBEDDING_DIM = 96
-        const val DEFAULT_THRESHOLD = 0.5f
+        // hey_hearty (custom-trained, 50 k samples) scores in the 0.05–0.20 range on the
+        // wake phrase vs. >0.5 for the pre-trained hey_jarvis model. Lower threshold
+        // accordingly; 2-consecutive debounce prevents single-chunk noise from firing.
+        const val DEFAULT_THRESHOLD = 0.05f
+        const val DEBOUNCE_HITS = 2
         const val TAG = "HeartyWakeWord"
 
         // The openWakeWord Python streaming pipeline prepends 3 STFT hops (3×160 = 480 samples)
@@ -181,6 +185,7 @@ class HeartyWakeWordService : Service() {
             val shortBuffer = ShortArray(SAMPLES_PER_CHUNK)
             var chunkCount = 0
             var maxScore = 0f
+            var consecutiveHits = 0
 
             while (isRunning) {
                 if (isPaused) { Thread.sleep(50); continue }
@@ -222,11 +227,17 @@ class HeartyWakeWordService : Service() {
                     chunkCount++
                     // Heartbeat every ~4s; also log whenever there's meaningful audio or score.
                     if (chunkCount % 50 == 0 || score > 0.005f || rms > 0.005f) {
-                        Log.d(TAG, "chunk=$chunkCount rms=${"%.4f".format(rms)} score=${"%.4f".format(score)} max=${"%.4f".format(maxScore)}")
+                        Log.d(TAG, "chunk=$chunkCount rms=${"%.4f".format(rms)} score=${"%.4f".format(score)} max=${"%.4f".format(maxScore)} hits=$consecutiveHits")
                     }
                     if (score >= threshold) {
-                        Log.d(TAG, "WAKE WORD DETECTED! score=$score")
-                        onWakeWordDetected()
+                        consecutiveHits++
+                        if (consecutiveHits >= DEBOUNCE_HITS) {
+                            consecutiveHits = 0
+                            Log.d(TAG, "WAKE WORD DETECTED! score=$score")
+                            onWakeWordDetected()
+                        }
+                    } else {
+                        consecutiveHits = 0
                     }
                 }
             }
