@@ -168,3 +168,33 @@ def test_delete_meal_wrong_user(api_base, headers):
 
     # Cleanup
     httpx.delete(f"{api_base}/api/meals/{meal_id}", headers=headers)
+
+
+def test_update_symptom(api_base, headers):
+    r = httpx.post(f"{api_base}/api/symptoms", headers=headers, json={
+        "raw_description": "mild bloating"
+    }, timeout=30)
+    assert r.status_code == 201
+    symptom_id = r.json()[0]["id"]
+
+    r2 = httpx.patch(f"{api_base}/api/symptoms/{symptom_id}", headers=headers,
+                     json={"description": "moderate bloating after eating"}, timeout=30)
+    assert r2.status_code == 200
+    assert r2.json()["id"] == symptom_id
+
+    httpx.delete(f"{api_base}/api/symptoms/{symptom_id}", headers=headers)
+
+
+def test_delete_symptom(api_base, headers):
+    r = httpx.post(f"{api_base}/api/symptoms", headers=headers, json={
+        "raw_description": "mild nausea after lunch"
+    }, timeout=30)
+    assert r.status_code == 201
+    symptom_id = r.json()[0]["id"]
+
+    r2 = httpx.delete(f"{api_base}/api/symptoms/{symptom_id}", headers=headers)
+    assert r2.status_code == 204
+
+    r3 = httpx.patch(f"{api_base}/api/symptoms/{symptom_id}", headers=headers,
+                     json={"description": "ghost"}, timeout=30)
+    assert r3.status_code == 404

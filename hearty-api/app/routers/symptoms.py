@@ -2,7 +2,10 @@ import os
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from supabase import create_client
 
 from app.auth import get_current_user
@@ -80,3 +83,52 @@ async def get_symptoms(
 
     result = query.execute()
     return [SymptomResponse(**r) for r in (result.data or [])]
+
+
+class SymptomUpdateRequest(BaseModel):
+    description: str
+
+
+@router.patch("/api/symptoms/{symptom_id}", status_code=200)
+async def update_symptom(
+    symptom_id: UUID,
+    body: SymptomUpdateRequest,
+    user=Depends(get_current_user),
+) -> SymptomResponse:
+    existing = (
+        supabase.table("symptoms")
+        .select("id,user_id")
+        .eq("id", str(symptom_id))
+        .eq("user_id", user["id"])
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Symptom not found")
+
+    result = (
+        supabase.table("symptoms")
+        .update({
+            "symptom_type": body.description,
+            "raw_description": body.description,
+        })
+        .eq("id", str(symptom_id))
+        .execute()
+    )
+    return SymptomResponse(**result.data[0])
+
+
+@router.delete("/api/symptoms/{symptom_id}", status_code=204)
+async def delete_symptom(
+    symptom_id: UUID,
+    user=Depends(get_current_user),
+):
+    existing = (
+        supabase.table("symptoms")
+        .select("id,user_id")
+        .eq("id", str(symptom_id))
+        .eq("user_id", user["id"])
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Symptom not found")
+    supabase.table("symptoms").delete().eq("id", str(symptom_id)).execute()
