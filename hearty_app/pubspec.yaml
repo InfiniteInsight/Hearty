@@ -37,6 +37,7 @@ dependencies:
 
   # Audio / Voice
   flutter_tts: ^4.2.2
+  shared_preferences: ^2.3.3
   speech_to_text: ^7.0.0
   just_audio: ^0.10.4
   # Wake word: openWakeWord via ONNX Runtime (inference runs in Kotlin foreground service,
@@ -114,7 +115,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/wake_word/hey_jarvis.onnx
+    - assets/wake_word/hey_hearty.onnx
     - assets/wake_word/melspectrogram.onnx
     - assets/wake_word/embedding_model.onnx
     - assets/audio/wake_chime.wav

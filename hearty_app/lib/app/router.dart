@@ -24,6 +24,7 @@ import '../features/logging/screens/log_detail_screen.dart';
 import '../features/logging/screens/onboarding_screen.dart';
 import '../features/photos/screens/camera_screen.dart';
 import '../features/settings/screens/notification_preferences_screen.dart';
+import '../features/settings/screens/voice_settings_screen.dart';
 import '../features/wellbeing/screens/wellbeing_log_screen.dart';
 import '../core/api/models/wellbeing_period.dart';
 import '../core/api/providers/meals_provider.dart';
@@ -46,6 +47,7 @@ class Routes {
   static const String signIn = 'sign-in';
   static const String camera = 'camera';
   static const String notificationPreferences = 'notification-preferences';
+  static const String voiceSettings = 'voice-settings';
   static const String wellbeingLog = 'wellbeing-log';
 }
 
@@ -160,6 +162,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/settings/notifications',
         name: Routes.notificationPreferences,
         builder: (context, state) => const NotificationPreferencesScreen(),
+      ),
+      GoRoute(
+        path: '/settings/voice',
+        name: Routes.voiceSettings,
+        builder: (context, state) => const VoiceSettingsScreen(),
       ),
       GoRoute(
         path: '/wellbeing/log',

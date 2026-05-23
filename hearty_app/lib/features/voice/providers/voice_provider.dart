@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/api/hearty_api_client.dart';
@@ -36,6 +37,11 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     await _tts.setLanguage('en-US');
     await _tts.setSpeechRate(0.7);
     await _tts.setPitch(1.0);
+    final prefs = await SharedPreferences.getInstance();
+    final savedVoice = prefs.getString('tts_voice_name');
+    if (savedVoice != null) {
+      await _tts.setVoice({'name': savedVoice, 'locale': 'en-US'});
+    }
     _tts.setCompletionHandler(() {
       if (!mounted) return;
       if (_askFollowUp) {

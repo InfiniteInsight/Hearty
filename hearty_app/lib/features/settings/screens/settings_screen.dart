@@ -40,6 +40,12 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/settings/notifications'),
           ),
+          ListTile(
+            leading: const Icon(Icons.record_voice_over_outlined),
+            title: const Text('Voice'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/voice'),
+          ),
           const Divider(),
 
           // Health Profile (Phase 5 wires the actual screen)
