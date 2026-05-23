@@ -13,6 +13,7 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
@@ -51,6 +52,7 @@ class HeartyWakeWordService : Service() {
         var flutterBinaryMessenger: BinaryMessenger? = null
     }
 
+    private var wakeLock: PowerManager.WakeLock? = null
     private var audioRecord: AudioRecord? = null
     private var ortEnv: OrtEnvironment? = null
     private var melSession: OrtSession? = null
@@ -134,7 +136,7 @@ class HeartyWakeWordService : Service() {
                 }
                 melSession   = loadModel("flutter_assets/assets/wake_word/melspectrogram.onnx")
                 embedSession = loadModel("flutter_assets/assets/wake_word/embedding_model.onnx")
-                wakeSession  = loadModel("flutter_assets/assets/wake_word/hey_jarvis.onnx")
+                wakeSession  = loadModel("flutter_assets/assets/wake_word/hey_hearty.onnx")
             }
             Log.d(TAG, "All ONNX models loaded successfully")
         } catch (e: Exception) {
@@ -166,6 +168,13 @@ class HeartyWakeWordService : Service() {
             return
         }
         audioRecord!!.startRecording()
+
+        // Keep the CPU alive when the screen is off so the detection thread keeps running.
+        // PARTIAL_WAKE_LOCK allows the display to sleep while preventing CPU deep-sleep.
+        wakeLock = getSystemService(PowerManager::class.java)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "hearty:WakeWordDetection")
+            .also { it.acquire() }
+
         Log.d(TAG, "AudioRecord started — sliding window detection loop beginning")
 
         detectionThread = Thread {
@@ -227,6 +236,8 @@ class HeartyWakeWordService : Service() {
 
     private fun stopDetection() {
         isRunning = false
+        if (wakeLock?.isHeld == true) wakeLock?.release()
+        wakeLock = null
         audioRecord?.stop(); audioRecord?.release(); audioRecord = null
         detectionThread?.interrupt(); detectionThread = null
         melFrameBuffer.clear()
@@ -284,8 +295,8 @@ class HeartyWakeWordService : Service() {
             embeddingBuffer.forEachIndexed { i, emb -> emb.copyInto(flat, i * EMBEDDING_DIM) }
             OnnxTensor.createTensor(env, FloatBuffer.wrap(flat),
                 longArrayOf(1, EMBEDDING_BUFFER_SIZE.toLong(), EMBEDDING_DIM.toLong())).use { inputTensor ->
-                wakeSession!!.run(mapOf("x.1" to inputTensor)).use { result ->
-                    (result["53"].get() as OnnxTensor).floatBuffer.get()
+                wakeSession!!.run(mapOf("x" to inputTensor)).use { result ->
+                    (result["sigmoid"].get() as OnnxTensor).floatBuffer.get()
                 }
             }
         } catch (e: Exception) {
@@ -315,7 +326,7 @@ class HeartyWakeWordService : Service() {
         // fullScreenIntent is the standard workaround — the system either launches
         // the activity directly or shows a heads-up notification the user can tap.
         val triggerNotification = Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("Hey Jarvis detected")
+            .setContentTitle("Hey Hearty detected")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setCategory(Notification.CATEGORY_CALL)
             .setFullScreenIntent(pendingIntent, true)
@@ -347,7 +358,7 @@ class HeartyWakeWordService : Service() {
         val label = if (isPaused) "Resume listening" else "Pause listening"
         val action = Notification.Action.Builder(null, label, pauseIntent).build()
         return Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("Hearty is listening for 'Hey Jarvis'")
+            .setContentTitle("Hearty is listening for 'Hey Hearty'")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .addAction(action)
             .setOngoing(true)
