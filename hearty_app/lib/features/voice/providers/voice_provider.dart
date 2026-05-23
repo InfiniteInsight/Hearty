@@ -34,7 +34,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
   Future<void> _initTts() async {
     await _tts.setLanguage('en-US');
-    await _tts.setSpeechRate(0.9);
+    await _tts.setSpeechRate(0.7);
     await _tts.setPitch(1.0);
     _tts.setCompletionHandler(() {
       if (!mounted) return;
@@ -93,7 +93,24 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
   Future<void> _speakResponse(String response, bool askFollowUp) async {
     _askFollowUp = askFollowUp;
-    await _tts.speak(response);
+    await _tts.speak(_stripEmojis(response));
+  }
+
+  // Removes emoji codepoints so TTS doesn't read out their names.
+  static String _stripEmojis(String text) {
+    return text.replaceAll(
+      RegExp(
+        r'[\u{1F000}-\u{1FFFF}'
+        r'\u{2600}-\u{27BF}'
+        r'\u{2300}-\u{23FF}'
+        r'\u{FE00}-\u{FE0F}'
+        r'\u{1F900}-\u{1F9FF}'
+        r'\u{1FA00}-\u{1FA6F}'
+        r'\u{1FA70}-\u{1FAFF}]+',
+        unicode: true,
+      ),
+      '',
+    ).replaceAll(RegExp(r'  +'), ' ').trim();
   }
 
   /// Stops TTS immediately (e.g., user tapped screen) and resets to idle.
