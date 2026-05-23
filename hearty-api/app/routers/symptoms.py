@@ -107,10 +107,7 @@ async def update_symptom(
 
     result = (
         supabase.table("symptoms")
-        .update({
-            "symptom_type": body.description,
-            "raw_description": body.description,
-        })
+        .update({"raw_description": body.description})
         .eq("id", str(symptom_id))
         .execute()
     )
