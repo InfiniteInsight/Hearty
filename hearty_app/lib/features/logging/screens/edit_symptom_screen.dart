@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/hearty_api_client.dart';
-import '../../../core/api/providers/symptoms_provider.dart';
+import '../../../core/offline/local_symptom_dao.dart';
 
 class EditSymptomScreen extends ConsumerStatefulWidget {
   final String id;
@@ -40,8 +40,8 @@ class _EditSymptomScreenState extends ConsumerState<EditSymptomScreen> {
     if (text.isEmpty) return;
     setState(() => _saving = true);
     try {
-      await ref.read(heartyApiClientProvider).updateSymptom(widget.id, text);
-      ref.invalidate(symptomsProvider);
+      final updated = await ref.read(heartyApiClientProvider).updateSymptom(widget.id, text);
+      await ref.read(localSymptomDaoProvider).upsertFromServer(updated);
       if (mounted) context.pop();
     } catch (_) {
       if (mounted) {

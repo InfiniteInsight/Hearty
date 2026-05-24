@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/hearty_api_client.dart';
-import '../../../core/api/providers/meals_provider.dart';
+import '../../../core/offline/local_meal_dao.dart';
 
 class EditMealScreen extends ConsumerStatefulWidget {
   final String id;
@@ -40,8 +40,8 @@ class _EditMealScreenState extends ConsumerState<EditMealScreen> {
     if (text.isEmpty) return;
     setState(() => _saving = true);
     try {
-      await ref.read(heartyApiClientProvider).updateMeal(widget.id, text);
-      ref.invalidate(mealsProvider);
+      final updated = await ref.read(heartyApiClientProvider).updateMeal(widget.id, text);
+      await ref.read(localMealDaoProvider).upsertFromServer(updated);
       if (mounted) context.pop();
     } catch (_) {
       if (mounted) {
