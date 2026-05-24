@@ -11,6 +11,9 @@ import '../../../core/api/models/symptom_log.dart';
 import '../../../core/api/models/wellbeing_log.dart';
 import '../../../core/api/models/wellbeing_period.dart';
 import '../../../core/api/hearty_api_client.dart';
+import '../../../core/offline/local_meal_dao.dart';
+import '../../../core/offline/local_symptom_dao.dart';
+import '../../../core/offline/local_wellbeing_dao.dart';
 import '../../../core/offline/offline_database.dart';
 import '../../../core/sync/sync_service.dart';
 
@@ -508,8 +511,11 @@ class _MealCard extends ConsumerWidget {
             context, ref,
             editRoute: '/meals/edit',
             editExtra: {'id': meal.id, 'description': meal.description},
-            onDelete: () => ref.read(heartyApiClientProvider).deleteMeal(meal.id),
-            onInvalidate: () async => ref.invalidate(mealsProvider),
+            onDelete: () async {
+              await ref.read(heartyApiClientProvider).deleteMeal(meal.id);
+              await ref.read(localMealDaoProvider).deleteByServerId(meal.id);
+            },
+            onInvalidate: () async {},
           ),
         ),
         // Linked symptoms indented under this meal.
@@ -561,8 +567,11 @@ class _SymptomRow extends ConsumerWidget {
         context, ref,
         editRoute: '/symptoms/edit',
         editExtra: {'id': symptom.id, 'description': symptom.description},
-        onDelete: () => ref.read(heartyApiClientProvider).deleteSymptom(symptom.id),
-        onInvalidate: () async => ref.invalidate(symptomsProvider),
+        onDelete: () async {
+          await ref.read(heartyApiClientProvider).deleteSymptom(symptom.id);
+          await ref.read(localSymptomDaoProvider).deleteByServerId(symptom.id);
+        },
+        onInvalidate: () async {},
       ),
     );
   }
@@ -627,8 +636,11 @@ class _WellbeingRow extends ConsumerWidget {
         context, ref,
         editRoute: '/wellbeing/log?id=${wellbeing.id}',
         editExtra: {},
-        onDelete: () => ref.read(heartyApiClientProvider).deleteWellbeing(wellbeing.id),
-        onInvalidate: () async => ref.invalidate(wellbeingProvider),
+        onDelete: () async {
+          await ref.read(heartyApiClientProvider).deleteWellbeing(wellbeing.id);
+          await ref.read(localWellbeingDaoProvider).deleteByServerId(wellbeing.id);
+        },
+        onInvalidate: () async {},
       ),
     );
   }

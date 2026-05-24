@@ -42,16 +42,18 @@ class LocalWellbeingDao extends DatabaseAccessor<OfflineDatabase> {
   }
 
   Future<void> updateLocal(
-    String localId, {
+    String id, {
     int? energy,
     int? mood,
     String? notes,
     WellbeingPeriod? period,
   }) async {
+    // Accept either local id or server UUID — look up by whichever matches.
     final row = await (select(db.localWellbeing)
-          ..where((w) => w.id.equals(localId)))
-        .getSingle();
-    await (update(db.localWellbeing)..where((w) => w.id.equals(localId)))
+          ..where((w) => w.id.equals(id) | w.serverId.equals(id)))
+        .getSingleOrNull();
+    if (row == null) return;
+    await (update(db.localWellbeing)..where((w) => w.id.equals(row.id)))
         .write(LocalWellbeingCompanion(
       energy: Value(energy ?? row.energy),
       mood: Value(mood ?? row.mood),
@@ -112,6 +114,10 @@ class LocalWellbeingDao extends DatabaseAccessor<OfflineDatabase> {
             ),
           );
     }
+  }
+
+  Future<void> deleteByServerId(String serverId) {
+    return (delete(db.localWellbeing)..where((w) => w.serverId.equals(serverId))).go();
   }
 
   Future<void> pruneOldSynced() {

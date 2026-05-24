@@ -89,6 +89,10 @@ class LocalSymptomDao extends DatabaseAccessor<OfflineDatabase> {
     }
   }
 
+  Future<void> deleteByServerId(String serverId) {
+    return (delete(db.localSymptoms)..where((s) => s.serverId.equals(serverId))).go();
+  }
+
   Future<void> pruneOldSynced() {
     final cutoffMs = DateTime.now()
         .subtract(const Duration(days: 7))

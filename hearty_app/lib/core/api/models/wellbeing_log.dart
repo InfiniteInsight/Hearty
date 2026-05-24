@@ -20,7 +20,7 @@ class WellbeingLog {
 
   factory WellbeingLog.fromLocal(LocalWellbeingData row) {
     return WellbeingLog(
-      id: row.id,
+      id: row.serverId ?? row.id,
       energy: row.energy,
       mood: row.mood,
       notes: row.notes,

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/hearty_api_client.dart';
 import '../../../core/api/providers/wellbeing_provider.dart';
+import '../../../core/offline/local_wellbeing_dao.dart';
 import '../../../core/api/models/wellbeing_period.dart';
 
 class WellbeingLogScreen extends ConsumerStatefulWidget {
@@ -110,7 +111,7 @@ class _WellbeingLogScreenState extends ConsumerState<WellbeingLogScreen> {
     );
     if (confirmed == true && mounted) {
       await ref.read(heartyApiClientProvider).deleteWellbeing(widget.entryId!);
-      ref.invalidate(wellbeingProvider);
+      await ref.read(localWellbeingDaoProvider).deleteByServerId(widget.entryId!);
       if (mounted) context.pop();
     }
   }

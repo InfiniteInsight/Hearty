@@ -96,6 +96,10 @@ class LocalMealDao extends DatabaseAccessor<OfflineDatabase> {
     }
   }
 
+  Future<void> deleteByServerId(String serverId) {
+    return (delete(db.localMeals)..where((m) => m.serverId.equals(serverId))).go();
+  }
+
   Future<void> pruneOldSynced() {
     final cutoffMs = DateTime.now()
         .subtract(const Duration(days: 7))

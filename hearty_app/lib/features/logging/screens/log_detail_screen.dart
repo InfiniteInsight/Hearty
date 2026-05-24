@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/hearty_api_client.dart';
+import '../../../core/offline/local_meal_dao.dart';
+import '../../../core/offline/local_symptom_dao.dart';
+import '../../../core/offline/local_wellbeing_dao.dart';
 import '../../../core/api/models/meal_log.dart';
 import '../../../core/api/models/symptom_log.dart';
 import '../../../core/api/models/wellbeing_log.dart';
@@ -259,16 +262,25 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
             tooltip: 'Delete',
             onPressed: () => switch (_entry) {
               MealLog m => _confirmDelete(
-                  () => ref.read(heartyApiClientProvider).deleteMeal(m.id),
-                  () async => ref.invalidate(mealsProvider),
+                  () async {
+                    await ref.read(heartyApiClientProvider).deleteMeal(m.id);
+                    await ref.read(localMealDaoProvider).deleteByServerId(m.id);
+                  },
+                  () async {},
                 ),
               SymptomLog s => _confirmDelete(
-                  () => ref.read(heartyApiClientProvider).deleteSymptom(s.id),
-                  () async => ref.invalidate(symptomsProvider),
+                  () async {
+                    await ref.read(heartyApiClientProvider).deleteSymptom(s.id);
+                    await ref.read(localSymptomDaoProvider).deleteByServerId(s.id);
+                  },
+                  () async {},
                 ),
               WellbeingLog w => _confirmDelete(
-                  () => ref.read(heartyApiClientProvider).deleteWellbeing(w.id),
-                  () async => ref.invalidate(wellbeingProvider),
+                  () async {
+                    await ref.read(heartyApiClientProvider).deleteWellbeing(w.id);
+                    await ref.read(localWellbeingDaoProvider).deleteByServerId(w.id);
+                  },
+                  () async {},
                 ),
               _ => Future.value(),
             },
