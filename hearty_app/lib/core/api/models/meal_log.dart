@@ -48,7 +48,7 @@ class MealLog {
         .map((e) => e.toString())
         .toList();
     return MealLog(
-      id: row.id,
+      id: row.serverId ?? row.id,
       description: row.description,
       mealType: row.mealType,
       foods: foods,

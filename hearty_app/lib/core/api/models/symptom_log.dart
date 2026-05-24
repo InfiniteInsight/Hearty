@@ -17,7 +17,7 @@ class SymptomLog {
 
   factory SymptomLog.fromLocal(LocalSymptom row) {
     return SymptomLog(
-      id: row.id,
+      id: row.serverId ?? row.id,
       description: row.description,
       severity: row.severity,
       linkedMealId: row.linkedMealId,

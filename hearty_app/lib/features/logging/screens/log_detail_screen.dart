@@ -224,23 +224,32 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
             MealLog m => IconButton(
                 icon: const Icon(Icons.edit_outlined),
                 tooltip: 'Edit',
-                onPressed: () => context.push(
-                  '/meals/edit',
-                  extra: {'id': m.id, 'description': m.description},
-                ),
+                onPressed: () async {
+                  await context.push(
+                    '/meals/edit',
+                    extra: {'id': m.id, 'description': m.description},
+                  );
+                  if (mounted) _resolveEntry();
+                },
               ),
             SymptomLog s => IconButton(
                 icon: const Icon(Icons.edit_outlined),
                 tooltip: 'Edit',
-                onPressed: () => context.push(
-                  '/symptoms/edit',
-                  extra: {'id': s.id, 'description': s.description},
-                ),
+                onPressed: () async {
+                  await context.push(
+                    '/symptoms/edit',
+                    extra: {'id': s.id, 'description': s.description},
+                  );
+                  if (mounted) _resolveEntry();
+                },
               ),
             WellbeingLog w => IconButton(
                 icon: const Icon(Icons.edit_outlined),
                 tooltip: 'Edit',
-                onPressed: () => context.push('/wellbeing/log?id=${w.id}'),
+                onPressed: () async {
+                  await context.push('/wellbeing/log?id=${w.id}');
+                  if (mounted) _resolveEntry();
+                },
               ),
             _ => const SizedBox.shrink(),
           },
