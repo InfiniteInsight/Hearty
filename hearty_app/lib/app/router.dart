@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/audio/chime_player.dart';
 import '../core/auth/onboarding_provider.dart';
@@ -28,6 +29,7 @@ import '../features/settings/screens/voice_settings_screen.dart';
 import '../features/logging/screens/edit_meal_screen.dart';
 import '../features/logging/screens/edit_symptom_screen.dart';
 import '../features/wellbeing/screens/wellbeing_log_screen.dart';
+import '../features/wake_word/widgets/wake_word_setup_sheet.dart';
 import '../core/api/models/wellbeing_period.dart';
 import '../core/api/providers/meals_provider.dart';
 import '../core/api/providers/symptoms_provider.dart';
@@ -254,14 +256,40 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
   @override
   void initState() {
     super.initState();
-    _initWakeWord();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initWakeWord());
   }
 
   Future<void> _initWakeWord() async {
-    final status = await Permission.microphone.request();
-    if (status.isGranted) {
-      WakeWordChannel.startService().catchError((_) {});
+    final prefs = await SharedPreferences.getInstance();
+    final optedOut = prefs.getBool('wake_word_setup_opted_out') ?? false;
+
+    final micGranted = await Permission.microphone.isGranted;
+    final overlayGranted = await Permission.systemAlertWindow.isGranted;
+
+    if (optedOut || (micGranted && overlayGranted)) {
+      // Either fully set up or user chose not to use wake word.
+      // Start the service only if mic is available.
+      if (micGranted) WakeWordChannel.startService().catchError((_) {});
+      return;
     }
+
+    // One or both permissions missing and user hasn't opted out — show wizard.
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.black87,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isDismissible: false,
+      enableDrag: false,
+      builder: (_) => const WakeWordSetupSheet(),
+    );
+
+    // After the wizard closes (grant, skip, or opt-out), start the service
+    // if mic is now granted.
+    final micNowGranted = await Permission.microphone.isGranted;
+    if (micNowGranted) WakeWordChannel.startService().catchError((_) {});
   }
 
   @override
