@@ -42,18 +42,18 @@ class _WakeWordSetupSheetState extends State<WakeWordSetupSheet> {
     setState(() => _loading = true);
     final status = await Permission.microphone.request();
     if (!mounted) return;
-    setState(() => _loading = false);
 
     if (status.isGranted) {
       final overlayGranted = await Permission.systemAlertWindow.isGranted;
       if (!mounted) return;
+      setState(() => _loading = false);
       if (overlayGranted) {
         Navigator.of(context).pop();
       } else {
         setState(() => _step = _SetupStep.overlay);
       }
     } else {
-      // Denied or permanently denied — dismiss, show again next launch.
+      setState(() => _loading = false);
       Navigator.of(context).pop();
     }
   }
@@ -68,6 +68,8 @@ class _WakeWordSetupSheetState extends State<WakeWordSetupSheet> {
   }
 
   Future<void> _optOut() async {
+    if (_loading) return;
+    setState(() => _loading = true);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('wake_word_setup_opted_out', true);
     if (mounted) Navigator.of(context).pop();
