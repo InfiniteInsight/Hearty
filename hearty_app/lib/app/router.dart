@@ -288,7 +288,9 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
 
     // After the wizard closes (grant, skip, or opt-out), start the service
     // if mic is now granted.
+    if (!mounted) return;
     final micNowGranted = await Permission.microphone.isGranted;
+    if (!mounted) return;
     if (micNowGranted) WakeWordChannel.startService().catchError((_) {});
   }
 
