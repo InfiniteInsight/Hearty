@@ -29,7 +29,7 @@ import '../features/settings/screens/voice_settings_screen.dart';
 import '../features/logging/screens/edit_meal_screen.dart';
 import '../features/logging/screens/edit_symptom_screen.dart';
 import '../features/wellbeing/screens/wellbeing_log_screen.dart';
-import '../features/wake_word/widgets/wake_word_setup_sheet.dart';
+import '../features/wake_word/widgets/app_setup_sheet.dart';
 import '../core/api/models/wellbeing_period.dart';
 import '../core/api/providers/meals_provider.dart';
 import '../core/api/providers/symptoms_provider.dart';
@@ -265,15 +265,15 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
 
     final micGranted = await Permission.microphone.isGranted;
     final overlayGranted = await Permission.systemAlertWindow.isGranted;
+    final notifGranted = await Permission.notification.isGranted;
 
-    if (optedOut || (micGranted && overlayGranted)) {
-      // Either fully set up or user chose not to use wake word.
-      // Start the service only if mic is available.
+    if (optedOut || (micGranted && overlayGranted && notifGranted)) {
+      // Fully set up or user opted out — start service only if mic is available.
       if (micGranted) WakeWordChannel.startService().catchError((_) {});
       return;
     }
 
-    // One or both permissions missing and user hasn't opted out — show wizard.
+    // At least one permission missing and user hasn't opted out — show wizard.
     if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
@@ -283,11 +283,10 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
       ),
       isDismissible: false,
       enableDrag: false,
-      builder: (_) => const WakeWordSetupSheet(),
+      builder: (_) => const AppSetupSheet(),
     );
 
-    // After the wizard closes (grant, skip, or opt-out), start the service
-    // if mic is now granted.
+    // After wizard closes, start service if mic is now granted.
     if (!mounted) return;
     final micNowGranted = await Permission.microphone.isGranted;
     if (!mounted) return;

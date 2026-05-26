@@ -42,6 +42,7 @@ class _AppSetupSheetState extends State<AppSetupSheet> {
       if (mounted) setState(() => _step = _SetupStep.overlay);
       return;
     }
+    // On pre-Android-13, notification permission is implicitly granted; isGranted returns true.
     final notifGranted = await Permission.notification.isGranted;
     if (!mounted) return;
     if (!notifGranted) {
@@ -118,6 +119,7 @@ class _AppSetupSheetState extends State<AppSetupSheet> {
     if (_loading) return;
     setState(() => _loading = true);
     final prefs = await SharedPreferences.getInstance();
+    // Key kept as 'wake_word_setup_opted_out' for backward compat with existing opt-outs.
     await prefs.setBool('wake_word_setup_opted_out', true);
     if (mounted) Navigator.of(context).pop();
   }
