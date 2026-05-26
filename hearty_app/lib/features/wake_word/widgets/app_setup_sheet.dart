@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum _SetupStep { mic, overlay, notification, battery }
+enum _SetupStep { mic, overlay, battery }
 
-/// Bottom sheet wizard for granting app setup permissions.
+/// Bottom sheet wizard for granting wake word service permissions.
 ///
-/// Shows four sequential steps — microphone, overlay, notifications, battery —
-/// advancing internally without closing and reopening the sheet. Non-dismissible
-/// by drag or tap-outside; the user must use one of the three action buttons.
+/// Shows three sequential steps — microphone, overlay, battery — advancing
+/// internally without closing and reopening the sheet. Non-dismissible by drag
+/// or tap-outside; the user must use one of the three action buttons.
+///
+/// Notification permission is handled separately in NotificationSetupScreen,
+/// paired with the notification preferences toggles.
 ///
 /// Dismissal outcomes:
 ///   - "Allow" + granted  → advances to next step, or dismisses when done
@@ -41,13 +44,6 @@ class _AppSetupSheetState extends State<AppSetupSheet> {
       if (mounted) setState(() => _step = _SetupStep.overlay);
       return;
     }
-    // On pre-Android-13, notification permission is implicitly granted; isGranted returns true.
-    final notifGranted = await Permission.notification.isGranted;
-    if (!mounted) return;
-    if (!notifGranted) {
-      setState(() => _step = _SetupStep.notification);
-      return;
-    }
     final batteryExempt = await Permission.ignoreBatteryOptimizations.isGranted;
     if (!mounted) return;
     if (!batteryExempt) {
@@ -69,12 +65,6 @@ class _AppSetupSheetState extends State<AppSetupSheet> {
       if (!mounted) return;
       if (!overlayGranted) {
         setState(() { _loading = false; _step = _SetupStep.overlay; });
-        return;
-      }
-      final notifGranted = await Permission.notification.isGranted;
-      if (!mounted) return;
-      if (!notifGranted) {
-        setState(() { _loading = false; _step = _SetupStep.notification; });
         return;
       }
       final batteryExempt = await Permission.ignoreBatteryOptimizations.isGranted;
@@ -107,27 +97,6 @@ class _AppSetupSheetState extends State<AppSetupSheet> {
       Navigator.of(context).pop();
       return;
     }
-
-    final notifGranted = await Permission.notification.isGranted;
-    if (!mounted) return;
-    if (!notifGranted) {
-      setState(() { _loading = false; _step = _SetupStep.notification; });
-      return;
-    }
-    final batteryExempt = await Permission.ignoreBatteryOptimizations.isGranted;
-    if (!mounted) return;
-    if (!batteryExempt) {
-      setState(() { _loading = false; _step = _SetupStep.battery; });
-      return;
-    }
-    setState(() => _loading = false);
-    Navigator.of(context).pop();
-  }
-
-  Future<void> _requestNotification() async {
-    setState(() => _loading = true);
-    await Permission.notification.request();
-    if (!mounted) return;
 
     final batteryExempt = await Permission.ignoreBatteryOptimizations.isGranted;
     if (!mounted) return;
@@ -168,7 +137,7 @@ class _AppSetupSheetState extends State<AppSetupSheet> {
             icon: '🎙️',
             title: 'Microphone access',
             body:
-                'Hearty needs to hear you say "Hey Hearty" to start listening — even when your screen is off.',
+                'Hearty needs to hear you say "Hey Hearty" to start listening — even when your screen is off. When Android asks, choose "While using the app".',
             primaryLabel: 'Allow microphone',
             loading: _loading,
             onPrimary: _requestMic,
@@ -179,21 +148,10 @@ class _AppSetupSheetState extends State<AppSetupSheet> {
             icon: '📲',
             title: 'Appear instantly',
             body:
-                'When you say "Hey Hearty", the app opens automatically — no matter what screen you\'re on or if the display is off.',
+                'When you say "Hey Hearty", the app opens automatically — no matter what screen you\'re on.\n\nOn the next screen, find Hearty in the list and toggle "Allow display over other apps", then come back.',
             primaryLabel: 'Go to Settings',
             loading: _loading,
             onPrimary: _requestOverlay,
-            onSkip: _skip,
-            onOptOut: _optOut,
-          ),
-        _SetupStep.notification => _PermissionStep(
-            icon: '🔔',
-            title: 'Stay in the loop',
-            body:
-                'Hearty sends gentle reminders to log your meals and check in on how you\'re feeling throughout the day.',
-            primaryLabel: 'Allow notifications',
-            loading: _loading,
-            onPrimary: _requestNotification,
             onSkip: _skip,
             onOptOut: _optOut,
           ),

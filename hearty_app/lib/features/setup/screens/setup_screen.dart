@@ -34,10 +34,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     final optedOut = prefs.getBool('wake_word_setup_opted_out') ?? false;
     final micGranted = await Permission.microphone.isGranted;
     final overlayGranted = await Permission.systemAlertWindow.isGranted;
-    final notifGranted = await Permission.notification.isGranted;
     final batteryExempt = await Permission.ignoreBatteryOptimizations.isGranted;
     final wizardDone =
-        optedOut || (micGranted && overlayGranted && notifGranted && batteryExempt);
+        optedOut || (micGranted && overlayGranted && batteryExempt);
 
     if (!wizardDone) {
       if (!mounted) return;

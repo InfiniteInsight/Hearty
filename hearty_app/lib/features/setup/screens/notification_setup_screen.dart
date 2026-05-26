@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Pre-login notification preferences screen.
@@ -24,6 +25,9 @@ class _NotificationSetupScreenState extends State<NotificationSetupScreen> {
   Future<void> _save() async {
     if (_saving) return;
     setState(() => _saving = true);
+    // Request OS notification permission first, before saving preferences.
+    await Permission.notification.request();
+    if (!mounted) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notification_prefs_configured', true);
     await prefs.setBool('notification_post_meal_enabled', _postMealEnabled);
