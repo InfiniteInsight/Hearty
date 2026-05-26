@@ -2,27 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum _SetupStep { mic, overlay }
+enum _SetupStep { mic, overlay, notification }
 
-/// Bottom sheet wizard for granting wake word permissions.
+/// Bottom sheet wizard for granting app setup permissions.
 ///
-/// Shows two sequential steps — microphone then overlay — advancing internally
-/// without closing and reopening the sheet. The sheet is non-dismissible by
-/// drag or tap-outside; the user must use one of the three action buttons.
+/// Shows three sequential steps — microphone, overlay, then notifications —
+/// advancing internally without closing and reopening the sheet. The sheet is
+/// non-dismissible by drag or tap-outside; the user must use one of the three
+/// action buttons.
 ///
 /// Dismissal outcomes:
 ///   - "Allow" + granted  → advances to next step, or dismisses when done
 ///   - "Allow" + denied   → dismisses (will reappear next launch)
 ///   - "Skip for now"     → dismisses (will reappear next launch)
 ///   - "Don't show again" → writes opt-out flag, dismisses permanently
-class WakeWordSetupSheet extends StatefulWidget {
-  const WakeWordSetupSheet({super.key});
+class AppSetupSheet extends StatefulWidget {
+  const AppSetupSheet({super.key});
 
   @override
-  State<WakeWordSetupSheet> createState() => _WakeWordSetupSheetState();
+  State<AppSetupSheet> createState() => _AppSetupSheetState();
 }
 
-class _WakeWordSetupSheetState extends State<WakeWordSetupSheet> {
+class _AppSetupSheetState extends State<AppSetupSheet> {
   _SetupStep _step = _SetupStep.mic;
   bool _loading = false;
 
@@ -32,10 +33,24 @@ class _WakeWordSetupSheetState extends State<WakeWordSetupSheet> {
     _resolveInitialStep();
   }
 
-  // If mic is already granted (only overlay is missing), skip straight to step 2.
+  // Jump to the first step that is still missing.
   Future<void> _resolveInitialStep() async {
     final micGranted = await Permission.microphone.isGranted;
-    if (micGranted && mounted) setState(() => _step = _SetupStep.overlay);
+    if (!micGranted) return; // stay at mic (default)
+    final overlayGranted = await Permission.systemAlertWindow.isGranted;
+    if (!overlayGranted) {
+      if (mounted) setState(() => _step = _SetupStep.overlay);
+      return;
+    }
+    final notifGranted = await Permission.notification.isGranted;
+    if (!mounted) return;
+    if (!notifGranted) {
+      setState(() => _step = _SetupStep.notification);
+    } else {
+      // All granted — trigger logic should have prevented showing the wizard,
+      // but pop defensively rather than showing an unnecessary step.
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _requestMic() async {
@@ -46,13 +61,26 @@ class _WakeWordSetupSheetState extends State<WakeWordSetupSheet> {
     if (status.isGranted) {
       final overlayGranted = await Permission.systemAlertWindow.isGranted;
       if (!mounted) return;
-      setState(() => _loading = false);
-      if (overlayGranted) {
-        Navigator.of(context).pop();
-      } else {
-        setState(() => _step = _SetupStep.overlay);
+      if (!overlayGranted) {
+        setState(() {
+          _loading = false;
+          _step = _SetupStep.overlay;
+        });
+        return;
       }
+      final notifGranted = await Permission.notification.isGranted;
+      if (!mounted) return;
+      if (!notifGranted) {
+        setState(() {
+          _loading = false;
+          _step = _SetupStep.notification;
+        });
+        return;
+      }
+      setState(() => _loading = false);
+      Navigator.of(context).pop();
     } else {
+      // Denied — dismiss, reappear next launch.
       setState(() => _loading = false);
       Navigator.of(context).pop();
     }
@@ -63,7 +91,26 @@ class _WakeWordSetupSheetState extends State<WakeWordSetupSheet> {
     // permission_handler opens ACTION_MANAGE_OVERLAY_PERMISSION and awaits return.
     await Permission.systemAlertWindow.request();
     if (!mounted) return;
+
+    final notifGranted = await Permission.notification.isGranted;
+    if (!mounted) return;
+    if (!notifGranted) {
+      setState(() {
+        _loading = false;
+        _step = _SetupStep.notification;
+      });
+      return;
+    }
     setState(() => _loading = false);
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _requestNotification() async {
+    setState(() => _loading = true);
+    await Permission.notification.request();
+    if (!mounted) return;
+    setState(() => _loading = false);
+    // Granted or denied — either way, wizard is done.
     Navigator.of(context).pop();
   }
 
@@ -101,6 +148,17 @@ class _WakeWordSetupSheetState extends State<WakeWordSetupSheet> {
             primaryLabel: 'Go to Settings',
             loading: _loading,
             onPrimary: _requestOverlay,
+            onSkip: _skip,
+            onOptOut: _optOut,
+          ),
+        _SetupStep.notification => _PermissionStep(
+            icon: '🔔',
+            title: 'Stay in the loop',
+            body:
+                'Hearty sends gentle reminders to log your meals and check in on how you\'re feeling throughout the day.',
+            primaryLabel: 'Allow notifications',
+            loading: _loading,
+            onPrimary: _requestNotification,
             onSkip: _skip,
             onOptOut: _optOut,
           ),
