@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/audio/chime_player.dart';
 import '../core/auth/onboarding_provider.dart';
@@ -29,7 +28,8 @@ import '../features/settings/screens/voice_settings_screen.dart';
 import '../features/logging/screens/edit_meal_screen.dart';
 import '../features/logging/screens/edit_symptom_screen.dart';
 import '../features/wellbeing/screens/wellbeing_log_screen.dart';
-import '../features/wake_word/widgets/app_setup_sheet.dart';
+import '../features/setup/screens/setup_screen.dart';
+import '../features/setup/screens/notification_setup_screen.dart';
 import '../core/api/models/wellbeing_period.dart';
 import '../core/api/providers/meals_provider.dart';
 import '../core/api/providers/symptoms_provider.dart';
@@ -55,6 +55,8 @@ class Routes {
   static const String wellbeingLog = 'wellbeing-log';
   static const String editMeal = 'edit-meal';
   static const String editSymptom = 'edit-symptom';
+  static const String setup = 'setup';
+  static const String notificationSetup = 'notification-setup';
 }
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -70,7 +72,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 
   final router = GoRouter(
     navigatorKey: navigatorKey,
-    initialLocation: '/home',
+    initialLocation: '/setup',
     refreshListenable: refreshStream,
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
@@ -81,7 +83,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final hasCompletedOnboarding =
           ref.read(hasCompletedOnboardingProvider).valueOrNull ?? false;
 
-      if (!isAuthenticated && !isOnSignIn) return '/sign-in';
+      final isOnSetup = location == '/setup';
+      final isOnNotificationSetup = location == '/notification-setup';
+      if (!isAuthenticated && !isOnSignIn && !isOnSetup && !isOnNotificationSetup) {
+        return '/sign-in';
+      }
       if (isAuthenticated && isOnSignIn) {
         return hasCompletedOnboarding ? '/home' : '/onboarding';
       }
@@ -211,6 +217,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           return WellbeingLogScreen(initialPeriod: period, entryId: id);
         },
       ),
+      GoRoute(
+        path: '/setup',
+        name: Routes.setup,
+        builder: (context, state) => const SetupScreen(),
+      ),
+      GoRoute(
+        path: '/notification-setup',
+        name: Routes.notificationSetup,
+        builder: (context, state) => const NotificationSetupScreen(),
+      ),
     ],
   );
 
@@ -260,37 +276,8 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
   }
 
   Future<void> _initWakeWord() async {
-    final prefs = await SharedPreferences.getInstance();
-    final optedOut = prefs.getBool('wake_word_setup_opted_out') ?? false;
-
     final micGranted = await Permission.microphone.isGranted;
-    final overlayGranted = await Permission.systemAlertWindow.isGranted;
-    final notifGranted = await Permission.notification.isGranted;
-
-    if (optedOut || (micGranted && overlayGranted && notifGranted)) {
-      // Fully set up or user opted out — start service only if mic is available.
-      if (micGranted) WakeWordChannel.startService().catchError((_) {});
-      return;
-    }
-
-    // At least one permission missing and user hasn't opted out — show wizard.
-    if (!mounted) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.black87,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      isDismissible: false,
-      enableDrag: false,
-      builder: (_) => const AppSetupSheet(),
-    );
-
-    // After wizard closes, start service if mic is now granted.
-    if (!mounted) return;
-    final micNowGranted = await Permission.microphone.isGranted;
-    if (!mounted) return;
-    if (micNowGranted) WakeWordChannel.startService().catchError((_) {});
+    if (micGranted) WakeWordChannel.startService().catchError((_) {});
   }
 
   @override
