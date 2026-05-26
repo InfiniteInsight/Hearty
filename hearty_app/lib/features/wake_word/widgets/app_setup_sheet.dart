@@ -93,6 +93,16 @@ class _AppSetupSheetState extends State<AppSetupSheet> {
     await Permission.systemAlertWindow.request();
     if (!mounted) return;
 
+    // Re-check: user may have navigated back without granting.
+    final overlayGranted = await Permission.systemAlertWindow.isGranted;
+    if (!mounted) return;
+    if (!overlayGranted) {
+      // Not granted — dismiss, reappear next launch.
+      setState(() => _loading = false);
+      Navigator.of(context).pop();
+      return;
+    }
+
     final notifGranted = await Permission.notification.isGranted;
     if (!mounted) return;
     if (!notifGranted) {
