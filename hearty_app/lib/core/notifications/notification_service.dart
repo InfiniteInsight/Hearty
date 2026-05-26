@@ -45,13 +45,6 @@ class NotificationService {
     // Channels are idempotent — safe to call on every cold start.
     await _createChannels();
 
-    // Request permission (Android 13+; no-op on older versions).
-    await FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-
     // Display FCM messages that arrive while the app is in the foreground.
     FirebaseMessaging.onMessage.listen(_showForegroundMessage);
   }
