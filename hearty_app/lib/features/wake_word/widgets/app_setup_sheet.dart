@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum _SetupStep { mic, overlay, notification }
+enum _SetupStep { mic, overlay, notification, battery }
 
 /// Bottom sheet wizard for granting app setup permissions.
 ///
-/// Shows three sequential steps — microphone, overlay, then notifications —
-/// advancing internally without closing and reopening the sheet. The sheet is
-/// non-dismissible by drag or tap-outside; the user must use one of the three
-/// action buttons.
+/// Shows four sequential steps — microphone, overlay, notifications, battery —
+/// advancing internally without closing and reopening the sheet. Non-dismissible
+/// by drag or tap-outside; the user must use one of the three action buttons.
 ///
 /// Dismissal outcomes:
 ///   - "Allow" + granted  → advances to next step, or dismisses when done
@@ -47,6 +46,12 @@ class _AppSetupSheetState extends State<AppSetupSheet> {
     if (!mounted) return;
     if (!notifGranted) {
       setState(() => _step = _SetupStep.notification);
+      return;
+    }
+    final batteryExempt = await Permission.ignoreBatteryOptimizations.isGranted;
+    if (!mounted) return;
+    if (!batteryExempt) {
+      setState(() => _step = _SetupStep.battery);
     } else {
       // All granted — trigger logic should have prevented showing the wizard,
       // but pop defensively rather than showing an unnecessary step.
@@ -63,19 +68,19 @@ class _AppSetupSheetState extends State<AppSetupSheet> {
       final overlayGranted = await Permission.systemAlertWindow.isGranted;
       if (!mounted) return;
       if (!overlayGranted) {
-        setState(() {
-          _loading = false;
-          _step = _SetupStep.overlay;
-        });
+        setState(() { _loading = false; _step = _SetupStep.overlay; });
         return;
       }
       final notifGranted = await Permission.notification.isGranted;
       if (!mounted) return;
       if (!notifGranted) {
-        setState(() {
-          _loading = false;
-          _step = _SetupStep.notification;
-        });
+        setState(() { _loading = false; _step = _SetupStep.notification; });
+        return;
+      }
+      final batteryExempt = await Permission.ignoreBatteryOptimizations.isGranted;
+      if (!mounted) return;
+      if (!batteryExempt) {
+        setState(() { _loading = false; _step = _SetupStep.battery; });
         return;
       }
       setState(() => _loading = false);
@@ -106,10 +111,13 @@ class _AppSetupSheetState extends State<AppSetupSheet> {
     final notifGranted = await Permission.notification.isGranted;
     if (!mounted) return;
     if (!notifGranted) {
-      setState(() {
-        _loading = false;
-        _step = _SetupStep.notification;
-      });
+      setState(() { _loading = false; _step = _SetupStep.notification; });
+      return;
+    }
+    final batteryExempt = await Permission.ignoreBatteryOptimizations.isGranted;
+    if (!mounted) return;
+    if (!batteryExempt) {
+      setState(() { _loading = false; _step = _SetupStep.battery; });
       return;
     }
     setState(() => _loading = false);
@@ -120,8 +128,23 @@ class _AppSetupSheetState extends State<AppSetupSheet> {
     setState(() => _loading = true);
     await Permission.notification.request();
     if (!mounted) return;
+
+    final batteryExempt = await Permission.ignoreBatteryOptimizations.isGranted;
+    if (!mounted) return;
+    if (!batteryExempt) {
+      setState(() { _loading = false; _step = _SetupStep.battery; });
+      return;
+    }
     setState(() => _loading = false);
-    // Granted or denied — either way, wizard is done.
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _requestBattery() async {
+    setState(() => _loading = true);
+    await Permission.ignoreBatteryOptimizations.request();
+    if (!mounted) return;
+    setState(() => _loading = false);
+    // Granted or denied — wizard is done.
     Navigator.of(context).pop();
   }
 
@@ -171,6 +194,17 @@ class _AppSetupSheetState extends State<AppSetupSheet> {
             primaryLabel: 'Allow notifications',
             loading: _loading,
             onPrimary: _requestNotification,
+            onSkip: _skip,
+            onOptOut: _optOut,
+          ),
+        _SetupStep.battery => _PermissionStep(
+            icon: '🔋',
+            title: 'Run in the background',
+            body:
+                "Hearty needs to keep listening even when you're not using it. This prevents Android from putting it to sleep.",
+            primaryLabel: 'Allow',
+            loading: _loading,
+            onPrimary: _requestBattery,
             onSkip: _skip,
             onOptOut: _optOut,
           ),
