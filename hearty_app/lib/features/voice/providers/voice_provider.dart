@@ -54,9 +54,30 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
   Future<bool> _ensureSttInitialized() async {
     if (!_sttInitialized) {
-      _sttInitialized = await _stt.initialize();
+      _sttInitialized = await _stt.initialize(
+        onStatus: _onSttStatus,
+        onError: (_) => _autoSubmitIfPending(),
+      );
     }
     return _sttInitialized;
+  }
+
+  // STT stopped without a finalResult — submit the partial transcript rather
+  // than silently dropping it. Covers both the initial listen and follow-up
+  // sessions since both use the same _beginStt path.
+  void _onSttStatus(String status) {
+    if (status == SpeechToText.notListeningStatus || status == SpeechToText.doneStatus) {
+      _autoSubmitIfPending();
+    }
+  }
+
+  void _autoSubmitIfPending() {
+    if (!mounted) return;
+    final s = state;
+    if (s.transcript.isNotEmpty &&
+        (s.status == VoiceStatus.listening || s.status == VoiceStatus.awaitingFollowUp)) {
+      setThinking();
+    }
   }
 
   void startListening() {
@@ -92,8 +113,12 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
   /// Sets response text, speaks it via TTS, then transitions to awaitingFollowUp.
   /// Pass [askFollowUp: false] to dismiss after speaking instead.
-  void setResponse(String response, {bool askFollowUp = true}) {
-    state = state.copyWith(status: VoiceStatus.responding, response: response);
+  void setResponse(String response, {bool askFollowUp = true, String? mealId}) {
+    state = state.copyWith(
+      status: VoiceStatus.responding,
+      response: response,
+      pendingMealId: mealId ?? state.pendingMealId,
+    );
     _speakResponse(response, askFollowUp);
   }
 
@@ -127,7 +152,11 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
   void setAwaitingFollowUp() {
     if (!mounted) return;
-    state = state.copyWith(status: VoiceStatus.awaitingFollowUp);
+    state = state.copyWith(
+      status: VoiceStatus.awaitingFollowUp,
+      originalTranscript: state.transcript,
+      transcript: '',
+    );
     _beginFollowUpStt();
   }
 
@@ -166,9 +195,12 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
     try {
       final client = ref.read(heartyApiClientProvider);
-      final reply = await client.chat(message: transcript);
+      final result = await client.chat(message: transcript);
       if (!mounted) return;
-      setResponse(reply.isNotEmpty ? reply : 'Got it! How are you feeling?');
+      setResponse(
+        result.reply.isNotEmpty ? result.reply : 'Got it! How are you feeling?',
+        mealId: result.mealId,
+      );
       ref.read(syncTriggerProvider).schedule();
     } on OfflineException {
       if (!mounted) return;
@@ -191,7 +223,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     }
   }
 
-  /// Logs the follow-up transcript as a symptom and acknowledges without looping.
+  /// Sends the follow-up transcript back through the chat API so the AI can
+  /// parse it properly — it may contain a meal clarification, a symptom, a
+  /// wellbeing update, or some combination. Ends the conversation after.
   Future<void> sendFollowUpToApi() async {
     final transcript = state.transcript;
     if (transcript.isEmpty) {
@@ -199,15 +233,30 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       return;
     }
     final ref = _ref;
-    if (ref != null) {
-      try {
-        await ref.read(heartyApiClientProvider).logSymptom(description: transcript);
-      } catch (_) {
-        // Non-fatal — dismiss regardless.
-      }
+    if (ref == null) {
+      setResponse('Got it, thanks!', askFollowUp: false);
+      return;
     }
-    if (!mounted) return;
-    setResponse('Got it, thanks!', askFollowUp: false);
+    try {
+      final client = ref.read(heartyApiClientProvider);
+      final history = <Map<String, String>>[
+        if (state.originalTranscript?.isNotEmpty == true)
+          {'role': 'user', 'content': state.originalTranscript!},
+        if (state.response.isNotEmpty)
+          {'role': 'assistant', 'content': state.response},
+      ];
+      final result = await client.chat(
+        message: transcript,
+        mealId: state.pendingMealId,
+        history: history.isEmpty ? null : history,
+      );
+      if (!mounted) return;
+      setResponse(result.reply.isNotEmpty ? result.reply : 'Got it, thanks!', askFollowUp: false);
+      ref.read(syncTriggerProvider).schedule();
+    } catch (_) {
+      if (!mounted) return;
+      setResponse('Got it, thanks!', askFollowUp: false);
+    }
   }
 
   /// Phase 5 stub — kept for backwards compatibility; delegates to sendToChat.

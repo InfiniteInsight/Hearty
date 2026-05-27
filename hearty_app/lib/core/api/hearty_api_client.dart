@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/auth_interceptor.dart';
+import 'models/chat_result.dart';
 import 'models/meal_log.dart';
 import 'models/symptom_log.dart';
 import 'models/wellbeing_log.dart';
@@ -239,8 +240,10 @@ class HeartyApiClient {
   // Chat (voice AI)
   // ──────────────────────────────────────────────────────────────────────────
 
-  Future<String> chat({
+  Future<ChatResult> chat({
     required String message,
+    String? mealId,
+    List<Map<String, String>>? history,
     Map<String, dynamic>? healthContext,
     DateTime? loggedAt,
   }) {
@@ -249,15 +252,13 @@ class HeartyApiClient {
         '/api/chat',
         data: <String, dynamic>{
           'message': message,
+          'meal_id': ?mealId,
+          'history': ?history,
           'health_context': healthContext,
           'logged_at': loggedAt?.toUtc().toIso8601String(),
         }..removeWhere((_, v) => v == null),
       );
-      final data = response.data!;
-      return (data['reply'] as String?) ??
-          (data['response'] as String?) ??
-          (data['message'] as String?) ??
-          '';
+      return ChatResult.fromJson(response.data!);
     });
   }
 
