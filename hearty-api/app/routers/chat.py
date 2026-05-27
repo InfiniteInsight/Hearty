@@ -41,6 +41,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
+    meal_id: Optional[str] = None
 
 
 @router.post("/api/chat", status_code=200)
@@ -49,6 +50,7 @@ async def chat(
     user=Depends(get_current_user),
 ) -> ChatResponse:
     # Log the message as a meal entry in the background (best-effort).
+    meal_id: Optional[str] = None
     try:
         foods = None
         inferred_meal_type = None
@@ -69,6 +71,7 @@ async def chat(
         }
         row = {k: v for k, v in row.items() if v is not None}
         result = supabase.table("meals").insert(row).execute()
+        meal_id = result.data[0]["id"] if result.data else None
         logger.info("Meal inserted: %s", result.data)
     except Exception as e:
         logger.error("Meal insert failed: %s", e, exc_info=True)
@@ -95,7 +98,7 @@ async def chat(
     except Exception:
         reply = f'Got it! I logged "{body.message}". How are you feeling?'
 
-    return ChatResponse(reply=reply)
+    return ChatResponse(reply=reply, meal_id=meal_id)
 
 
 def _build_signal_context(user_id: str) -> str:

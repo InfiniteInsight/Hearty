@@ -209,3 +209,16 @@ def test_delete_wellbeing(api_base, headers):
 
     r2 = httpx.delete(f"{api_base}/api/wellbeing/{entry_id}", headers=headers)
     assert r2.status_code == 204
+
+
+def test_chat_returns_meal_id(api_base, headers):
+    r = httpx.post(f"{api_base}/api/chat", headers=headers, json={
+        "message": "I had oatmeal for breakfast"
+    }, timeout=30)
+    assert r.status_code == 200
+    body = r.json()
+    assert "reply" in body
+    assert "meal_id" in body
+    assert body["meal_id"] is not None
+    # cleanup
+    httpx.delete(f"{api_base}/api/meals/{body['meal_id']}", headers=headers)
