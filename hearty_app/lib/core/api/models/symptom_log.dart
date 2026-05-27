@@ -4,6 +4,7 @@ class SymptomLog {
   final String id;
   final String description;
   final int severity;
+  final int? onsetMinutes;
   final String? linkedMealId;
   final DateTime loggedAt;
 
@@ -11,6 +12,7 @@ class SymptomLog {
     required this.id,
     required this.description,
     required this.severity,
+    this.onsetMinutes,
     this.linkedMealId,
     required this.loggedAt,
   });
@@ -28,11 +30,11 @@ class SymptomLog {
   factory SymptomLog.fromJson(Map<String, dynamic> json) {
     return SymptomLog(
       id: json['id'] as String,
-      // Backend uses symptom_type; fall back to raw_description if available.
       description: (json['symptom_type'] as String?) ??
           (json['raw_description'] as String?) ??
           '',
       severity: (json['severity'] as int?) ?? 1,
+      onsetMinutes: json['onset_minutes'] as int?,
       linkedMealId: json['meal_id'] as String?,
       loggedAt: DateTime.parse(json['logged_at'] as String),
     );
@@ -42,6 +44,7 @@ class SymptomLog {
         'id': id,
         'symptom_type': description,
         'severity': severity,
+        if (onsetMinutes != null) 'onset_minutes': onsetMinutes,
         if (linkedMealId != null) 'meal_id': linkedMealId,
         'logged_at': loggedAt.toIso8601String(),
       };

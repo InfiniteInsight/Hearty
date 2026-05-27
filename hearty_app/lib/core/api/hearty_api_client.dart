@@ -153,11 +153,20 @@ class HeartyApiClient {
     });
   }
 
-  Future<SymptomLog> updateSymptom(String id, String description) async {
+  Future<SymptomLog> updateSymptom(
+    String id,
+    String description, {
+    int? severity,
+    int? onsetMinutes,
+  }) async {
     return _call(() async {
       final response = await _dio.patch<Map<String, dynamic>>(
         '/api/symptoms/$id',
-        data: {'description': description},
+        data: <String, dynamic>{
+          'description': description,
+          'severity': ?severity,
+          'onset_minutes': ?onsetMinutes,
+        },
       );
       return SymptomLog.fromJson(response.data!);
     });
