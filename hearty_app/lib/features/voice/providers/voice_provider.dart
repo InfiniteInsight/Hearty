@@ -82,7 +82,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   void startListening() {
-    state = state.copyWith(status: VoiceStatus.listening, transcript: '', response: '');
+    state = const VoiceState(status: VoiceStatus.listening);
     _beginStt();
   }
 
@@ -98,7 +98,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         }
       },
       listenFor: const Duration(seconds: 60),
-      pauseFor: const Duration(seconds: 5),
+      pauseFor: const Duration(seconds: 8),
       localeId: 'en-US',
     );
   }
@@ -153,9 +153,14 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
   void setAwaitingFollowUp() {
     if (!mounted) return;
+    final updatedHistory = [
+      ...state.history,
+      if (state.transcript.isNotEmpty) {'role': 'user', 'content': state.transcript},
+      if (state.response.isNotEmpty) {'role': 'assistant', 'content': state.response},
+    ];
     state = state.copyWith(
       status: VoiceStatus.awaitingFollowUp,
-      originalTranscript: state.transcript,
+      history: updatedHistory,
       transcript: '',
     );
     _beginFollowUpStt();
@@ -227,9 +232,8 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     }
   }
 
-  /// Sends the follow-up transcript back through the chat API so the AI can
-  /// parse it properly — it may contain a meal clarification, a symptom, a
-  /// wellbeing update, or some combination. Ends the conversation after.
+  /// Sends the follow-up transcript back through the chat API. Keeps the
+  /// conversation open if Hearty's reply ends with a question.
   Future<void> sendFollowUpToApi() async {
     final transcript = state.transcript;
     if (transcript.isEmpty) {
@@ -243,19 +247,15 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     }
     try {
       final client = ref.read(heartyApiClientProvider);
-      final history = <Map<String, String>>[
-        if (state.originalTranscript?.isNotEmpty == true)
-          {'role': 'user', 'content': state.originalTranscript!},
-        if (state.response.isNotEmpty)
-          {'role': 'assistant', 'content': state.response},
-      ];
       final result = await client.chat(
         message: transcript,
         mealId: state.pendingMealId,
-        history: history.isEmpty ? null : history,
+        history: state.history.isEmpty ? null : state.history,
       );
       if (!mounted) return;
-      setResponse(result.reply.isNotEmpty ? result.reply : 'Got it, thanks!', askFollowUp: false);
+      final reply = result.reply.isNotEmpty ? result.reply : 'Got it, thanks!';
+      final keepGoing = reply.trimRight().endsWith('?');
+      setResponse(reply, askFollowUp: keepGoing);
       ref.read(syncTriggerProvider).schedule();
     } catch (_) {
       if (!mounted) return;

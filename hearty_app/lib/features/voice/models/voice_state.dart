@@ -5,14 +5,14 @@ class VoiceState {
   final String transcript;
   final String response;
   final String? pendingMealId;
-  final String? originalTranscript;
+  final List<Map<String, String>> history;
 
   const VoiceState({
     this.status = VoiceStatus.idle,
     this.transcript = '',
     this.response = '',
     this.pendingMealId,
-    this.originalTranscript,
+    this.history = const [],
   });
 
   VoiceState copyWith({
@@ -20,13 +20,13 @@ class VoiceState {
     String? transcript,
     String? response,
     String? pendingMealId,
-    String? originalTranscript,
+    List<Map<String, String>>? history,
   }) =>
       VoiceState(
         status: status ?? this.status,
         transcript: transcript ?? this.transcript,
         response: response ?? this.response,
         pendingMealId: pendingMealId ?? this.pendingMealId,
-        originalTranscript: originalTranscript ?? this.originalTranscript,
+        history: history ?? this.history,
       );
 }
