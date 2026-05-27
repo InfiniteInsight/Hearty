@@ -222,3 +222,79 @@ def test_chat_returns_meal_id(api_base, headers):
     assert body["meal_id"] is not None
     # cleanup
     httpx.delete(f"{api_base}/api/meals/{body['meal_id']}", headers=headers)
+
+
+def test_chat_followup_updates_meal_not_inserts(api_base, headers):
+    # First turn: create meal
+    r1 = httpx.post(f"{api_base}/api/chat", headers=headers, json={
+        "message": "I ate a protein bar"
+    }, timeout=30)
+    assert r1.status_code == 200
+    meal_id = r1.json()["meal_id"]
+    assert meal_id is not None
+
+    # Count meals before follow-up
+    meals_before = httpx.get(f"{api_base}/api/meals", headers=headers).json()["total"]
+
+    # Follow-up with clarification
+    r2 = httpx.post(f"{api_base}/api/chat", headers=headers, json={
+        "message": "Aloha brand chocolate chip",
+        "meal_id": meal_id,
+        "history": [
+            {"role": "user", "content": "I ate a protein bar"},
+            {"role": "assistant", "content": "What brand and flavor was it?"},
+        ],
+    }, timeout=30)
+    assert r2.status_code == 200
+    assert "reply" in r2.json()
+
+    # No new meal created
+    meals_after = httpx.get(f"{api_base}/api/meals", headers=headers).json()["total"]
+    assert meals_after == meals_before
+
+    # Existing meal updated with combined description
+    updated = httpx.get(f"{api_base}/api/meals/{meal_id}", headers=headers).json()
+    assert "aloha" in updated["description"].lower() or any(
+        "aloha" in str(f).lower() for f in (updated.get("foods") or [])
+    )
+
+    # cleanup
+    httpx.delete(f"{api_base}/api/meals/{meal_id}", headers=headers)
+
+
+def test_chat_followup_symptom_creates_symptom_not_meal(api_base, headers):
+    # First turn
+    r1 = httpx.post(f"{api_base}/api/chat", headers=headers, json={
+        "message": "I ate a protein bar"
+    }, timeout=30)
+    assert r1.status_code == 200
+    meal_id = r1.json()["meal_id"]
+
+    meals_before = httpx.get(f"{api_base}/api/meals", headers=headers).json()["total"]
+    symptoms_before = httpx.get(f"{api_base}/api/symptoms", headers=headers).json()
+
+    # Follow-up with symptom
+    r2 = httpx.post(f"{api_base}/api/chat", headers=headers, json={
+        "message": "I'm feeling bloated",
+        "meal_id": meal_id,
+        "history": [
+            {"role": "user", "content": "I ate a protein bar"},
+            {"role": "assistant", "content": "How are you feeling?"},
+        ],
+    }, timeout=30)
+    assert r2.status_code == 200
+
+    # No new meal
+    meals_after = httpx.get(f"{api_base}/api/meals", headers=headers).json()["total"]
+    assert meals_after == meals_before
+
+    # Symptom created
+    symptoms_after = httpx.get(f"{api_base}/api/symptoms", headers=headers).json()
+    assert len(symptoms_after) > len(symptoms_before)
+
+    # cleanup
+    httpx.delete(f"{api_base}/api/meals/{meal_id}", headers=headers)
+    if symptoms_after:
+        new_ids = {s["id"] for s in symptoms_after} - {s["id"] for s in symptoms_before}
+        for sid in new_ids:
+            httpx.delete(f"{api_base}/api/symptoms/{sid}", headers=headers)

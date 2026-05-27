@@ -37,6 +37,8 @@ class ChatRequest(BaseModel):
     message: str
     health_context: Optional[dict] = None
     logged_at: Optional[datetime] = None
+    meal_id: Optional[str] = None
+    history: Optional[list[dict]] = None
 
 
 class ChatResponse(BaseModel):
@@ -50,31 +52,90 @@ async def chat(
     user=Depends(get_current_user),
 ) -> ChatResponse:
     # Log the message as a meal entry in the background (best-effort).
-    meal_id: Optional[str] = None
-    try:
-        foods = None
-        inferred_meal_type = None
-        try:
-            extracted = ai_extraction.extract_meal(body.message)
-            foods = extracted.get("foods") or None
-            inferred_meal_type = extracted.get("inferred_meal_type")
-        except Exception as extract_err:
-            logger.warning("Meal extraction failed (inserting raw): %s", extract_err)
+    meal_id: Optional[str] = body.meal_id
 
-        row = {
-            "user_id": user["id"],
-            "description": body.message,
-            "meal_type": inferred_meal_type,
-            "foods": foods,
-            "logged_at": (body.logged_at or datetime.now(timezone.utc)).isoformat(),
-            "input_method": "voice",
-        }
-        row = {k: v for k, v in row.items() if v is not None}
-        result = supabase.table("meals").insert(row).execute()
-        meal_id = result.data[0]["id"] if result.data else None
-        logger.info("Meal inserted: %s", result.data)
-    except Exception as e:
-        logger.error("Meal insert failed: %s", e, exc_info=True)
+    if meal_id:
+        # ── Follow-up turn: update existing meal, maybe log symptoms ──────────
+        try:
+            # Build combined description from original user message + follow-up
+            original = next(
+                (m["content"] for m in (body.history or []) if m.get("role") == "user"),
+                "",
+            )
+            combined = f"{original}. {body.message}" if original else body.message
+
+            # Re-extract and update the meal row
+            try:
+                extracted = ai_extraction.extract_meal(combined)
+                foods = extracted.get("foods") or None
+                inferred_meal_type = extracted.get("inferred_meal_type")
+            except Exception as extract_err:
+                logger.warning("Follow-up meal extraction failed: %s", extract_err)
+                foods = None
+                inferred_meal_type = None
+
+            updates: dict = {"description": combined}
+            if foods is not None:
+                updates["foods"] = foods
+            if inferred_meal_type:
+                updates["meal_type"] = inferred_meal_type
+
+            supabase.table("meals").update(updates).eq("id", meal_id).eq(
+                "user_id", user["id"]
+            ).execute()
+        except Exception as e:
+            logger.error("Follow-up meal update failed: %s", e, exc_info=True)
+
+        # Try to extract and log symptoms from the follow-up text
+        try:
+            symptoms = ai_extraction.extract_symptoms(body.message)
+            if symptoms:
+                rows = [
+                    {
+                        "user_id": user["id"],
+                        "symptom_type": s.get("symptom_type", "other"),
+                        "severity": s.get("severity"),
+                        "onset_minutes": s.get("onset_minutes"),
+                        "duration_minutes": s.get("duration_minutes"),
+                        "bathroom_urgency": s.get("bathroom_urgency"),
+                        "bathroom_visits": s.get("bathroom_visits"),
+                        "stool_consistency": s.get("stool_consistency"),
+                        "raw_description": body.message,
+                        "logged_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                    for s in symptoms
+                ]
+                rows = [{k: v for k, v in r.items() if v is not None} for r in rows]
+                supabase.table("symptom_logs").insert(rows).execute()
+        except Exception as e:
+            logger.error("Follow-up symptom extraction failed: %s", e, exc_info=True)
+
+    else:
+        # ── First turn: insert new meal ────────────────────────────────────────
+        try:
+            foods = None
+            inferred_meal_type = None
+            try:
+                extracted = ai_extraction.extract_meal(body.message)
+                foods = extracted.get("foods") or None
+                inferred_meal_type = extracted.get("inferred_meal_type")
+            except Exception as extract_err:
+                logger.warning("Meal extraction failed (inserting raw): %s", extract_err)
+
+            row = {
+                "user_id": user["id"],
+                "description": body.message,
+                "meal_type": inferred_meal_type,
+                "foods": foods,
+                "logged_at": (body.logged_at or datetime.now(timezone.utc)).isoformat(),
+                "input_method": "voice",
+            }
+            row = {k: v for k, v in row.items() if v is not None}
+            result = supabase.table("meals").insert(row).execute()
+            meal_id = result.data[0]["id"] if result.data else None
+            logger.info("Meal inserted: %s", result.data)
+        except Exception as e:
+            logger.error("Meal insert failed: %s", e, exc_info=True)
 
     # Build health context from top food signals.
     signal_context = _build_signal_context(user["id"])
@@ -87,10 +148,13 @@ async def chat(
 
     # Generate conversational reply.
     try:
-        messages = [{"role": "user", "content": body.message}]
+        lm_messages: list[dict] = []
+        if body.history:
+            lm_messages.extend(body.history)
+        lm_messages.append({"role": "user", "content": body.message})
         response = litellm.completion(
             model=_MODEL,
-            messages=messages,
+            messages=lm_messages,
             system=system_prompt,
             max_tokens=100,
         )
