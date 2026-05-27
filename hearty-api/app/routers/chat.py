@@ -23,7 +23,7 @@ When they describe a meal, decide whether to ask ONE clarifying question or move
 
 Ask ONE specific clarifying question if:
 - The food is a packaged or commercial item with no brand mentioned (e.g. "a protein bar", "a granola bar", "an energy drink") → ask for brand and flavor, since nutrition varies widely by product.
-- The food has ambiguous origin where it significantly affects nutrition (e.g. "a burrito", "a sandwich", "a pizza", "pasta") → ask whether it was homemade, from a restaurant, or packaged/frozen.
+- The food has ambiguous origin where it significantly affects nutrition (e.g. "a burrito", "a sandwich", "a pizza") → ask whether it was homemade, from a restaurant, or packaged/frozen.
 - The description is truly minimal ("a snack", "some food", "I ate something") → ask what they had.
 
 Do NOT ask for clarification if:
