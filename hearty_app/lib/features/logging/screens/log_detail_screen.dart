@@ -12,6 +12,7 @@ import '../../../core/api/models/wellbeing_log.dart';
 import '../../../core/api/providers/meals_provider.dart';
 import '../../../core/api/providers/symptoms_provider.dart';
 import '../../../core/api/providers/wellbeing_provider.dart';
+import '../../../core/widgets/confirm_delete_dialog.dart';
 
 class LogDetailScreen extends ConsumerStatefulWidget {
   final String id;
@@ -86,36 +87,6 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
     }
   }
 
-  Future<void> _confirmDelete(
-    Future<void> Function() onDelete,
-    Future<void> Function() onInvalidate,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete this entry?'),
-        content: const Text("This can't be undone."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(
-              'Delete',
-              style: TextStyle(color: Theme.of(ctx).colorScheme.error),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && mounted) {
-      await onDelete();
-      await onInvalidate();
-      if (mounted) context.pop();
-    }
-  }
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -216,14 +187,27 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
       );
     }
 
-    // Resolve linked meal for symptom detail (must be in build()).
+    // Watch all three providers so the UI updates reactively when the Drift
+    // stream emits after an edit or delete (today's entries only; historical
+    // entries fall back to the locally cached _entry).
     final meals = ref.watch(mealsProvider).valueOrNull ?? [];
+    final symptoms = ref.watch(symptomsProvider).valueOrNull ?? [];
+    final wellbeingList = ref.watch(wellbeingProvider).valueOrNull ?? [];
+
+    final liveEntry = switch (_entry) {
+      MealLog _ => meals.where((m) => m.id == widget.id).firstOrNull ?? _entry,
+      SymptomLog _ =>
+        symptoms.where((s) => s.id == widget.id).firstOrNull ?? _entry,
+      WellbeingLog _ =>
+        wellbeingList.where((w) => w.id == widget.id).firstOrNull ?? _entry,
+      _ => _entry,
+    };
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Log Entry'),
         actions: [
-          switch (_entry) {
+          switch (liveEntry) {
             MealLog m => IconButton(
                 icon: const Icon(Icons.edit_outlined),
                 tooltip: 'Edit',
@@ -241,7 +225,12 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                 onPressed: () async {
                   await context.push(
                     '/symptoms/edit',
-                    extra: {'id': s.id, 'description': s.description},
+                    extra: {
+                      'id': s.id,
+                      'description': s.description,
+                      'severity': s.severity,
+                      'onsetMinutes': s.onsetMinutes,
+                    },
                   );
                   if (mounted) _resolveEntry();
                 },
@@ -260,28 +249,19 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
             icon: Icon(Icons.delete_outline,
                 color: Theme.of(context).colorScheme.error),
             tooltip: 'Delete',
-            onPressed: () => switch (_entry) {
-              MealLog m => _confirmDelete(
-                  () async {
-                    await ref.read(heartyApiClientProvider).deleteMeal(m.id);
-                    await ref.read(localMealDaoProvider).deleteByServerId(m.id);
-                  },
-                  () async {},
-                ),
-              SymptomLog s => _confirmDelete(
-                  () async {
-                    await ref.read(heartyApiClientProvider).deleteSymptom(s.id);
-                    await ref.read(localSymptomDaoProvider).deleteByServerId(s.id);
-                  },
-                  () async {},
-                ),
-              WellbeingLog w => _confirmDelete(
-                  () async {
-                    await ref.read(heartyApiClientProvider).deleteWellbeing(w.id);
-                    await ref.read(localWellbeingDaoProvider).deleteByServerId(w.id);
-                  },
-                  () async {},
-                ),
+            onPressed: () => switch (liveEntry) {
+              MealLog m => confirmDelete(context, popAfter: true, onDelete: () async {
+                  await ref.read(heartyApiClientProvider).deleteMeal(m.id);
+                  await ref.read(localMealDaoProvider).deleteByServerId(m.id);
+                }),
+              SymptomLog s => confirmDelete(context, popAfter: true, onDelete: () async {
+                  await ref.read(heartyApiClientProvider).deleteSymptom(s.id);
+                  await ref.read(localSymptomDaoProvider).deleteByServerId(s.id);
+                }),
+              WellbeingLog w => confirmDelete(context, popAfter: true, onDelete: () async {
+                  await ref.read(heartyApiClientProvider).deleteWellbeing(w.id);
+                  await ref.read(localWellbeingDaoProvider).deleteByServerId(w.id);
+                }),
               _ => Future.value(),
             },
           ),
@@ -289,7 +269,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: switch (_entry) {
+        child: switch (liveEntry) {
           MealLog m => _buildMeal(m, theme, colorScheme),
           SymptomLog s => _buildSymptom(s, theme, colorScheme, meals),
           WellbeingLog w => _buildWellbeing(w, theme),

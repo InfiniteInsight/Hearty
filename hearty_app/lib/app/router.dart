@@ -195,10 +195,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/symptoms/edit',
         name: Routes.editSymptom,
         builder: (context, state) {
-          final extra = state.extra as Map<String, String>;
+          final extra = state.extra as Map<String, dynamic>;
           return EditSymptomScreen(
-            id: extra['id']!,
-            initialDescription: extra['description']!,
+            id: extra['id'] as String,
+            initialDescription: extra['description'] as String,
+            initialSeverity: extra['severity'] as int?,
+            initialOnsetMinutes: extra['onsetMinutes'] as int?,
           );
         },
       ),

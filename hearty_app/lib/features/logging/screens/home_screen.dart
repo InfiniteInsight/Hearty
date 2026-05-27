@@ -2,6 +2,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/api/providers/meals_provider.dart';
 import '../../../core/api/providers/symptoms_provider.dart';
 import '../../../core/api/providers/wellbeing_provider.dart';
@@ -515,7 +516,6 @@ class _MealCard extends ConsumerWidget {
               await ref.read(heartyApiClientProvider).deleteMeal(meal.id);
               await ref.read(localMealDaoProvider).deleteByServerId(meal.id);
             },
-            onInvalidate: () async {},
           ),
         ),
         // Linked symptoms indented under this meal.
@@ -566,12 +566,16 @@ class _SymptomRow extends ConsumerWidget {
       onLongPress: () => _showEntryActions(
         context, ref,
         editRoute: '/symptoms/edit',
-        editExtra: {'id': symptom.id, 'description': symptom.description},
+        editExtra: {
+          'id': symptom.id,
+          'description': symptom.description,
+          'severity': symptom.severity,
+          'onsetMinutes': symptom.onsetMinutes,
+        },
         onDelete: () async {
           await ref.read(heartyApiClientProvider).deleteSymptom(symptom.id);
           await ref.read(localSymptomDaoProvider).deleteByServerId(symptom.id);
         },
-        onInvalidate: () async {},
       ),
     );
   }
@@ -640,7 +644,6 @@ class _WellbeingRow extends ConsumerWidget {
           await ref.read(heartyApiClientProvider).deleteWellbeing(wellbeing.id);
           await ref.read(localWellbeingDaoProvider).deleteByServerId(wellbeing.id);
         },
-        onInvalidate: () async {},
       ),
     );
   }
@@ -709,9 +712,8 @@ void _showEntryActions(
   BuildContext context,
   WidgetRef ref, {
   required String editRoute,
-  required Map<String, String> editExtra,
+  required Map<String, dynamic> editExtra,
   required Future<void> Function() onDelete,
-  required Future<void> Function() onInvalidate,
 }) {
   showModalBottomSheet<void>(
     context: context,
@@ -742,7 +744,7 @@ void _showEntryActions(
             ),
             onTap: () {
               Navigator.of(ctx).pop();
-              _confirmDelete(context, onDelete, onInvalidate);
+              confirmDelete(context, onDelete: onDelete);
             },
           ),
         ],
@@ -751,34 +753,4 @@ void _showEntryActions(
   );
 }
 
-Future<void> _confirmDelete(
-  BuildContext context,
-  Future<void> Function() onDelete,
-  Future<void> Function() onInvalidate,
-) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Delete this entry?'),
-      content: const Text("This can't be undone."),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(true),
-          child: Text(
-            'Delete',
-            style: TextStyle(color: Theme.of(ctx).colorScheme.error),
-          ),
-        ),
-      ],
-    ),
-  );
-  if (confirmed == true) {
-    await onDelete();
-    await onInvalidate();
-  }
-}
 
