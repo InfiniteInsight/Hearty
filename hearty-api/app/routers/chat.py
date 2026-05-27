@@ -31,7 +31,9 @@ Do NOT ask for clarification if:
 - The user said "homemade" explicitly.
 - The food is a named restaurant dish or cuisine with enough detail to log.
 
-If no clarification is needed, acknowledge the meal warmly and ask how they're feeling — inviting them to rate any discomfort 1–10.
+If no clarification is needed AND the conversation history does not already show you asking about their feelings, acknowledge the meal warmly and ask how they're feeling — inviting them to rate any discomfort 1–10.
+
+If the user is answering a question you already asked (e.g. reporting symptoms or a rating), respond with brief empathy and close naturally — do NOT ask about their feelings again.
 
 Never ask more than one question. Keep all responses under 2 sentences. Be warm but concise."""
 
@@ -114,12 +116,14 @@ async def chat(
                     extracted = ai_extraction.extract_meal(combined)
                     foods = extracted.get("foods") or None
                     inferred_meal_type = extracted.get("inferred_meal_type")
+                    normalized_description = extracted.get("normalized_description")
                 except Exception as extract_err:
                     logger.warning("Follow-up meal extraction failed: %s", extract_err)
                     foods = None
                     inferred_meal_type = None
+                    normalized_description = None
 
-                updates: dict = {"description": combined}
+                updates: dict = {"description": normalized_description or combined}
                 if foods is not None:
                     updates["foods"] = foods
                 if inferred_meal_type:
@@ -136,16 +140,18 @@ async def chat(
         try:
             foods = None
             inferred_meal_type = None
+            normalized_description = None
             try:
                 extracted = ai_extraction.extract_meal(body.message)
                 foods = extracted.get("foods") or None
                 inferred_meal_type = extracted.get("inferred_meal_type")
+                normalized_description = extracted.get("normalized_description")
             except Exception as extract_err:
                 logger.warning("Meal extraction failed (inserting raw): %s", extract_err)
 
             row = {
                 "user_id": user["id"],
-                "description": body.message,
+                "description": normalized_description or body.message,
                 "meal_type": inferred_meal_type,
                 "foods": foods,
                 "logged_at": (body.logged_at or datetime.now(timezone.utc)).isoformat(),

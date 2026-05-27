@@ -17,6 +17,7 @@ extract a structured list of food items.
 
 Return ONLY valid JSON with this shape:
 {
+  "normalized_description": "concise natural-language summary, e.g. 'Quest Cookies and Cream protein bar' or 'homemade pasta with salmon, green onion, and basil'",
   "foods": [
     {
       "name": "food item name",
@@ -28,6 +29,7 @@ Return ONLY valid JSON with this shape:
   "inferred_meal_type": "breakfast|lunch|dinner|snack|drink|supplement|other"
 }
 
+normalized_description should be a clean, concise meal label — not a transcript of what the user said.
 Be conservative with calorie estimates — omit them rather than guess wildly.
 Do not add commentary. Return only the JSON object.
 
