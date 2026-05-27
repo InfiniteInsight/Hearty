@@ -5,6 +5,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/api/hearty_api_client.dart';
 import '../../../core/api/offline_exception.dart';
+import '../../../core/api/providers/last_logged_provider.dart';
 import '../../../core/api/providers/meals_provider.dart' show syncTriggerProvider;
 import '../../../core/offline/local_voice_queue_dao.dart';
 import '../models/voice_state.dart';
@@ -201,6 +202,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         result.reply.isNotEmpty ? result.reply : 'Got it! How are you feeling?',
         mealId: result.mealId,
       );
+      if (result.mealId != null) {
+        ref.read(lastLoggedMealIdProvider.notifier).state = result.mealId;
+      }
       ref.read(syncTriggerProvider).schedule();
     } on OfflineException {
       if (!mounted) return;

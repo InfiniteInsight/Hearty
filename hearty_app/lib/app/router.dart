@@ -31,6 +31,7 @@ import '../features/wellbeing/screens/wellbeing_log_screen.dart';
 import '../features/setup/screens/setup_screen.dart';
 import '../features/setup/screens/notification_setup_screen.dart';
 import '../core/api/models/wellbeing_period.dart';
+import '../core/api/providers/last_logged_provider.dart';
 import '../core/api/providers/meals_provider.dart';
 import '../core/api/providers/symptoms_provider.dart';
 import '../core/api/providers/wellbeing_provider.dart';
@@ -296,6 +297,32 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
         backgroundColor: Colors.transparent,
         builder: (_) => const VoiceOverlayScreen(),
       );
+      // Show edit shortcut if a meal was just logged.
+      final loggedMealId = ref.read(lastLoggedMealIdProvider);
+      if (loggedMealId != null && context.mounted) {
+        ref.read(lastLoggedMealIdProvider.notifier).state = null;
+        // Look up the description so EditMealScreen can pre-populate it.
+        final meals = ref.read(mealsProvider).valueOrNull ?? [];
+        final meal = meals.where((m) => m.id == loggedMealId).firstOrNull;
+        final description = meal?.description ?? '';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Logged! Want to add more detail?'),
+            action: SnackBarAction(
+              label: 'Edit',
+              onPressed: () {
+                if (context.mounted) {
+                  context.push(
+                    '/meals/edit',
+                    extra: {'id': loggedMealId, 'description': description},
+                  );
+                }
+              },
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
       // Refresh timeline so newly logged entries appear immediately.
       ref.invalidate(mealsProvider);
       ref.invalidate(symptomsProvider);
