@@ -298,3 +298,26 @@ def test_chat_followup_symptom_creates_symptom_not_meal(api_base, headers):
         new_ids = {s["id"] for s in symptoms_after} - {s["id"] for s in symptoms_before}
         for sid in new_ids:
             httpx.delete(f"{api_base}/api/symptoms/{sid}", headers=headers)
+
+
+def test_update_symptom_structured_fields(api_base, headers):
+    # Create a symptom
+    r = httpx.post(f"{api_base}/api/symptoms", headers=headers, json={
+        "raw_description": "mild bloating"
+    }, timeout=30)
+    assert r.status_code == 201
+    symptom_id = r.json()[0]["id"]
+
+    # Patch with severity and onset_minutes
+    r2 = httpx.patch(f"{api_base}/api/symptoms/{symptom_id}", headers=headers, json={
+        "description": "mild bloating",
+        "severity": 6,
+        "onset_minutes": 30,
+    }, timeout=30)
+    assert r2.status_code == 200
+    body = r2.json()
+    assert body["severity"] == 6
+    assert body["onset_minutes"] == 30
+
+    # cleanup
+    httpx.delete(f"{api_base}/api/symptoms/{symptom_id}", headers=headers)

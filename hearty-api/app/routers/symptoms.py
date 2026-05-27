@@ -87,6 +87,8 @@ async def get_symptoms(
 
 class SymptomUpdateRequest(BaseModel):
     description: str
+    severity: Optional[int] = None
+    onset_minutes: Optional[int] = None
 
 
 @router.patch("/api/symptoms/{symptom_id}", status_code=200)
@@ -105,9 +107,15 @@ async def update_symptom(
     if not existing.data:
         raise HTTPException(status_code=404, detail="Symptom not found")
 
+    updates: dict = {"raw_description": body.description}
+    if body.severity is not None:
+        updates["severity"] = body.severity
+    if body.onset_minutes is not None:
+        updates["onset_minutes"] = body.onset_minutes
+
     result = (
         supabase.table("symptoms")
-        .update({"raw_description": body.description})
+        .update(updates)
         .eq("id", str(symptom_id))
         .execute()
     )
