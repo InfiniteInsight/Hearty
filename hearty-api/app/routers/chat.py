@@ -72,41 +72,17 @@ async def chat(
     meal_id: Optional[str] = body.meal_id
 
     if meal_id:
-        # ── Follow-up turn: update existing meal, maybe log symptoms ──────────
-        try:
-            # Build combined description from original user message + follow-up
-            original = next(
-                (m["content"] for m in (body.history or []) if m.get("role") == "user"),
-                "",
-            )
-            combined = f"{original}. {body.message}" if original else body.message
-
-            # Re-extract and update the meal row
-            try:
-                extracted = ai_extraction.extract_meal(combined)
-                foods = extracted.get("foods") or None
-                inferred_meal_type = extracted.get("inferred_meal_type")
-            except Exception as extract_err:
-                logger.warning("Follow-up meal extraction failed: %s", extract_err)
-                foods = None
-                inferred_meal_type = None
-
-            updates: dict = {"description": combined}
-            if foods is not None:
-                updates["foods"] = foods
-            if inferred_meal_type:
-                updates["meal_type"] = inferred_meal_type
-
-            supabase.table("meals").update(updates).eq("id", meal_id).eq(
-                "user_id", user["id"]
-            ).execute()
-        except Exception as e:
-            logger.error("Follow-up meal update failed: %s", e, exc_info=True)
-
-        # Try to extract and log symptoms from the follow-up text
+        # ── Follow-up turn: symptom response OR meal clarification ────────────
+        # Extract symptoms first to determine intent before touching the meal.
+        symptoms = []
         try:
             symptoms = ai_extraction.extract_symptoms(body.message)
-            if symptoms:
+        except Exception as e:
+            logger.error("Follow-up symptom extraction failed: %s", e, exc_info=True)
+
+        if symptoms:
+            # Feelings/symptom response — log symptoms, do NOT update the meal
+            try:
                 rows = [
                     {
                         "user_id": user["id"],
@@ -124,8 +100,36 @@ async def chat(
                 ]
                 rows = [{k: v for k, v in r.items() if v is not None} for r in rows]
                 supabase.table("symptom_logs").insert(rows).execute()
-        except Exception as e:
-            logger.error("Follow-up symptom extraction failed: %s", e, exc_info=True)
+            except Exception as e:
+                logger.error("Follow-up symptom insert failed: %s", e, exc_info=True)
+        else:
+            # Meal clarification — update meal using ALL user messages for accuracy
+            try:
+                user_messages = [
+                    m["content"] for m in (body.history or []) if m.get("role") == "user"
+                ]
+                combined = " ".join(user_messages + [body.message]) if user_messages else body.message
+
+                try:
+                    extracted = ai_extraction.extract_meal(combined)
+                    foods = extracted.get("foods") or None
+                    inferred_meal_type = extracted.get("inferred_meal_type")
+                except Exception as extract_err:
+                    logger.warning("Follow-up meal extraction failed: %s", extract_err)
+                    foods = None
+                    inferred_meal_type = None
+
+                updates: dict = {"description": combined}
+                if foods is not None:
+                    updates["foods"] = foods
+                if inferred_meal_type:
+                    updates["meal_type"] = inferred_meal_type
+
+                supabase.table("meals").update(updates).eq("id", meal_id).eq(
+                    "user_id", user["id"]
+                ).execute()
+            except Exception as e:
+                logger.error("Follow-up meal update failed: %s", e, exc_info=True)
 
     else:
         # ── First turn: insert new meal ────────────────────────────────────────
