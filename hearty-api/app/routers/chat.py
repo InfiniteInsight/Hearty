@@ -1,7 +1,7 @@
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 
 import litellm
 from fastapi import APIRouter, Depends
@@ -18,38 +18,71 @@ supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVIC
 
 _MODEL = os.getenv("LLM_MODEL", "claude-sonnet-4-6")
 
-_MEAL_CLARIFICATION_RULES = """
-When they describe a meal, decide whether to ask ONE clarifying question or move on:
+_MEAL_CLARIFICATION_RULES_BASE = """
+Your job has two steps: (1) get a clear enough meal description, (2) learn how the user is feeling. Only ask for what you don't already have, and only if it genuinely matters.
 
-Ask ONE specific clarifying question if:
-- The food is a packaged or commercial item with no brand mentioned (e.g. "a protein bar", "a granola bar", "an energy drink") → ask for brand and flavor, since nutrition varies widely by product.
-- The food has ambiguous origin where it significantly affects nutrition (e.g. "a burrito", "a sandwich", "a pizza") → ask whether it was homemade, from a restaurant, or packaged/frozen.
-- The description is truly minimal ("a snack", "some food", "I ate something") → ask what they had.
+STEP 1 — Is the meal description clear enough to log?
 
-Do NOT ask for clarification if:
-- The user named specific ingredients they combined (e.g. "pasta with salmon and basil") — that's clearly homemade and specific enough.
+It IS clear enough when any of these are true:
+- A brand name is present — brand already identifies the product as commercial; origin and type are known.
+- The user listed specific ingredients they combined — clearly homemade and specific enough.
 - The user said "homemade" explicitly.
-- The food is a named restaurant dish or cuisine with enough detail to log.
+- It's a named item from a named chain or restaurant (e.g. "Big Mac", "Chipotle burrito bowl").
+- It's a simple, unambiguous whole food (e.g. apple, banana, hard-boiled egg, glass of milk).
+- The food type is specific enough that origin wouldn't meaningfully change its nutritional character (e.g. coffee, green tea, water).
 
-If no clarification is needed AND the conversation history does not already show you asking about their feelings, acknowledge the meal warmly and ask how they're feeling — inviting them to rate any discomfort 1–10.
+It is NOT clear enough when:
+- It's a packaged/commercial food category with no brand named (e.g. "a protein bar", "an energy drink", "a granola bar") — ask for the brand (and flavor if not already mentioned), since nutrition varies widely by product.
+- Origin is genuinely ambiguous AND would significantly change what was eaten (e.g. "a burrito", "a sandwich", "pizza") — homemade vs. a restaurant vs. a frozen brand are very different meals.
+- The description is too vague to log at all (e.g. "a snack", "some food", "I ate something").
 
-If the user is answering a question you already asked (e.g. reporting symptoms or a rating), respond with brief empathy and close naturally — do NOT ask about their feelings again.
+If not clear enough: ask ONE question covering only the missing piece — never ask for information the user already gave.
 
-Never ask more than one question. Keep all responses under 2 sentences. Be warm but concise."""
+STEP 2 — Have they said how they're feeling?
 
-_SIGNAL_SYSTEM_PROMPT_TEMPLATE = """You are Hearty, a friendly health and food journal assistant.
-The user is logging what they ate or how they're feeling.
-{meal_clarification_rules}
-When they describe symptoms or wellbeing, respond with brief empathy.
+Look at everything the user has said in this conversation:
+- If they reported a symptom or discomfort but gave no severity rating → ask them to rate it 1–10.
+- If they reported a symptom or discomfort AND already gave a number → respond and close.
+- If they said they feel fine, good, normal, or similar → that's complete; close without asking for a number.
+- If they haven't mentioned how they're feeling at all → ask how they're feeling after eating and invite a 1–10 rating, e.g. "How are you feeling after eating? Any discomfort on a scale of 1–10?" If they reply with "fine" or "good" or similar, that's complete — don't push for a number.
 
-{signal_context}""".replace("{meal_clarification_rules}", _MEAL_CLARIFICATION_RULES)
+READING THE CONVERSATION STATE
 
-_BASE_SYSTEM_PROMPT = """You are Hearty, a friendly health and food journal assistant.
-The user is logging what they ate or how they're feeling.
-{meal_clarification_rules}
-When they describe symptoms or wellbeing, respond with brief empathy.""".replace(
-    "{meal_clarification_rules}", _MEAL_CLARIFICATION_RULES
-)
+Check Hearty's most recent message before responding:
+- Hearty last asked a meal clarification question → the user is answering it. After their answer, go to Step 2. If feelings haven't been covered yet, ask now. Do NOT close early.
+- Hearty last asked how they're feeling → the user is answering that. Apply Step 2 rules and close. Ask nothing else.
+- This is the first message in the conversation → run Step 1 then Step 2 in order."""
+
+_ALWAYS_WARM = "ALWAYS: One question per turn. Under 2 sentences. Warm but concise. Never repeat a question already answered. When closing, end with a brief warm statement — not a question."
+_ALWAYS_CONCISE = "ALWAYS: One question per turn. Under 2 sentences. Never repeat a question already answered. When closing, confirm with one short statement."
+
+_OFF_TOPIC_WARM = 'If the message is not about food, eating, symptoms, or wellbeing, decline warmly in one sentence and redirect, e.g. "I\'m just a food and health journal — I can\'t help with that, but I can log what you ate or how you\'re feeling."'
+_OFF_TOPIC_CONCISE = 'If the message is not about food, eating, symptoms, or wellbeing, decline in one sentence and redirect, e.g. "I\'m just a food and health journal — I can\'t help with that, but I can log what you ate or how you\'re feeling."'
+
+
+def _make_system_prompt(signal_context: Optional[str], style: str) -> str:
+    if style == "concise":
+        preamble = (
+            "You are Hearty, a health and food journal assistant.\n"
+            "The user is logging what they ate or how they're feeling.\n"
+            "Do not comment on the user's food choices, lifestyle, or emotional state. "
+            "When they report symptoms or wellbeing, log without adding commentary or empathy."
+        )
+        always = _ALWAYS_CONCISE
+        off_topic = _OFF_TOPIC_CONCISE
+    else:
+        preamble = (
+            "You are Hearty, a friendly health and food journal assistant.\n"
+            "The user is logging what they ate or how they're feeling.\n"
+            "When they describe symptoms or wellbeing, respond with brief empathy."
+        )
+        always = _ALWAYS_WARM
+        off_topic = _OFF_TOPIC_WARM
+
+    parts = [preamble, _MEAL_CLARIFICATION_RULES_BASE, always, off_topic]
+    if signal_context:
+        parts.append(signal_context)
+    return "\n".join(parts)
 
 
 class ChatRequest(BaseModel):
@@ -58,6 +91,7 @@ class ChatRequest(BaseModel):
     logged_at: Optional[datetime] = None
     meal_id: Optional[str] = None
     history: Optional[list[dict]] = None
+    conversation_style: Literal['warm', 'concise'] = 'warm'
 
 
 class ChatResponse(BaseModel):
@@ -65,24 +99,88 @@ class ChatResponse(BaseModel):
     meal_id: Optional[str] = None
 
 
+_JOURNAL_PREFIXES = (
+    'i ate', 'i had', 'i drank', "i'm eating", "i'm having",
+    "i'm feeling", 'i feel', "i've been", 'i just', 'i noticed',
+)
+_STRIP_PREFIXES = ('can you ', 'could you ', 'would you ')
+_STARTS_WITH_BLOCKED = (
+    'who ', 'what ', 'where ', 'why ',
+    'when did ', 'when is ', 'when was ', 'when are ',
+    'how do ', 'how can ', 'how would ', 'how to ', 'how does ',
+    'tell me', 'explain', 'help me with',
+    'write me', 'write a', 'draft',
+    'call ', 'play ', 'text ',
+)
+_ANYWHERE_BLOCKED = (
+    'weather', 'news', 'music', 'sports', 'stock', 'remind',
+    'homework', 'movie', 'film', 'joke', 'trivia', 'calculate',
+    'find me', 'look up', 'search for', 'teach me',
+    'show me how', 'set a timer', 'set a reminder',
+)
+
+
+def _is_off_topic(message: str) -> bool:
+    t = message.lower().strip()
+    if any(t.startswith(p) for p in _JOURNAL_PREFIXES):
+        return False
+    if t.endswith('?'):
+        return True
+    for p in _STRIP_PREFIXES:
+        if t.startswith(p):
+            t = t[len(p):]
+            break
+    if any(t.startswith(p) for p in _STARTS_WITH_BLOCKED):
+        return True
+    if any(p in t for p in _ANYWHERE_BLOCKED):
+        return True
+    return False
+
+
 @router.post("/api/chat", status_code=200)
 async def chat(
     body: ChatRequest,
     user=Depends(get_current_user),
 ) -> ChatResponse:
+    # Reject off-topic messages before touching the database.
+    if not body.meal_id and _is_off_topic(body.message):
+        return ChatResponse(
+            reply="I'm just a food and health journal — I can't help with that, but I can log what you ate or how you're feeling.",
+            meal_id=None,
+        )
+
     # Log the message as a meal entry in the background (best-effort).
     meal_id: Optional[str] = body.meal_id
 
     if meal_id:
         # ── Follow-up turn: symptom response OR meal clarification ────────────
         # Extract symptoms first to determine intent before touching the meal.
+        # Build a context string from the last few turns so the extractor can
+        # resolve bare ratings ("about a 7") back to the symptom they refer to.
         symptoms = []
         try:
-            symptoms = ai_extraction.extract_symptoms(body.message)
+            recent_turns = (body.history or [])[-4:]
+            if recent_turns:
+                ctx_lines = [
+                    f"{'Hearty' if m['role'] == 'assistant' else 'User'}: {m['content']}"
+                    for m in recent_turns
+                ]
+                ctx_lines.append(f"User: {body.message}")
+                extraction_input = "\n".join(ctx_lines)
+            else:
+                extraction_input = body.message
+            symptoms = ai_extraction.extract_symptoms(extraction_input)
         except Exception as e:
             logger.error("Follow-up symptom extraction failed: %s", e, exc_info=True)
 
-        if symptoms:
+        # Only insert when we have at least one symptom with a confirmed severity.
+        # If severity is null the AI will ask for a 1-10 rating; the next turn
+        # carries the full context so we log once with complete data then.
+        symptoms_ready = [s for s in symptoms if s.get("severity") is not None]
+
+        if symptoms and not symptoms_ready:
+            pass  # symptoms found but no severity yet — wait for the rating turn
+        elif symptoms_ready:
             # Feelings/symptom response — log symptoms, do NOT update the meal
             try:
                 rows = [
@@ -98,10 +196,10 @@ async def chat(
                         "raw_description": body.message,
                         "logged_at": datetime.now(timezone.utc).isoformat(),
                     }
-                    for s in symptoms
+                    for s in symptoms_ready
                 ]
                 rows = [{k: v for k, v in r.items() if v is not None} for r in rows]
-                supabase.table("symptom_logs").insert(rows).execute()
+                supabase.table("symptoms").insert(rows).execute()
             except Exception as e:
                 logger.error("Follow-up symptom insert failed: %s", e, exc_info=True)
         else:
@@ -166,12 +264,7 @@ async def chat(
 
     # Build health context from top food signals.
     signal_context = _build_signal_context(user["id"])
-    if signal_context:
-        system_prompt = _SIGNAL_SYSTEM_PROMPT_TEMPLATE.replace(
-            "{signal_context}", signal_context
-        )
-    else:
-        system_prompt = _BASE_SYSTEM_PROMPT
+    system_prompt = _make_system_prompt(signal_context, body.conversation_style or "warm")
 
     # Generate conversational reply.
     try:
