@@ -89,9 +89,16 @@ tar xf kokoro-en-v0_19.tar.bz2 && mv kokoro-en-v0_19 kokoro-en && rm kokoro-en-v
 - [ ] **Step 4: Fetch packages.** Run: `cd hearty_app && make run` is overkill here; just run `flutter pub get`. Expected: resolves `sherpa_onnx` with no version conflict against existing deps.
 
 **Living State — Task 0.1**
-- Status: ⬜ Not Started
+- Status: ✅ Done (commit `9da763a`)
 - Deviations:
-- Notes for later phases (e.g. final model dir layout, asset-listing approach chosen):
+  1. **Voice = Piper VITS `en_US-libritts_r-medium`, NOT Kokoro** (orchestrator-approved): smaller (~87MB working tree), canonical sherpa example, AND exercises the same `OfflineTtsVitsModelConfig` path the final distilled voice will use. Kokoro's voices.bin made it ~330MB.
+  2. **API confirmed from v1.13.2 source (`lib/src/tts.dart`):** BOTH `tts.generate(text:, sid:, speed:)` AND `tts.generateWithConfig(text:, config: OfflineTtsGenerationConfig(...))` exist (generate() is a convenience wrapper); plus `generateWithCallback(...)` for streaming. Result `GeneratedAudio{samples: Float32List, sampleRate: int}`. Constructor `OfflineTts(config)` positional. Init via top-level `initBindings()`. Plan uses the simple `generate()` form. (An earlier mid-session note wrongly said generateWithConfig was absent — corrected.)
+- Notes for later phases:
+  - Model dir layout: `assets/tts/vits-piper-en_US-libritts_r-medium/` → `en_US-libritts_r-medium.onnx` (75MB), `tokens.txt`, `en_US-libritts_r-medium.onnx.json`, `MODEL_CARD`, `espeak-ng-data/` (nested).
+  - Asset registration: full generated directory list (9 entries) — two-line form failed on nested espeak-ng-data/lang/* subdirs.
+  - `flutter pub get` clean; pulled sherpa_onnx_android/ios + path + ffi.
+  - flutter binary: `/home/evan/tools/flutter/bin/flutter`. Device connected: `0B161JEC205801`.
+  - ⚠️ UNVERIFIED by orchestrator: I could not independently confirm the commit touched ONLY pubspec+assets (shell broke). Task 1.x should `git show 9da763a --stat` and confirm no unrelated WIP was swept in; if it was, amend.
 
 ---
 
@@ -99,19 +106,28 @@ tar xf kokoro-en-v0_19.tar.bz2 && mv kokoro-en-v0_19 kokoro-en && rm kokoro-en-v
 
 **Prompt:** Build a single throwaway screen with a text field, a "Speak" button, and on-screen timing readouts. Use the verified sherpa-onnx Dart API to load the bundled Kokoro model, synthesize the text to PCM samples, and play them. This screen exists only to take measurements; it will be deleted in the realignment checkpoint.
 
-**Verified sherpa-onnx API (from k2-fsa/sherpa-onnx dart examples, do not guess):**
+**Verified sherpa-onnx API (confirmed by reading sherpa_onnx v1.13.2 source `lib/src/tts.dart` during Task 0.1 — these names are real, not guessed):**
 ```dart
-// init once at app start:
-await sherpa_onnx.initBindings(); // or the package's documented init
-final kokoro = sherpa_onnx.OfflineTtsKokoroModelConfig(
-  model: '<path>/model.onnx', voices: '<path>/voices.bin',
-  tokens: '<path>/tokens.txt', dataDir: '<path>/espeak-ng-data');
-final modelConfig = sherpa_onnx.OfflineTtsModelConfig(kokoro: kokoro, numThreads: 2);
+import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa_onnx;
+
+// init bindings once before creating any OfflineTts (FFI dylib load):
+sherpa_onnx.initBindings();
+
+// Spike/stock voice is Piper VITS (NOT Kokoro — see Task 0.1 deviation):
+final vits = sherpa_onnx.OfflineTtsVitsModelConfig(
+  model: '<path>/en_US-libritts_r-medium.onnx',
+  tokens: '<path>/tokens.txt',
+  dataDir: '<path>/espeak-ng-data');
+final modelConfig = sherpa_onnx.OfflineTtsModelConfig(vits: vits, numThreads: 2);
 final config = sherpa_onnx.OfflineTtsConfig(model: modelConfig, maxNumSenetences: 1);
-final tts = sherpa_onnx.OfflineTts(config);
-final genConfig = sherpa_onnx.OfflineTtsGenerationConfig(sid: 0, speed: 1.0);
-final audio = tts.generateWithConfig(text: text, config: genConfig);
-// audio.samples -> Float32List PCM, audio.sampleRate -> int
+final tts = sherpa_onnx.OfflineTts(config); // positional config arg
+
+// Two generate forms both exist; the simple one is enough for us:
+final audio = tts.generate(text: text, sid: 0, speed: 1.0);
+//   (full form: tts.generateWithConfig(text:, config: OfflineTtsGenerationConfig(...))
+//    and streaming: tts.generateWithCallback(text:, sid:, speed:, callback:))
+final samples = audio.samples;      // Float32List PCM
+final sampleRate = audio.sampleRate; // int
 tts.free();
 ```
 
@@ -383,7 +399,8 @@ import 'tts_engine.dart';
 import 'tts_audio_utils.dart';
 
 class NeuralTtsEngine implements TtsEngine {
-  NeuralTtsEngine({this.modelAssetDir = 'assets/tts/kokoro-en'});
+  NeuralTtsEngine(
+      {this.modelAssetDir = 'assets/tts/vits-piper-en_US-libritts_r-medium'});
   final String modelAssetDir;
 
   sherpa.OfflineTts? _tts;
@@ -396,14 +413,14 @@ class NeuralTtsEngine implements TtsEngine {
     try {
       final dir = await copyModelAssets(modelAssetDir);
       if (!Directory(dir).existsSync()) return false;
-      sherpa.initBindings();
-      final kokoro = sherpa.OfflineTtsKokoroModelConfig(
-        model: '$dir/model.onnx',
-        voices: '$dir/voices.bin',
+      sherpa.initBindings(); // confirm exact init call vs installed source
+      // Spike/stock voice is Piper VITS (Task 0.1 deviation), so VITS config:
+      final vits = sherpa.OfflineTtsVitsModelConfig(
+        model: '$dir/en_US-libritts_r-medium.onnx',
         tokens: '$dir/tokens.txt',
         dataDir: '$dir/espeak-ng-data',
       );
-      final model = sherpa.OfflineTtsModelConfig(kokoro: kokoro, numThreads: 2);
+      final model = sherpa.OfflineTtsModelConfig(vits: vits, numThreads: 2);
       _tts = sherpa.OfflineTts(
         sherpa.OfflineTtsConfig(model: model, maxNumSenetences: 1));
       _player.playerStateStream.listen((s) {
@@ -421,10 +438,8 @@ class NeuralTtsEngine implements TtsEngine {
     final tts = _tts;
     if (tts == null) return;
     final speed = _style == TtsStyle.concise ? 1.1 : 0.95;
-    final audio = tts.generateWithConfig(
-      text: text,
-      config: sherpa.OfflineTtsGenerationConfig(sid: 0, speed: speed),
-    );
+    // v1.13.2: simple form; generateWithConfig(...) also exists if needed later.
+    final audio = tts.generate(text: text, sid: 0, speed: speed);
     final wav = pcmToWav(audio.samples, audio.sampleRate);
     final tmp = File('${Directory.systemTemp.path}/hearty_tts.wav');
     await tmp.writeAsBytes(wav, flush: true);
@@ -560,7 +575,7 @@ class FakeTtsEngine implements TtsEngine {
 }
 ```
 
-- [ ] **Step 2: Run the existing voice tests to capture the green baseline.** Run: `cd hearty_app && flutter test test/features/voice/`. Expected: PASS (records pre-refactor state). Note the count in Living State.
+- [ ] **Step 2: Capture the baseline — NOTE: it is currently RED, by design.** Run: `cd hearty_app && /home/evan/tools/flutter/bin/flutter test test/features/voice/`. KNOWN STATE (verified 2026-05-30): `voice_provider_test.dart` has **7 failures**, all from `SharedPreferences.getInstance()` being called in `VoiceNotifier._initTts` with no mock in the test env; `voice_overlay_screen_test.dart`'s 5 pass. This is pre-existing (true on master too — the test file has no `setMockInitialValues`). **This refactor FIXES it:** moving prefs access into `SystemTtsEngine.init()` behind the injected `TtsEngine` means `FakeTtsEngine` never calls `getInstance`, so the constructor stops touching SharedPreferences. Success criterion for this task = these 7 GO GREEN after migration (12/12 voice tests pass). Record before/after counts in Living State.
 
 - [ ] **Step 3: Refactor `voice_provider.dart`.** Change imports and the field/constructor:
 
@@ -608,7 +623,7 @@ For `stopSpeaking`, `dismiss`, `primeForSymptomFollowUp`, `dispose`: call `_tts.
 
 - [ ] **Step 4: Migrate the test files.** In `voice_provider_test.dart`, delete the `FakeFlutterTts extends Fake implements FlutterTts` class and its `import 'package:flutter_tts/flutter_tts.dart';`, add `import 'fake_tts_engine.dart';`, and change `fakeTts = FakeFlutterTts();` → `fakeTts = FakeTtsEngine();` (the `ttsForTesting: fakeTts` override line is unchanged). Do the same in `voice_overlay_screen_test.dart` only if it injects a TTS fake. Where a test asserts on spoken text, assert on `fake.spokenText`.
 
-- [ ] **Step 5: Run the migrated tests.** Run: `cd hearty_app && flutter test test/features/voice/`. Expected: PASS, same count as the Step-2 baseline. If any test depended on synchronous TTS init, add `await Future.microtask(() {})` / pump as needed and note it.
+- [ ] **Step 5: Run the migrated tests.** Run: `cd hearty_app && /home/evan/tools/flutter/bin/flutter test test/features/voice/`. Expected: **12/12 PASS** — the 7 previously-RED `voice_provider_test.dart` tests now go green because the constructor no longer calls `SharedPreferences.getInstance()` (that moved into `SystemTtsEngine.init`, and `FakeTtsEngine` is injected). If any test depended on synchronous TTS init, add `await Future.microtask(() {})` / pump as needed and note it. If any of the 7 are STILL red, the prefs access wasn't fully removed from the sync constructor path — fix before proceeding.
 
 - [ ] **Step 6: Run the full Flutter suite.** Run: `cd hearty_app && flutter test`. Expected: all pass.
 - [ ] **Step 7: Commit.** `git add hearty_app/lib/features/voice/providers/voice_provider.dart hearty_app/test/features/voice/ && git commit -m "refactor: VoiceNotifier uses TtsEngine (neural default, system fallback)"`
