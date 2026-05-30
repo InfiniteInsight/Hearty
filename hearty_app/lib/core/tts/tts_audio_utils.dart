@@ -4,8 +4,8 @@
 // Do NOT delete when removing the spike screen.
 
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -47,6 +47,9 @@ Future<String> copyModelAssets(String assetDir) async {
   // Filter to keys that belong to this asset directory.
   final prefix = cleanAssetDir.endsWith('/') ? cleanAssetDir : '$cleanAssetDir/';
   final keys = allKeys.where((k) => k.startsWith(prefix)).toList();
+  if (keys.isEmpty) {
+    debugPrint('copyModelAssets: no assets found under $prefix');
+  }
 
   for (final key in keys) {
     // Derive the destination path by replacing the asset prefix with the

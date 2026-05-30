@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:hearty_app/core/tts/neural_tts_engine.dart';
 import 'package:hearty_app/core/tts/system_tts_engine.dart';
 
 class _FakeFlutterTts extends Fake implements FlutterTts {
@@ -54,5 +55,11 @@ void main() {
     expect(ok, true);
     await engine.stop();
     expect(fake.stopped, true);
+  });
+
+  test('NeuralTtsEngine.init returns false when model dir is missing', () async {
+    final engine = NeuralTtsEngine(modelAssetDir: 'assets/tts/does-not-exist');
+    final ok = await engine.init();
+    expect(ok, false);
   });
 }
