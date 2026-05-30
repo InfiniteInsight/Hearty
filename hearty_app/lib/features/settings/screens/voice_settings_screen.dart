@@ -4,6 +4,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 
 import '../../../core/tts/tts_voice_preference.dart';
 import '../../voice/providers/voice_provider.dart';
+import '../../voice/spike/sherpa_spike_screen.dart'; // SPIKE — remove in 0R
 
 class VoiceSettingsScreen extends ConsumerStatefulWidget {
   const VoiceSettingsScreen({super.key});
@@ -87,6 +88,18 @@ class _VoiceSettingsScreenState extends ConsumerState<VoiceSettingsScreen> {
       appBar: AppBar(
         title: const Text('Voice'),
         actions: [
+          // SPIKE — remove in 0R
+          IconButton(
+            icon: const Icon(Icons.science_outlined),
+            tooltip: 'Sherpa TTS Spike',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => const SherpaSpikeScreen(),
+              ),
+            ),
+          ),
+          // END SPIKE
           if (savedVoice != null)
             TextButton(
               onPressed: () => _select(null),
