@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/api/providers/preferences_provider.dart';
 import '../../wake_word/widgets/app_setup_sheet.dart';
 
 /// Coordinator screen shown on every app launch.
@@ -68,6 +69,22 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         prefs.getBool('conversation_style_configured') ?? false;
     if (!styleConfigured) {
       await context.push('/conversation-style-setup');
+    }
+
+    if (!mounted) return;
+
+    // Sync the chosen style into preferencesProvider so it's immediately
+    // usable in voice chat. For new users, OnboardingScreen._finish() handles
+    // this; for existing users who skip onboarding, we do it here.
+    // Guarded by valueOrNull so it's a no-op if preferences haven't loaded yet
+    // (new users before login — OnboardingScreen covers them).
+    final chosenStyle = prefs.getString('conversation_style') ?? 'warm';
+    final existingPrefs = ref.read(preferencesProvider).valueOrNull;
+    if (existingPrefs != null &&
+        existingPrefs.conversationStyle != chosenStyle) {
+      await ref.read(preferencesProvider.notifier).save(
+            existingPrefs.copyWith(conversationStyle: chosenStyle),
+          );
     }
 
     if (!mounted) return;
