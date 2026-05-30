@@ -7,7 +7,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:permission_handler/permission_handler.dart';
 
-import '../core/audio/chime_player.dart';
 import '../core/auth/onboarding_provider.dart';
 import '../features/auth/screens/sign_in_screen.dart';
 import '../features/voice/providers/voice_provider.dart';
@@ -27,14 +26,12 @@ import '../features/settings/screens/notification_preferences_screen.dart';
 import '../features/settings/screens/voice_settings_screen.dart';
 import '../features/logging/screens/edit_meal_screen.dart';
 import '../features/logging/screens/edit_symptom_screen.dart';
-import '../features/wellbeing/screens/wellbeing_log_screen.dart';
 import '../features/setup/screens/setup_screen.dart';
 import '../features/setup/screens/notification_setup_screen.dart';
-import '../core/api/models/wellbeing_period.dart';
+import '../features/setup/screens/conversation_style_setup_screen.dart';
 import '../core/api/providers/last_logged_provider.dart';
 import '../core/api/providers/meals_provider.dart';
 import '../core/api/providers/symptoms_provider.dart';
-import '../core/api/providers/wellbeing_provider.dart';
 
 /// Global navigator key — used by [NotificationService] to push deep links
 /// when a notification is tapped from background/terminated state.
@@ -53,11 +50,11 @@ class Routes {
   static const String camera = 'camera';
   static const String notificationPreferences = 'notification-preferences';
   static const String voiceSettings = 'voice-settings';
-  static const String wellbeingLog = 'wellbeing-log';
   static const String editMeal = 'edit-meal';
   static const String editSymptom = 'edit-symptom';
   static const String setup = 'setup';
   static const String notificationSetup = 'notification-setup';
+  static const String conversationStyleSetup = 'conversation-style-setup';
 }
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -86,7 +83,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 
       final isOnSetup = location == '/setup';
       final isOnNotificationSetup = location == '/notification-setup';
-      if (!isAuthenticated && !isOnSignIn && !isOnSetup && !isOnNotificationSetup) {
+      final isOnConversationStyleSetup = location == '/conversation-style-setup';
+      if (!isAuthenticated && !isOnSignIn && !isOnSetup && !isOnNotificationSetup && !isOnConversationStyleSetup) {
         return '/sign-in';
       }
       if (isAuthenticated && isOnSignIn) {
@@ -148,7 +146,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/log',
         name: Routes.log,
-        builder: (context, state) => const LogEntryScreen(),
+        builder: (context, state) => LogEntryScreen(
+          isFollowUp: state.uri.queryParameters['followup'] == 'true',
+        ),
       ),
       GoRoute(
         path: '/log/:id',
@@ -206,21 +206,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/wellbeing/log',
-        name: Routes.wellbeingLog,
-        builder: (context, state) {
-          final periodStr = state.uri.queryParameters['period'];
-          final period = switch (periodStr) {
-            'morning' => WellbeingPeriod.morning,
-            'midday' => WellbeingPeriod.midday,
-            'evening' => WellbeingPeriod.evening,
-            _ => null,
-          };
-          final id = state.uri.queryParameters['id'];
-          return WellbeingLogScreen(initialPeriod: period, entryId: id);
-        },
-      ),
-      GoRoute(
         path: '/setup',
         name: Routes.setup,
         builder: (context, state) => const SetupScreen(),
@@ -229,6 +214,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/notification-setup',
         name: Routes.notificationSetup,
         builder: (context, state) => const NotificationSetupScreen(),
+      ),
+      GoRoute(
+        path: '/conversation-style-setup',
+        name: Routes.conversationStyleSetup,
+        builder: (context, state) => const ConversationStyleSetupScreen(),
       ),
     ],
   );
@@ -288,8 +278,10 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
     // Global wake-word listener — active on every tab, not just Home.
     ref.listen(wakeWordDetectedProvider, (_, detected) async {
       if (!detected) return;
-      await ChimePlayer.instance.play();
       if (!context.mounted) return;
+      // Capture before the async gap — context-dependent lookups after an
+      // await can return a stale or detached instance.
+      final messenger = ScaffoldMessenger.of(context);
       ref.read(voiceProvider.notifier).startListening();
       await showModalBottomSheet<void>(
         context: context,
@@ -305,28 +297,29 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
         final meals = ref.read(mealsProvider).valueOrNull ?? [];
         final meal = meals.where((m) => m.id == loggedMealId).firstOrNull;
         final description = meal?.description ?? '';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Logged! Want to add more detail?'),
-            action: SnackBarAction(
-              label: 'Edit',
-              onPressed: () {
-                if (context.mounted) {
-                  context.push(
-                    '/meals/edit',
-                    extra: {'id': loggedMealId, 'description': description},
-                  );
-                }
-              },
+        messenger
+          ..clearSnackBars()
+          ..showSnackBar(
+            SnackBar(
+              content: const Text('Logged! Want to add more detail?'),
+              action: SnackBarAction(
+                label: 'Edit',
+                onPressed: () {
+                  if (context.mounted) {
+                    context.push(
+                      '/meals/edit',
+                      extra: {'id': loggedMealId, 'description': description},
+                    );
+                  }
+                },
+              ),
+              duration: const Duration(seconds: 6),
             ),
-            duration: const Duration(seconds: 5),
-          ),
-        );
+          );
       }
       // Refresh timeline so newly logged entries appear immediately.
       ref.invalidate(mealsProvider);
       ref.invalidate(symptomsProvider);
-      ref.invalidate(wellbeingProvider);
       ref.read(wakeWordDetectedProvider.notifier).setDetected(false);
       WakeWordChannel.startListening().catchError((_) {});
     });

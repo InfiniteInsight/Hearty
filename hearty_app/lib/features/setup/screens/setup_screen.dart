@@ -62,6 +62,15 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     }
 
     if (!mounted) return;
+
+    // --- Conversation style ---
+    final styleConfigured =
+        prefs.getBool('conversation_style_configured') ?? false;
+    if (!styleConfigured) {
+      await context.push('/conversation-style-setup');
+    }
+
+    if (!mounted) return;
     // Forward to normal auth flow — router redirect handles the rest.
     context.go('/home');
   }
