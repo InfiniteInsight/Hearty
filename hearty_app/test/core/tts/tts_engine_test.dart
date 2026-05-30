@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:hearty_app/core/tts/neural_tts_engine.dart';
 import 'package:hearty_app/core/tts/system_tts_engine.dart';
+import 'package:hearty_app/core/tts/tts_engine.dart';
+import 'package:hearty_app/core/tts/tts_engine_factory.dart';
 
 class _FakeFlutterTts extends Fake implements FlutterTts {
   String? spokenText;
@@ -62,4 +64,62 @@ void main() {
     final ok = await engine.init();
     expect(ok, false);
   });
+
+  group('createTtsEngine', () {
+    test('falls back to system engine when neural init returns false', () async {
+      final engine = await createTtsEngine(
+        neuralBuilder: () => _StubEngine(initResult: false, tag: 'neural'),
+        systemBuilder: () => _StubEngine(initResult: true, tag: 'system'),
+      );
+      expect((engine as _StubEngine).tag, 'system');
+    });
+
+    test('uses neural engine when its init succeeds', () async {
+      final engine = await createTtsEngine(
+        neuralBuilder: () => _StubEngine(initResult: true, tag: 'neural'),
+        systemBuilder: () => _StubEngine(initResult: true, tag: 'system'),
+      );
+      expect((engine as _StubEngine).tag, 'neural');
+    });
+
+    test('uses system engine directly when a system voice override is set', () async {
+      String? initedWith;
+      final engine = await createTtsEngine(
+        systemVoiceOverride: 'en-us-x-iol-local',
+        neuralBuilder: () => _StubEngine(initResult: true, tag: 'neural'),
+        systemBuilder: () => _StubEngine(
+            initResult: true, tag: 'system', onInit: (v) => initedWith = v),
+      );
+      expect((engine as _StubEngine).tag, 'system');
+      expect(initedWith, 'en-us-x-iol-local');
+    });
+  });
+}
+
+class _StubEngine implements TtsEngine {
+  _StubEngine({required this.initResult, required this.tag, this.onInit});
+  final bool initResult;
+  final String tag;
+  final void Function(String? voiceName)? onInit;
+
+  @override
+  Future<bool> init({String? voiceName}) async {
+    onInit?.call(voiceName);
+    return initResult;
+  }
+
+  @override
+  Future<void> speak(String text) async {}
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  void setCompletionHandler(VoidCallback onDone) {}
+
+  @override
+  Future<void> setStyle(TtsStyle style) async {}
+
+  @override
+  Future<void> dispose() async {}
 }
