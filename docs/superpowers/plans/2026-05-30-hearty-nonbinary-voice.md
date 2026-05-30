@@ -104,7 +104,7 @@ tar xf kokoro-en-v0_19.tar.bz2 && mv kokoro-en-v0_19 kokoro-en && rm kokoro-en-v
 
 ### Task 0.2: Minimal synth-and-play spike screen
 
-**Prompt:** Build a single throwaway screen with a text field, a "Speak" button, and on-screen timing readouts. Use the verified sherpa-onnx Dart API to load the bundled Kokoro model, synthesize the text to PCM samples, and play them. This screen exists only to take measurements; it will be deleted in the realignment checkpoint.
+**Prompt:** Build a single throwaway screen with a text field, a "Speak" button, and on-screen timing readouts. Use the verified sherpa-onnx Dart API to load the bundled **Piper VITS** model (Task 0.1 deviation — not Kokoro), synthesize the text to PCM samples, and play them. This screen exists only to take measurements; it will be deleted in the realignment checkpoint.
 
 **Verified sherpa-onnx API (confirmed by reading sherpa_onnx v1.13.2 source `lib/src/tts.dart` during Task 0.1 — these names are real, not guessed):**
 ```dart
@@ -145,9 +145,18 @@ tts.free();
 - [ ] **Step 5: Run on a real device.** Run: `cd hearty_app && make run` (per project rule — never bare `flutter run`). Deploy to a physical mid-range Android, not an emulator (emulator perf is not representative).
 
 **Living State — Task 0.2**
-- Status: ⬜ Not Started
-- Deviations (esp. actual API names if they differ from the snippet above, and the playback path that actually worked):
-- Notes for later phases (the asset-copy helper, the WAV-wrap helper — both reused in Phase 1):
+- Status: ✅ Done (code-writable parts; commit `d86e8ff`). Device run (Step 5) DEFERRED → folded into Task 0.3 (no phone connected this session).
+- Two-stage review: SPEC ✅ (independent subagent verified field-by-field) · CODE QUALITY ✅ APPROVED (orchestrator inline review — subagent dispatch was dropping output). analyze clean, 8/8 pcmToWav tests green (confirmed twice in clean sub-contexts).
+- Code-quality notes (both MINOR, non-blocking, address in Phase 1 when these helpers go production):
+  1. `copyModelAssets` idempotency uses "dest dir exists & non-empty" — an INTERRUPTED first copy would leave a partial dir that then gets skipped. Phase 1 Task 1.3 should make this robust (e.g. copy to temp dir + atomic rename, or check a sentinel/expected-file-count).
+  2. If AssetManifest has no matching files, `copyModelAssets` returns a path to a non-existent dir. This is SAFE because NeuralTtsEngine.init (Task 1.3) already guards `if (!Directory(dir).existsSync()) return false` → falls back to system TTS. Keep that guard.
+- Deviations: voice is Piper VITS (per 0.1), not Kokoro; prompt text updated. Device step deferred (no hardware).
+- Notes for later phases:
+  - **Asset-copy enumeration approach (REUSE in Task 1.3):** `AssetManifest.loadFromAssetBundle(rootBundle).listAssets()` filtered by `startsWith('$assetDir/')` (trailing slash → no false-prefix match). Binary-safe via `rootBundle.load()`.
+  - **Playback path (the Phase 0 integration unknown — RESOLVED in code, pending device confirm):** `pcmToWav(Float32List, sampleRate)` → temp file (`getTemporaryDirectory()`) → `just_audio` `AudioPlayer().setFilePath().play()`. WAV header verified by unit test. Device run still needs to confirm it's actually audible + measure latency (Task 0.3).
+  - Added dep: `path_provider ^2.1.3`.
+  - Spike reachable in-app at: Settings → Voice → flask/science icon (top-right AppBar). Marked `// SPIKE — remove in 0R` (6 markers across 2 files).
+  - `pcmToWav` uses `(s*32767).round()` with clamp [-1,1]; -1.0→-32767 (slight asymmetry vs int16 min -32768, harmless).
 
 ---
 
@@ -167,9 +176,61 @@ tts.free();
 - [ ] **Step 4: Write the results doc** with sections: Device, Latency (cold/warm/RTF), Size delta, Battery/thermal notes, Playback path that worked, and a **Go/No-Go recommendation** with one paragraph of reasoning.
 
 **Living State — Task 0.3**
-- Status: ⬜ Not Started
-- Deviations:
-- Go/No-Go recommendation (copy the conclusion here):
+- Status: 🛑 BLOCKED on a build error (NOT a no-go) — discovered the moment we first built with sherpa on a device. This is the spike doing its job.
+- **BLOCKER (build):** `:app:mergeDebugNativeLibs` fails — TWO `libonnxruntime.so` for arm64-v8a: one from `sherpa_onnx_android`, one from the EXISTING direct dep `com.microsoft.onnxruntime:onnxruntime-android:1.19.2` in `android/app/build.gradle` (line ~32/39 — file has duplicated-looking blocks, possibly real, possibly tool-scramble; READ IT CLEANLY before editing). That ORT dep powers the WAKE WORD.
+- **FIX OPTIONS (decision, has a real compatibility risk):**
+  - A) add to the `android {}` block: `packagingOptions { jniLibs { pickFirst '**/libonnxruntime.so' } }` (or `pickFirsts += [...]`). Lowest effort. RISK: one ORT version then serves BOTH sherpa-TTS and the wake word. Wake-word model was converted opset12 specifically for ORT 1.19.2 ([[project-hey-hearty-training]]); if sherpa's bundled ORT wins, wake word may regress. MUST re-test BOTH on device.
+  - B) remove the direct onnxruntime-android:1.19.2 dep and rely on sherpa's bundled ORT for both (same re-test requirement, cleaner long-term).
+- **UPDATE (build.gradle is build.gradle.KTS — Kotlin DSL).** Applied Option A: added
+  `packaging { jniLibs { pickFirsts += "**/libonnxruntime.so" } }` to the android{} block. Build then
+  SUCCEEDED (exit 0) and app installed on phone (had to `adb install -r` directly — `flutter run`
+  stalled while the screen was dozing). APK size = **288,252,641 bytes (~275 MB debug)** — huge because
+  of the bundled 78MB voice + espeak data + debug symbols; release/split-abi will be far smaller.
+- **❌ pickFirst (sherpa core wins) BREAKS THE WAKE WORD — confirmed on device.** App crashes on launch:
+  `java.lang.UnsatisfiedLinkError: dlopen failed: cannot locate symbol "OrtGetApiBase" referenced by
+  libonnxruntime4j_jni.so` at `HeartyWakeWordService.initOnnxModels(HeartyWakeWordService.kt:142)` →
+  `ai.onnxruntime.OnnxRuntime.load`. The wake word uses Microsoft's ORT **Java** API; its JNI shim
+  `libonnxruntime4j_jni.so` needs `OrtGetApiBase`, which **Microsoft's** libonnxruntime.so exports but
+  **sherpa's** does NOT (verified: `readelf --dyn-syms` shows OrtGetApiBase GLOBAL FUNC in MS lib,
+  absent/incompatible in sherpa's). pickFirst kept sherpa's → shim can't link → crash. This is EXACTLY
+  the risk flagged when choosing Option A.
+- **NEXT FIX (version-align — the pre-agreed fallback):** make ONE ORT serve both. Recommended:
+  bump the wake word's `com.microsoft.onnxruntime:onnxruntime-android:1.19.2` (in build.gradle.kts
+  line ~52) to match sherpa's bundled ORT (≈1.20.x — CONFIRM exact version first), so the kept
+  libonnxruntime.so + the MS JNI shim + sherpa c-api are all the same ABI and OrtGetApiBase is present.
+  ORT C API (OrtGetApiBase) is stable since 1.0 and opset12 loads fine on 1.20.x, so the wake-word
+  model should still work — but MUST re-verify wake-word detection on device after. Alternative if that
+  fails: exclude sherpa's bundled libonnxruntime.so and point sherpa c-api at the MS core.
+- **ROOT CAUSE (fully diagnosed, advisor-confirmed):** ELF version-tagged symbols. sherpa's bundled
+  libonnxruntime.so is ORT **1.24.3** (exports `OrtGetApiBase@@VERS_1.24.3`). The wake word's MS
+  `onnxruntime-android` JNI shim `libonnxruntime4j_jni.so` imports `OrtGetApiBase@VERS_<its-version>`.
+  pickFirst keeps sherpa's single libonnxruntime.so; the shim only links if its version tag == sherpa's.
+  (The "sherpa exports only 3 symbols" worry is a RED HERRING — the whole ORT C API flows through the
+  struct returned by OrtGetApiBase; one exported symbol is normal & sufficient.)
+- **Fix applied & VERIFIED IN THE APK:** bumped `onnxruntime-android` 1.19.2 → **1.24.3**. Unzipped the
+  built APK + readelf: kept `libonnxruntime.so` exports `OrtGetApiBase@@VERS_1.24.3` AND the jni shim
+  `libonnxruntime4j_jni.so` (83432 bytes = NEW 1.24.3 one) imports `@VERS_1.24.3` — **they match.** The
+  build-time fix is correct. (sherpa declares no onnxruntime-android dep; it ships the .so in its AAR,
+  so nothing pins 1.19.2 transitively.)
+- **The 19:24 crash was a STALE INSTALL, not a bad APK** (my first "stale shim" guess was wrong): I ran
+  `am start` before the background `adb install -r` finished, so the device launched the PREVIOUS
+  (1.19.2-shim) install. **Discipline: ALWAYS wait for `adb install -r` to print Success before
+  `am start`.**
+- **Current action:** running `flutter clean && flutter build apk --debug` (belt-and-suspenders; APK was
+  already correct). When done → `adb install -r` and WAIT for Success → `am start` → expect NO crash.
+  Then: wake-word re-test (now on ORT 1.24.3 vs its validated 1.19.2 — HARD gate, detection must still
+  work) + TTS spike latency/audio.
+- **Hardening follow-up (advisor point 2, not blocking):** pickFirst leaves which libonnxruntime.so
+  wins arbitrary — a latent landmine. Long-term, resolve to a SINGLE ORT runtime explicitly (exclude
+  sherpa's bundled .so so only MS's full lib remains, or vice-versa), both at 1.24.3.
+- APK size note: debug APK ~290–390MB (bundled 78MB voice + espeak + debug syms); release/split-abi
+  will be far smaller — don't judge size off the debug APK.
+- **✅ ORT CONFLICT RESOLVED & VERIFIED ON DEVICE (2026-05-30):** version-align fix
+  (onnxruntime-android→1.24.3 + pickFirst), no crash, wake word still triggers (PASS).
+- **✅ MEASURED ON DEVICE (Pixel 4a) — full results in `docs/superpowers/notes/2026-05-30-tts-spike-results.md`:**
+  warm short-utterance synth ~500–530 ms (< 700 ms target), RTF ~0.18 stable across cold/warm/long,
+  audio audible + better than system voices. Debug APK ~372 MB (not ship size — release/split-abi TBD).
+- **GO/NO-GO: ✅ GO.** Status of Task 0.3: ✅ Done.
 
 ---
 
@@ -247,9 +308,9 @@ abstract class TtsEngine {
 - [ ] **Step 3: Commit.** `git add hearty_app/lib/core/tts/tts_engine.dart && git commit -m "feat: add TtsEngine interface + TtsStyle"`
 
 **Living State — Task 1.1**
-- Status: ⬜ Not Started
-- Deviations:
-- Notes for later phases:
+- Status: ✅ Done (commit `96e89d0`). `flutter analyze` clean. Interface matches plan verbatim. No reviewer cycle (trivial abstract interface).
+- Deviations: none.
+- Notes for later phases: `TtsEngine.init` returns `Future<bool>` (false = fall back); `setStyle` is a no-op until Phase 3; completion handler is a `VoidCallback` set via `setCompletionHandler`.
 
 ---
 
@@ -357,9 +418,9 @@ class SystemTtsEngine implements TtsEngine {
 - [ ] **Step 5: Commit.** `git add hearty_app/lib/core/tts/system_tts_engine.dart hearty_app/test/core/tts/tts_engine_test.dart && git commit -m "feat: SystemTtsEngine fallback wrapping flutter_tts"`
 
 **Living State — Task 1.2**
-- Status: ⬜ Not Started
-- Deviations:
-- Notes for later phases:
+- Status: ✅ Done (commit `5130b85`). ORCHESTRATOR-VERIFIED: `flutter test test/core/tts/tts_engine_test.dart` → 2/2 pass; `flutter analyze` clean; read system_tts_engine.dart directly — correct faithful port. TDD order followed (test failed first). No reviewer cycle (small faithful port of existing behavior).
+- Deviations: (1) added try/catch around SharedPreferences in init() so a missing prefs plugin doesn't break init (returns true, skips saved-voice load) — BOTH test-hermeticity AND production robustness; keep it. (2) flutter_tts resolved to 4.2.5: `speak(String text,...)` (text non-null) and `setVoice(Map<String,String>)` non-nullable — subagent corrected the test fake's override signatures to match (the plan's `String?` stub was slightly off). No impact on production code.
+- Notes for later phases: SystemTtsEngine.setStyle maps style→speechRate only (0.8 concise / 0.7 warm), pitch untouched (formant distortion). Saved-voice pref key = 'tts_voice_name'. Test file `tts_engine_test.dart` will gain NeuralTtsEngine + factory tests in 1.3/1.4.
 
 ---
 
@@ -468,8 +529,10 @@ class NeuralTtsEngine implements TtsEngine {
 - [ ] **Step 6: Commit.** `git add hearty_app/lib/core/tts/ hearty_app/test/core/tts/tts_engine_test.dart && git commit -m "feat: NeuralTtsEngine (sherpa-onnx) + audio utils"`
 
 **Living State — Task 1.3**
-- Status: ⬜ Not Started
-- Deviations (esp. real sherpa-onnx API names, completion-detection mechanism):
+- Status: ✅ Done (commit `648dc58` — note: real SHA, not the `aa84f99` a mid-glitch note guessed). ORCHESTRATOR-VERIFIED: `flutter test test/core/tts/` → 11/11 pass (2 System + 1 Neural-missing-dir + 8 wav); `flutter analyze lib/core/tts/` clean; read neural_tts_engine.dart directly (correct). Branch audit confirms commit touched ONLY neural_tts_engine.dart + tts_audio_utils.dart + tts_engine_test.dart.
+- Code-quality verdict (inline review of the 77-line file): APPROVED. init() never throws (try/catch→false), double-guarded (dir existsSync + onnx existsSync), completion wired once via `_player.playerStateStream` on `ProcessingState.completed`, dispose() frees player + tts + nulls. The missing-dir test proves the fallback path (MissingPluginException→caught→false).
+- Deviations: (1) folded in the 0.2-review minor: copyModelAssets now `debugPrint`s when the asset key list is empty (diagnoses misspelled dir); kept return contract, 8 wav tests still green. (2) removed a now-redundant `dart:typed_data` import from tts_audio_utils.dart (foundation.dart re-exports it) — analyzer flagged it.
+- Notes for later phases / DEVICE caveat: completion-handler reliability (does `ProcessingState.completed` fire exactly once per utterance to drive the follow-up listen?) and the fixed-temp-file playback are only truly provable on a real device — Task 1.6 must confirm. `speak()` does `_player.stop()` before `setFilePath` to avoid stale-cache playback (a reviewer flagged this Android risk; already handled).
 - Notes for later phases (Phase 3 swaps `modelAssetDir` to the real voice and may switch to `OfflineTtsVitsModelConfig` if the distilled voice is Piper, not Kokoro — flag that here):
 
 ---
@@ -530,9 +593,9 @@ Future<TtsEngine> createTtsEngine({
 - [ ] **Step 5: Commit.** `git add hearty_app/lib/core/tts/tts_engine_factory.dart hearty_app/test/core/tts/tts_engine_test.dart && git commit -m "feat: TTS engine factory with neural→system fallback"`
 
 **Living State — Task 1.4**
-- Status: ⬜ Not Started
-- Deviations:
-- Notes for later phases:
+- Status: ✅ Done (commit `064cf34`). ORCHESTRATOR-VERIFIED: `flutter test test/core/tts/tts_engine_test.dart` → 6/6 pass (3 prior + 3 factory: neural-success, neural-fail→system, override→system). analyze clean. All three selection branches tested with hermetic `_StubEngine` doubles (no native libs).
+- Deviations: added `import tts_engine.dart` to the test for `TtsStyle` access in the stub (enum lives there, not re-exported). Trivial.
+- Notes for later phases: factory signature = `createTtsEngine({String? systemVoiceOverride, TtsEngineBuilder? neuralBuilder, TtsEngineBuilder? systemBuilder})`. Task 1.5 calls `await createTtsEngine()` (no args) for the default neural→system path. To honor the existing Settings→Voice override later, pass `systemVoiceOverride: <savedVoiceName>` (Phase 1 keeps it simple; can wire the override read in Phase 3 polish).
 
 ---
 
@@ -629,10 +692,10 @@ For `stopSpeaking`, `dismiss`, `primeForSymptomFollowUp`, `dispose`: call `_tts.
 - [ ] **Step 7: Commit.** `git add hearty_app/lib/features/voice/providers/voice_provider.dart hearty_app/test/features/voice/ && git commit -m "refactor: VoiceNotifier uses TtsEngine (neural default, system fallback)"`
 
 **Living State — Task 1.5**
-- Status: ⬜ Not Started
-- Deviations (esp. any async-init test adjustments):
-- Baseline test count / post-refactor count:
-- Notes for later phases:
+- Status: ✅ Done (commit `c20e5fc`). ORCHESTRATOR-VERIFIED: voice dir 12/12 green; FULL SUITE 45/45 green; analyze clean; read refactored voice_provider.dart (completion handler preserved verbatim, `_injectedTts ?? await createTtsEngine()`, `_ready` lazy-init, `_stopTts()` guards stop() before ready). Commit touched only the 4 expected files.
+- Baseline → after: 7 RED (provider, SharedPreferences-in-constructor) → 12/12 GREEN. The refactor fixed the pre-existing red exactly as predicted (prefs access moved behind injected engine).
+- Deviations (DONE_WITH_CONCERNS, resolved): the plan said edit voice_overlay_screen_test.dart "only if it injects a TTS fake" — it DID (`_FakeTts extends Fake implements FlutterTts` inside `_StubVoiceNotifier`), so editing was REQUIRED once the constructor param type changed FlutterTts?→TtsEngine?. Edit was minimal/mechanical: swapped `_FakeTts()`→`FakeTtsEngine()`, removed flutter_tts import; all 5 overlay assertions untouched. No production-behavior or assertion changes anywhere. No microtask/pump needed (injected FakeTtsEngine + `_ready` resolve synchronously).
+- Notes for later phases: shared `FakeTtsEngine` now at test/features/voice/fake_tts_engine.dart (reused by Task 3.2 for style-propagation test). voice_provider.dart still imports shared_preferences for UNRELATED meal-id persistence in sendToChat — correct, leave it. Settings→Voice override (`systemVoiceOverride`) NOT yet wired into createTtsEngine() call (passes no args) — Phase 3 polish can wire it if desired.
 
 ---
 
@@ -655,13 +718,13 @@ For `stopSpeaking`, `dismiss`, `primeForSymptomFollowUp`, `dispose`: call `_tts.
 
 ## Phase 1R: Realignment Checkpoint
 
-**Status:** ⬜ Not Started
+**Status:** 🟡 Partial — code portion ✅ complete & passed; device-verification portion (Task 1.6) DEFERRED (no phone connected).
 
-- [ ] Re-read deviations across 1.1–1.6. Did Phase 1 deliver: neural default + working fallback + green tests + device-verified flow? If not, list the gap and fix before proceeding.
-- [ ] If Task 1.3 deviations changed the model config class (Kokoro vs VITS) or API names, confirm **Phase 3 Task 3.1** still matches reality; edit it now if not.
-- [ ] Confirm the spec's Section 5 (engine design) still describes what was actually built. Update the spec if the interface drifted.
-- [ ] Confirm `flutter analyze` is clean across `lib/core/tts/`. Run: `cd hearty_app && flutter analyze`.
-- [ ] **Checkpoint result (write one line):**
+- [x] Re-read deviations across 1.1–1.5. Phase 1 delivered: neural default + working fallback (factory tested all 3 branches) + green tests (45/45 full suite). Device-verified flow (1.6) is the one remaining piece — blocked on hardware, NOT a gap in the code.
+- [x] Task 1.3 used VITS (not Kokoro) for the stock voice — **Phase 3 Task 3.1 already specifies `OfflineTtsVitsModelConfig`** for the distilled voice, so it matches. The 2R checkpoint will re-confirm against the actual exported voice. No edit needed now. API names (generate/OfflineTts/OfflineTtsVitsModelConfig) confirmed from source and used consistently.
+- [x] Spec Section 5 (engine design): interface built exactly as specced (TtsEngine + Neural default + System fallback + factory). One real-world refinement vs spec: `SystemTtsEngine.init` wraps SharedPreferences in try/catch (robustness). Spec is still accurate at the design level; no update needed.
+- [x] `flutter analyze lib/core/tts/` → clean (verified). Full `lib/` not re-run but the TTS module + touched voice_provider are clean.
+- [x] **Checkpoint result:** Phase 1 CODE COMPLETE & GREEN (commits 96e89d0, 5130b85, 648dc58, 064cf34, c20e5fc; 45/45 tests). Architecture matches spec. Only Task 1.6 (on-device behavioral verification) remains, gated on the physical phone — carry it forward to be done alongside the Phase 0 device gate (Task 0.3).
 
 ---
 

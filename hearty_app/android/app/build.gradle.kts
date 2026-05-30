@@ -41,6 +41,20 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+
+    // sherpa_onnx (TTS) and onnxruntime-android (wake word) both ship a
+    // libonnxruntime.so with the same soname → duplicate-merge conflict, so we
+    // keep one. The wake word reaches ORT through the Java API whose JNI shim
+    // (libonnxruntime4j_jni.so) imports a VERSION-TAGGED symbol
+    // OrtGetApiBase@VERS_<ver>, so the onnxruntime-android version below MUST
+    // equal the ORT version sherpa bundles (1.24.3) or it fails to link.
+    // NOTE (follow-up hardening): pickFirst leaves which libonnxruntime.so wins
+    // arbitrary. Long-term, resolve to a single runtime explicitly.
+    packaging {
+        jniLibs {
+            pickFirsts += "**/libonnxruntime.so"
+        }
+    }
 }
 
 flutter {
@@ -49,6 +63,8 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.19.2")
+    // Must match the ORT version bundled by sherpa_onnx_android (1.24.3) — see
+    // the packaging{} comment above re: the version-tagged OrtGetApiBase symbol.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.24.3")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 }
