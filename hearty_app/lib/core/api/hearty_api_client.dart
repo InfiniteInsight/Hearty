@@ -7,8 +7,6 @@ import '../auth/auth_interceptor.dart';
 import 'models/chat_result.dart';
 import 'models/meal_log.dart';
 import 'models/symptom_log.dart';
-import 'models/wellbeing_log.dart';
-import 'models/wellbeing_period.dart';
 import 'models/trends_data.dart';
 import 'models/user_preferences.dart';
 import 'offline_exception.dart';
@@ -179,73 +177,6 @@ class HeartyApiClient {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Wellbeing
-  // ──────────────────────────────────────────────────────────────────────────
-
-  Future<WellbeingLog> logWellbeing({
-    int? energy,
-    int? mood,
-    String? notes,
-    WellbeingPeriod? period,
-  }) async {
-    final body = <String, dynamic>{
-      'energy_level': energy,
-      'mood': mood,
-      'notes': notes,
-      if (period != null) 'period': period.name,
-    }..removeWhere((_, v) => v == null);
-    final response = await _dio.post<Map<String, dynamic>>(
-      '/api/wellbeing',
-      data: body,
-    );
-    return WellbeingLog.fromJson(response.data!);
-  }
-
-  Future<WellbeingLog> updateWellbeing(
-    String id, {
-    int? energy,
-    int? mood,
-    String? notes,
-    WellbeingPeriod? period,
-  }) async {
-    final body = <String, dynamic>{};
-    if (energy != null) body['energy_level'] = energy;
-    if (mood != null) body['mood'] = mood;
-    if (notes != null) body['notes'] = notes;
-    if (period != null) body['period'] = period.name;
-    final response = await _dio.patch<Map<String, dynamic>>(
-      '/api/wellbeing/$id',
-      data: body,
-    );
-    return WellbeingLog.fromJson(response.data!);
-  }
-
-  Future<void> deleteWellbeing(String id) async {
-    await _call(() async {
-      await _dio.delete<void>('/api/wellbeing/$id');
-    });
-  }
-
-  Future<List<WellbeingLog>> fetchWellbeing({
-    DateTime? start,
-    DateTime? end,
-  }) {
-    return _call(() async {
-      final params = <String, dynamic>{};
-      if (start != null) params['start_date'] = start.toIso8601String();
-      if (end != null) params['end_date'] = end.toIso8601String();
-
-      final response = await _dio.get<List<dynamic>>(
-        '/api/wellbeing',
-        queryParameters: params,
-      );
-      return (response.data ?? [])
-          .map((w) => WellbeingLog.fromJson(w as Map<String, dynamic>))
-          .toList();
-    });
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
   // Chat (voice AI)
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -255,6 +186,7 @@ class HeartyApiClient {
     List<Map<String, String>>? history,
     Map<String, dynamic>? healthContext,
     DateTime? loggedAt,
+    String conversationStyle = 'warm',
   }) {
     return _call(() async {
       final response = await _dio.post<Map<String, dynamic>>(
@@ -265,6 +197,7 @@ class HeartyApiClient {
           'history': ?history,
           'health_context': healthContext,
           'logged_at': loggedAt?.toUtc().toIso8601String(),
+          'conversation_style': conversationStyle,
         }..removeWhere((_, v) => v == null),
       );
       return ChatResult.fromJson(response.data!);
