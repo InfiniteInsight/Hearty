@@ -24,6 +24,7 @@ import '../features/logging/screens/onboarding_screen.dart';
 import '../features/photos/screens/camera_screen.dart';
 import '../features/settings/screens/notification_preferences_screen.dart';
 import '../features/settings/screens/voice_settings_screen.dart';
+import '../features/settings/screens/conversation_style_screen.dart';
 import '../features/logging/screens/edit_meal_screen.dart';
 import '../features/logging/screens/edit_symptom_screen.dart';
 import '../features/setup/screens/setup_screen.dart';
@@ -55,6 +56,7 @@ class Routes {
   static const String setup = 'setup';
   static const String notificationSetup = 'notification-setup';
   static const String conversationStyleSetup = 'conversation-style-setup';
+  static const String conversationStyle = 'conversation-style';
 }
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -180,6 +182,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/settings/voice',
         name: Routes.voiceSettings,
         builder: (context, state) => const VoiceSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/conversation',
+        name: Routes.conversationStyle,
+        builder: (context, state) => const ConversationStyleScreen(),
       ),
       GoRoute(
         path: '/meals/edit',
