@@ -2,14 +2,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/hearty_api_client.dart';
-import '../api/models/user_preferences.dart';
-import '../api/models/wellbeing_period.dart';
-import '../api/providers/preferences_provider.dart';
 import '../auth/auth_repository.dart';
-import 'notification_service.dart';
 
-/// Keeps FCM token in sync with the API and auto-schedules the daily
-/// check-in whenever preferences change. Watch this in HeartyApp.build
+/// Keeps FCM token in sync with the API. Watch this in HeartyApp.build
 /// to keep it alive for the lifetime of the app.
 final notificationSetupProvider = Provider<void>((ref) {
   final user = ref.watch(currentUserProvider);
@@ -22,33 +17,7 @@ final notificationSetupProvider = Provider<void>((ref) {
   final sub = FirebaseMessaging.instance.onTokenRefresh
       .listen((_) => Future.microtask(() => _syncToken(ref)));
   ref.onDispose(sub.cancel);
-
-  // Schedule / cancel all three check-ins whenever preferences change.
-  ref.listen(preferencesProvider, (_, next) {
-    next.whenData((prefs) => _scheduleAllCheckins(prefs));
-  });
 });
-
-void _scheduleAllCheckins(UserPreferences prefs) {
-  NotificationService.scheduleCheckinNotification(
-    period: WellbeingPeriod.morning,
-    hour: prefs.morningCheckinHour,
-    minute: prefs.morningCheckinMinute,
-    enabled: prefs.morningCheckinEnabled,
-  );
-  NotificationService.scheduleCheckinNotification(
-    period: WellbeingPeriod.midday,
-    hour: prefs.middayCheckinHour,
-    minute: prefs.middayCheckinMinute,
-    enabled: prefs.middayCheckinEnabled,
-  );
-  NotificationService.scheduleCheckinNotification(
-    period: WellbeingPeriod.evening,
-    hour: prefs.eveningCheckinHour,
-    minute: prefs.eveningCheckinMinute,
-    enabled: prefs.eveningCheckinEnabled,
-  );
-}
 
 Future<void> _syncToken(Ref ref) async {
   try {
