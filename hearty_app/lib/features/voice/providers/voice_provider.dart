@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:uuid/uuid.dart';
@@ -10,6 +9,8 @@ import '../../../core/api/providers/meals_provider.dart' show syncTriggerProvide
 import '../../../core/api/providers/preferences_provider.dart';
 import '../../../core/notifications/notification_service.dart';
 import '../../../core/offline/local_voice_queue_dao.dart';
+import '../../../core/tts/tts_engine.dart';
+import '../../../core/tts/tts_engine_factory.dart';
 import '../models/voice_state.dart';
 
 const _uuid = Uuid();
@@ -22,17 +23,19 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   VoiceNotifier({
     Ref? ref,
     SpeechToText? sttForTesting,
-    FlutterTts? ttsForTesting,
+    TtsEngine? ttsForTesting,
   })  : _ref = ref,
         _stt = sttForTesting ?? SpeechToText(),
-        _tts = ttsForTesting ?? FlutterTts(),
+        _injectedTts = ttsForTesting,
         super(const VoiceState()) {
-    _initTts();
+    _ready = _initTts();
   }
 
   final Ref? _ref;
   final SpeechToText _stt;
-  final FlutterTts _tts;
+  final TtsEngine? _injectedTts;
+  late TtsEngine _tts;
+  late final Future<void> _ready;
   bool _sttInitialized = false;
   bool _askFollowUp = true;
   // Follow-up STT state — Android fires notListening after its own short
@@ -45,14 +48,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   bool _useDictation = true; // try dictation mode first; falls back on error
 
   Future<void> _initTts() async {
-    await _tts.setLanguage('en-US');
-    await _tts.setSpeechRate(0.7);
-    await _tts.setPitch(1.0);
-    final prefs = await SharedPreferences.getInstance();
-    final savedVoice = prefs.getString('tts_voice_name');
-    if (savedVoice != null) {
-      await _tts.setVoice({'name': savedVoice, 'locale': 'en-US'});
-    }
+    _tts = _injectedTts ?? await createTtsEngine();
     _tts.setCompletionHandler(() {
       if (!mounted) return;
       if (_askFollowUp) {
@@ -126,7 +122,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     // Stop any in-progress audio from a previous session. Calling
     // _stt.listen() while already listening silently fails on Android.
     if (_stt.isListening) _stt.stop();
-    _tts.stop();
+    _stopTts();
 
     // Reset follow-up STT accumulators. If a previous session hit the
     // max-restart limit, the counter would stay at 3 and prevent retries.
@@ -217,7 +213,12 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
   Future<void> _speakResponse(String response, bool askFollowUp) async {
     _askFollowUp = askFollowUp;
+    await _ready;
     await _tts.speak(_prepareForSpeech(response));
+  }
+
+  void _stopTts() {
+    _ready.then((_) { _tts.stop(); });
   }
 
   static String _prepareForSpeech(String text) {
@@ -249,7 +250,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
   /// Stops TTS immediately (e.g., user tapped screen) and resets to idle.
   void stopSpeaking() {
-    _tts.stop();
+    _stopTts();
     state = const VoiceState();
   }
 
@@ -281,7 +282,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
   void dismiss() {
     if (_stt.isListening) _stt.stop();
-    _tts.stop();
+    _stopTts();
     state = const VoiceState();
   }
 
@@ -431,7 +432,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   @override
   void dispose() {
     _stt.stop();
-    _tts.stop();
+    _ready.then((_) => _tts.dispose());
     super.dispose();
   }
 }
