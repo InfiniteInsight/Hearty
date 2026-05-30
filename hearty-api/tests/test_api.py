@@ -300,6 +300,26 @@ def test_chat_followup_symptom_creates_symptom_not_meal(api_base, headers):
             httpx.delete(f"{api_base}/api/symptoms/{sid}", headers=headers)
 
 
+def test_preferences_includes_conversation_style(api_base, headers):
+    r = httpx.get(f"{api_base}/api/preferences", headers=headers, timeout=30)
+    assert r.status_code == 200
+    body = r.json()
+    assert "conversation_style" in body
+    assert body["conversation_style"] in ("warm", "concise")
+
+def test_preferences_update_conversation_style(api_base, headers):
+    r = httpx.get(f"{api_base}/api/preferences", headers=headers, timeout=30)
+    current = r.json()
+    new_style = "concise" if current.get("conversation_style") == "warm" else "warm"
+    payload = {**current, "conversation_style": new_style}
+    try:
+        r2 = httpx.put(f"{api_base}/api/preferences", headers=headers, json=payload, timeout=30)
+        assert r2.status_code == 200
+        assert r2.json()["conversation_style"] == new_style
+    finally:
+        httpx.put(f"{api_base}/api/preferences", headers=headers, json=current, timeout=30)
+
+
 def test_update_symptom_structured_fields(api_base, headers):
     # Create a symptom
     r = httpx.post(f"{api_base}/api/symptoms", headers=headers, json={
