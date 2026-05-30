@@ -56,6 +56,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   prefs.getBool('notification_post_meal_enabled') ?? true,
               dailyCheckinEnabled:
                   prefs.getBool('notification_checkin_enabled') ?? true,
+              conversationStyle:
+                  prefs.getString('conversation_style') ?? 'warm',
             ),
           );
     } catch (_) {
@@ -77,6 +79,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   prefs.getBool('notification_post_meal_enabled') ?? true,
               dailyCheckinEnabled:
                   prefs.getBool('notification_checkin_enabled') ?? true,
+              conversationStyle:
+                  prefs.getString('conversation_style') ?? 'warm',
             ),
           );
     } catch (_) {
