@@ -181,10 +181,10 @@ tts.free();
 - Create: `hearty_app/lib/core/tts/tts_audio_utils.dart` (asset-copy + PCM→WAV helpers from spike)
 - Modify: `hearty_app/lib/features/voice/providers/voice_provider.dart`
 - Modify: `hearty_app/test/features/voice/voice_provider_test.dart`
-- Modify: `hearty_app/test/features/voice/voice_followup_test.dart`
-- Modify: `hearty_app/test/features/voice/voice_offline_test.dart`
-- Modify: `hearty_app/test/features/voice/symptom_followup_test.dart`
+- Modify: `hearty_app/test/features/voice/voice_overlay_screen_test.dart` (only if it constructs `VoiceNotifier` with a TTS fake — verify before editing)
 - Create: `hearty_app/test/core/tts/tts_engine_test.dart`
+
+> **Verified current state:** there are exactly TWO voice test files — `voice_provider_test.dart` and `voice_overlay_screen_test.dart`. The existing TTS fake is `class FakeFlutterTts extends Fake implements FlutterTts` (using `noSuchMethod`), injected via `voiceProvider.overrideWith((ref) => VoiceNotifier(sttForTesting: fakeStt, ttsForTesting: fakeTts))`. Replace that fake with `FakeTtsEngine`; the override-injection pattern stays the same.
 
 ### Task 1.1: Define the `TtsEngine` interface and `TtsStyle`
 
@@ -523,14 +523,12 @@ Future<TtsEngine> createTtsEngine({
 
 ### Task 1.5: Migrate `voice_provider.dart` to `TtsEngine`
 
-**Prompt:** Replace the `FlutterTts _tts` field in `VoiceNotifier` with `TtsEngine _tts`. The constructor's `ttsForTesting` parameter changes type from `FlutterTts?` to `TtsEngine?`. All call sites (`_initTts`, `_speakResponse`, `stopSpeaking`, `dismiss`, `primeForSymptomFollowUp`, `dispose`) call the interface instead. Behavior — including the completion handler driving `setAwaitingFollowUp`/`dismiss` and the `_prepareForSpeech` text prep — stays identical. Then migrate all four voice test files to inject a fake `TtsEngine`.
+**Prompt:** Replace the `FlutterTts _tts` field in `VoiceNotifier` with `TtsEngine _tts`. The constructor's `ttsForTesting` parameter changes type from `FlutterTts?` to `TtsEngine?`. All call sites (`_initTts`, `_speakResponse`, `stopSpeaking`, `dismiss`, `primeForSymptomFollowUp`, `dispose`) call the interface instead. Behavior — including the completion handler driving `setAwaitingFollowUp`/`dismiss` and the `_prepareForSpeech` text prep — stays identical. Then migrate the voice test files (the two that exist) to inject a fake `TtsEngine` instead of `FakeFlutterTts`.
 
 **Files:**
 - Modify: `hearty_app/lib/features/voice/providers/voice_provider.dart`
 - Modify: `hearty_app/test/features/voice/voice_provider_test.dart`
-- Modify: `hearty_app/test/features/voice/voice_followup_test.dart`
-- Modify: `hearty_app/test/features/voice/voice_offline_test.dart`
-- Modify: `hearty_app/test/features/voice/symptom_followup_test.dart`
+- Modify: `hearty_app/test/features/voice/voice_overlay_screen_test.dart` (only if it injects a TTS fake)
 
 - [ ] **Step 1: Add a shared fake engine to the test tree.** Create `hearty_app/test/features/voice/fake_tts_engine.dart`:
 
@@ -608,7 +606,7 @@ Update every `_tts.` call site to `await _ready` first where it must be ready (`
 
 For `stopSpeaking`, `dismiss`, `primeForSymptomFollowUp`, `dispose`: call `_tts.stop()` only if `_ready` has completed; otherwise schedule after `_ready`. Keep `_prepareForSpeech`, `_stripEmojis`, and the `"4/10 → 4 out of 10"` logic untouched.
 
-- [ ] **Step 4: Migrate the four test files.** In each, replace `class _FakeTts extends Mock implements FlutterTts {...}` and the `ttsForTesting: _FakeTts()` injection with `import 'fake_tts_engine.dart';` and `ttsForTesting: FakeTtsEngine()`. Remove now-unused `flutter_tts`/`mockito` imports where they were only for the TTS fake. Where a test asserts on spoken text, assert on `fake.spokenText`.
+- [ ] **Step 4: Migrate the test files.** In `voice_provider_test.dart`, delete the `FakeFlutterTts extends Fake implements FlutterTts` class and its `import 'package:flutter_tts/flutter_tts.dart';`, add `import 'fake_tts_engine.dart';`, and change `fakeTts = FakeFlutterTts();` → `fakeTts = FakeTtsEngine();` (the `ttsForTesting: fakeTts` override line is unchanged). Do the same in `voice_overlay_screen_test.dart` only if it injects a TTS fake. Where a test asserts on spoken text, assert on `fake.spokenText`.
 
 - [ ] **Step 5: Run the migrated tests.** Run: `cd hearty_app && flutter test test/features/voice/`. Expected: PASS, same count as the Step-2 baseline. If any test depended on synchronous TTS init, add `await Future.microtask(() {})` / pump as needed and note it.
 
