@@ -26,6 +26,11 @@ class _ConversationStyleScreenState
     setState(() => _saving = true);
     final existing = ref.read(preferencesProvider).valueOrNull;
     if (existing == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Still loading — please try again')),
+        );
+      }
       setState(() => _saving = false);
       return;
     }

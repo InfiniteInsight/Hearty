@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ConversationStyleSetupScreen extends StatefulWidget {
@@ -20,7 +21,7 @@ class _ConversationStyleSetupScreenState
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('conversation_style', _selected);
     await prefs.setBool('conversation_style_configured', true);
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) context.pop();
   }
 
   Future<void> _skip() async {
@@ -29,7 +30,7 @@ class _ConversationStyleSetupScreenState
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('conversation_style', 'warm');
     await prefs.setBool('conversation_style_configured', true);
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) context.pop();
   }
 
   @override
