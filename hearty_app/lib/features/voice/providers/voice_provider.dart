@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -24,9 +25,12 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     Ref? ref,
     SpeechToText? sttForTesting,
     TtsEngine? ttsForTesting,
+    Duration? followUpStartDelay,
   })  : _ref = ref,
         _stt = sttForTesting ?? SpeechToText(),
         _injectedTts = ttsForTesting,
+        _followUpStartDelay =
+            followUpStartDelay ?? const Duration(milliseconds: 2500),
         super(const VoiceState()) {
     _ready = _initTts();
   }
@@ -40,12 +44,18 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   bool _askFollowUp = true;
   // Follow-up STT state — Android fires notListening after its own short
   // silence timeout, ignoring pauseFor. We restart up to _maxFollowUpRestarts
-  // times and accumulate the transcript across sessions.
+  // times and accumulate the transcript across sessions — but only once the
+  // user has actually started speaking (see _onSttStatus), so pre-speech
+  // silence does not churn through restarts (each restart plays a beep).
   bool _inFollowUpListen = false;
   int _followUpRestarts = 0;
   String _followUpAccumulated = '';
   static const int _maxFollowUpRestarts = 3;
   bool _useDictation = true; // try dictation mode first; falls back on error
+  // Orientation delay before the follow-up mic opens, so the user can read the
+  // question first. Cancelable via dismiss(); injectable for tests.
+  final Duration _followUpStartDelay;
+  Timer? _followUpStartTimer;
 
   Future<void> _initTts() async {
     _tts = _injectedTts ?? await createTtsEngine();
@@ -137,16 +147,29 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       status: VoiceStatus.awaitingFollowUp,
       response: question,
       pendingMealId: mealId,
+      micPhase: MicPhase.preparing,
       history: const [
         {'role': 'assistant', 'content': question}
       ],
     );
-    _beginStt(isFollowUp: true);
+
+    // Wait a beat so the user can orient before the mic opens — otherwise
+    // Android times out on the orientation silence and the restart loop
+    // plays a storm of beeps.
+    _followUpStartTimer?.cancel();
+    _followUpStartTimer = Timer(_followUpStartDelay, () {
+      if (mounted && state.status == VoiceStatus.awaitingFollowUp) {
+        _beginStt(isFollowUp: true);
+      }
+    });
   }
 
   Future<void> _beginStt({bool isFollowUp = false}) async {
     _inFollowUpListen = isFollowUp;
     if (!await _ensureSttInitialized()) return;
+    if (isFollowUp && mounted) {
+      state = state.copyWith(micPhase: MicPhase.listening);
+    }
     final mode = isFollowUp && _useDictation
         ? ListenMode.dictation
         : ListenMode.confirmation;
@@ -265,6 +288,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       status: VoiceStatus.awaitingFollowUp,
       history: updatedHistory,
       transcript: '',
+      micPhase: MicPhase.preparing,
     );
     _beginFollowUpStt();
   }
@@ -281,6 +305,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   void dismiss() {
+    _followUpStartTimer?.cancel();
     if (_stt.isListening) _stt.stop();
     _stopTts();
     state = const VoiceState();
@@ -431,6 +456,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
   @override
   void dispose() {
+    _followUpStartTimer?.cancel();
     _stt.stop();
     _ready.then((_) => _tts.dispose());
     super.dispose();

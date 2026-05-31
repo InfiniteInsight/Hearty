@@ -8,6 +8,8 @@ import 'fake_tts_engine.dart';
 // Fake SpeechToText for testing
 class FakeSpeechToText extends Fake implements SpeechToText {
   bool _isListening = false;
+  int listenCount = 0;
+  void Function(String)? statusCallback;
 
   @override
   bool get isListening => _isListening;
@@ -18,9 +20,12 @@ class FakeSpeechToText extends Fake implements SpeechToText {
   @override
   dynamic noSuchMethod(Invocation invocation) {
     if (invocation.memberName == #initialize) {
+      statusCallback =
+          invocation.namedArguments[#onStatus] as void Function(String)?;
       return Future<bool>.value(true);
     }
     if (invocation.memberName == #listen) {
+      listenCount++;
       _isListening = true;
       return Future.value();
     }
@@ -107,6 +112,50 @@ void main() {
       // unspecified copyWith preserves existing value
       expect(s.copyWith(micPhase: MicPhase.paused).copyWith(transcript: 'x').micPhase,
           MicPhase.paused);
+    });
+
+    test('primeForSymptomFollowUp does not open mic synchronously; opens after delay', () async {
+      final notifier = VoiceNotifier(
+        sttForTesting: fakeStt,
+        ttsForTesting: fakeTts,
+        followUpStartDelay: Duration.zero,
+      );
+      notifier.primeForSymptomFollowUp(mealId: 'm1');
+      // Mic not opened yet; we are in the orientation phase.
+      expect(fakeStt.listenCount, 0);
+      expect(notifier.state.micPhase, MicPhase.preparing);
+      expect(notifier.state.status, VoiceStatus.awaitingFollowUp);
+      // Let the zero-delay timer fire.
+      await Future<void>.delayed(Duration.zero);
+      expect(fakeStt.listenCount, 1);
+      expect(notifier.state.micPhase, MicPhase.listening);
+      notifier.dispose();
+    });
+
+    test('dismiss during the orientation delay cancels the mic start', () async {
+      final notifier = VoiceNotifier(
+        sttForTesting: fakeStt,
+        ttsForTesting: fakeTts,
+        followUpStartDelay: const Duration(seconds: 10),
+      );
+      notifier.primeForSymptomFollowUp(mealId: 'm1');
+      notifier.dismiss();
+      await Future<void>.delayed(Duration.zero);
+      expect(fakeStt.listenCount, 0);
+      expect(notifier.state.status, VoiceStatus.idle);
+      notifier.dispose();
+    });
+
+    test('dispose cancels a pending follow-up start timer', () async {
+      final notifier = VoiceNotifier(
+        sttForTesting: fakeStt,
+        ttsForTesting: fakeTts,
+        followUpStartDelay: const Duration(seconds: 10),
+      );
+      notifier.primeForSymptomFollowUp(mealId: 'm1');
+      notifier.dispose();
+      await Future<void>.delayed(Duration.zero);
+      expect(fakeStt.listenCount, 0);
     });
   });
 }
