@@ -96,5 +96,17 @@ void main() {
       container.read(voiceProvider.notifier).stopSpeaking();
       expect(container.read(voiceProvider).status, VoiceStatus.idle);
     });
+
+    test('initial state has MicPhase.none', () {
+      expect(container.read(voiceProvider).micPhase, MicPhase.none);
+    });
+
+    test('copyWith updates micPhase', () {
+      const s = VoiceState();
+      expect(s.copyWith(micPhase: MicPhase.listening).micPhase, MicPhase.listening);
+      // unspecified copyWith preserves existing value
+      expect(s.copyWith(micPhase: MicPhase.paused).copyWith(transcript: 'x').micPhase,
+          MicPhase.paused);
+    });
   });
 }
