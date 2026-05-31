@@ -328,7 +328,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     // and give it time to fully tear down before starting a new listen().
     if (_stt.isListening) await _stt.cancel();
     await Future.delayed(const Duration(milliseconds: 350));
-    if (mounted) await _beginStt(isFollowUp: true);
+    if (mounted && state.status == VoiceStatus.awaitingFollowUp) {
+      await _beginStt(isFollowUp: true);
+    }
   }
 
   void dismiss() {
