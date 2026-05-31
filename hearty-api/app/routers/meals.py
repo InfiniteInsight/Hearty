@@ -122,6 +122,7 @@ async def get_meals(
 
 class MealUpdateRequest(BaseModel):
     description: str
+    foods: Optional[list[str]] = None
 
 
 @router.patch("/api/meals/{meal_id}", status_code=200)
@@ -140,13 +141,20 @@ async def update_meal(
     if not existing.data:
         raise HTTPException(status_code=404, detail="Meal not found")
 
-    extracted = ai_extraction.extract_meal(body.description)
-    foods = extracted.get("foods", [])
-    inferred_meal_type = extracted.get("inferred_meal_type")
-
-    updates: dict = {"description": body.description, "foods": foods}
-    if inferred_meal_type:
-        updates["meal_type"] = inferred_meal_type
+    if body.foods is not None:
+        # Verbatim save: store the caller's foods as name-only items,
+        # skip extraction, leave meal_type unchanged.
+        updates: dict = {
+            "description": body.description,
+            "foods": [{"name": n.strip()} for n in body.foods if n and n.strip()],
+        }
+    else:
+        # No foods supplied: re-extract from the description (legacy behavior).
+        extracted = ai_extraction.extract_meal(body.description)
+        updates = {"description": body.description, "foods": extracted.get("foods", [])}
+        inferred_meal_type = extracted.get("inferred_meal_type")
+        if inferred_meal_type:
+            updates["meal_type"] = inferred_meal_type
 
     result = (
         supabase.table("meals")

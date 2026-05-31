@@ -416,3 +416,51 @@ def test_update_symptom_structured_fields(api_base, headers):
 
     # cleanup
     httpx.delete(f"{api_base}/api/symptoms/{symptom_id}", headers=headers)
+
+
+def test_update_meal_foods_verbatim(api_base, headers):
+    # Create a meal (extraction runs, meal_type inferred).
+    r = httpx.post(f"{api_base}/api/meals", headers=headers, json={
+        "description": "scrambled eggs and toast",
+        "offline_id": str(uuid.uuid4()),
+    }, timeout=30)
+    assert r.status_code == 201
+    meal = r.json()
+    meal_id = meal["id"]
+    original_type = meal["meal_type"]
+
+    # PATCH with an explicit foods list — should be stored verbatim,
+    # empties filtered, no re-extraction, meal_type unchanged.
+    r2 = httpx.patch(f"{api_base}/api/meals/{meal_id}", headers=headers, json={
+        "description": "scrambled eggs and toast",
+        "foods": ["custom food A", "  ", "custom food B"],
+    }, timeout=30)
+    assert r2.status_code == 200
+    body = r2.json()
+    names = [f["name"] for f in body["foods"]]
+    assert names == ["custom food A", "custom food B"]
+    assert body["meal_type"] == original_type
+
+    httpx.delete(f"{api_base}/api/meals/{meal_id}", headers=headers)
+
+
+def test_update_meal_reextracts_when_foods_absent(api_base, headers):
+    # Regression guard: omitting foods re-extracts from the description.
+    r = httpx.post(f"{api_base}/api/meals", headers=headers, json={
+        "description": "a plain bagel",
+        "offline_id": str(uuid.uuid4()),
+    }, timeout=30)
+    assert r.status_code == 201
+    meal_id = r.json()["id"]
+
+    r2 = httpx.patch(f"{api_base}/api/meals/{meal_id}", headers=headers, json={
+        "description": "grilled salmon with steamed broccoli",
+    }, timeout=30)
+    assert r2.status_code == 200
+    body = r2.json()
+    assert isinstance(body["foods"], list)
+    assert len(body["foods"]) >= 1
+    names = " ".join(f["name"].lower() for f in body["foods"])
+    assert "salmon" in names or "broccoli" in names
+
+    httpx.delete(f"{api_base}/api/meals/{meal_id}", headers=headers)
