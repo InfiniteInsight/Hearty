@@ -157,5 +157,59 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(fakeStt.listenCount, 0);
     });
+
+    test('premature notListening with empty transcript does NOT restart; goes paused', () async {
+      final notifier = VoiceNotifier(
+        sttForTesting: fakeStt,
+        ttsForTesting: fakeTts,
+        followUpStartDelay: Duration.zero,
+      );
+      notifier.primeForSymptomFollowUp(mealId: 'm1');
+      await Future<void>.delayed(Duration.zero); // mic opens (listenCount == 1)
+      expect(fakeStt.listenCount, 1);
+
+      // Android ends the session before the user said anything.
+      fakeStt.statusCallback!(SpeechToText.notListeningStatus);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(fakeStt.listenCount, 1); // no restart
+      expect(notifier.state.micPhase, MicPhase.paused);
+      notifier.dispose();
+    });
+
+    test('premature notListening with non-empty transcript DOES restart', () async {
+      final notifier = VoiceNotifier(
+        sttForTesting: fakeStt,
+        ttsForTesting: fakeTts,
+        followUpStartDelay: Duration.zero,
+      );
+      notifier.primeForSymptomFollowUp(mealId: 'm1');
+      await Future<void>.delayed(Duration.zero); // listenCount == 1
+      notifier.setTranscript('I feel a bit bloated');
+
+      fakeStt.statusCallback!(SpeechToText.notListeningStatus);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(fakeStt.listenCount, 2); // restarted to let them finish
+      notifier.dispose();
+    });
+
+    test('resumeFollowUpListening opens a session and sets listening', () async {
+      final notifier = VoiceNotifier(
+        sttForTesting: fakeStt,
+        ttsForTesting: fakeTts,
+        followUpStartDelay: Duration.zero,
+      );
+      notifier.primeForSymptomFollowUp(mealId: 'm1');
+      await Future<void>.delayed(Duration.zero);
+      fakeStt.statusCallback!(SpeechToText.notListeningStatus); // -> paused
+      expect(notifier.state.micPhase, MicPhase.paused);
+
+      notifier.resumeFollowUpListening();
+      await Future<void>.delayed(Duration.zero);
+      expect(fakeStt.listenCount, 2);
+      expect(notifier.state.micPhase, MicPhase.listening);
+      notifier.dispose();
+    });
   });
 }

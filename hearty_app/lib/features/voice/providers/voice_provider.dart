@@ -97,18 +97,40 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   void _onSttStatus(String status) {
     if (status == SpeechToText.notListeningStatus || status == SpeechToText.doneStatus) {
       if (_inFollowUpListen &&
+          state.transcript.isNotEmpty &&
           _followUpRestarts < _maxFollowUpRestarts &&
           mounted &&
           state.status == VoiceStatus.awaitingFollowUp) {
-        // Android ended the session prematurely — restart so the user can
-        // finish their thought. Accumulate what was captured so far.
+        // The user started talking and Android ended the session early —
+        // restart so they can finish. Accumulate what was captured so far.
         _followUpAccumulated = state.transcript;
         _followUpRestarts++;
         _beginStt(isFollowUp: true);
         return;
       }
+      if (_inFollowUpListen &&
+          state.transcript.isEmpty &&
+          mounted &&
+          state.status == VoiceStatus.awaitingFollowUp) {
+        // Nothing captured yet — don't churn through restarts (each restart
+        // beeps). Go idle and let the user tap to talk when ready.
+        _pauseFollowUpMic();
+        return;
+      }
       _autoSubmitIfPending();
     }
+  }
+
+  void _pauseFollowUpMic() {
+    _inFollowUpListen = false;
+    if (mounted) state = state.copyWith(micPhase: MicPhase.paused);
+  }
+
+  /// Re-opens one follow-up listen session — wired to the overlay's
+  /// "Tap to talk" button after the mic went idle on pre-speech silence.
+  void resumeFollowUpListening() {
+    if (state.micPhase != MicPhase.paused) return;
+    _beginStt(isFollowUp: true);
   }
 
   void _autoSubmitIfPending() {
@@ -188,7 +210,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
           setTranscript(combined);
         }
         if (result.finalResult) {
-          if (_inFollowUpListen && _followUpRestarts < _maxFollowUpRestarts) {
+          if (_inFollowUpListen &&
+              state.transcript.isNotEmpty &&
+              _followUpRestarts < _maxFollowUpRestarts) {
             // Android fired finalResult early — save what we have and restart.
             _followUpAccumulated = state.transcript;
             _followUpRestarts++;
@@ -198,6 +222,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
                 _beginStt(isFollowUp: true);
               }
             });
+          } else if (_inFollowUpListen && state.transcript.isEmpty) {
+            // finalResult with nothing captured — go idle (tap-to-talk).
+            _pauseFollowUpMic();
           } else {
             setThinking();
           }
