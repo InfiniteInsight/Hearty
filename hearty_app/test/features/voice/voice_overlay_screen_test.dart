@@ -91,6 +91,67 @@ void main() {
       await tester.pump();
       expect(find.byType(TextField), findsOneWidget);
     });
+
+    testWidgets('preparing phase shows Getting ready hint, no waveform', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            voiceProvider.overrideWith(
+              (_) => _StubVoiceNotifier(const VoiceState(
+                status: VoiceStatus.awaitingFollowUp,
+                response: 'How are you feeling?',
+                micPhase: MicPhase.preparing,
+              )),
+            ),
+          ],
+          child: const MaterialApp(home: VoiceOverlayScreen()),
+        ),
+      );
+      await tester.pump();
+      expect(find.byKey(const Key('getting_ready_hint')), findsOneWidget);
+      expect(find.byKey(const Key('waveform_animation')), findsNothing);
+    });
+
+    testWidgets('paused phase shows Tap to talk button', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            voiceProvider.overrideWith(
+              (_) => _StubVoiceNotifier(const VoiceState(
+                status: VoiceStatus.awaitingFollowUp,
+                response: 'How are you feeling?',
+                micPhase: MicPhase.paused,
+              )),
+            ),
+          ],
+          child: const MaterialApp(home: VoiceOverlayScreen()),
+        ),
+      );
+      await tester.pump();
+      expect(find.byKey(const Key('tap_to_talk_button')), findsOneWidget);
+      expect(find.byKey(const Key('waveform_animation')), findsNothing);
+    });
+
+    testWidgets('listening phase shows waveform', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            voiceProvider.overrideWith(
+              (_) => _StubVoiceNotifier(const VoiceState(
+                status: VoiceStatus.awaitingFollowUp,
+                response: 'How are you feeling?',
+                micPhase: MicPhase.listening,
+              )),
+            ),
+          ],
+          child: const MaterialApp(home: VoiceOverlayScreen()),
+        ),
+      );
+      await tester.pump();
+      expect(find.byKey(const Key('waveform_animation')), findsOneWidget);
+      expect(find.byKey(const Key('getting_ready_hint')), findsNothing);
+      expect(find.byKey(const Key('tap_to_talk_button')), findsNothing);
+    });
   });
 }
 

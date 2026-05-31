@@ -32,7 +32,6 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
       }
     });
 
-    // Send to chat API on initial log; route follow-up to symptom logging.
     ref.listen(voiceProvider.select((s) => s.status), (previous, status) {
       if (status == VoiceStatus.thinking) {
         if (previous == VoiceStatus.awaitingFollowUp) {
@@ -65,7 +64,7 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
                   ),
                 ),
                 const Spacer(),
-                Center(child: _buildAnimation(voiceState.status)),
+                Center(child: _buildAnimation(voiceState)),
                 const SizedBox(height: 32),
                 _buildTextDisplay(voiceState),
                 const Spacer(),
@@ -78,11 +77,35 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
     );
   }
 
-  Widget _buildAnimation(VoiceStatus status) {
-    switch (status) {
+  Widget _buildAnimation(VoiceState state) {
+    switch (state.status) {
       case VoiceStatus.listening:
-      case VoiceStatus.awaitingFollowUp:
         return const WaveformAnimation();
+      case VoiceStatus.awaitingFollowUp:
+        switch (state.micPhase) {
+          case MicPhase.listening:
+            return const WaveformAnimation();
+          case MicPhase.paused:
+            return IconButton(
+              key: const Key('tap_to_talk_button'),
+              iconSize: 56,
+              icon: const Icon(Icons.mic_none, color: Colors.white),
+              tooltip: 'Tap to talk',
+              onPressed: () =>
+                  ref.read(voiceProvider.notifier).resumeFollowUpListening(),
+            );
+          case MicPhase.preparing:
+          case MicPhase.none:
+            return SizedBox(
+              key: const Key('getting_ready_hint'),
+              height: 56,
+              width: 56,
+              child: Semantics(
+                label: 'Getting ready',
+                child: const CircularProgressIndicator(color: Colors.white70),
+              ),
+            );
+        }
       case VoiceStatus.thinking:
         return const ThinkingAnimation();
       case VoiceStatus.responding:
@@ -93,10 +116,11 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
   }
 
   Widget _buildTextDisplay(VoiceState state) {
-    final text =
-        (state.status == VoiceStatus.responding || state.status == VoiceStatus.awaitingFollowUp)
-            ? state.response
-            : state.transcript;
+    if (state.status == VoiceStatus.awaitingFollowUp) {
+      return _buildFollowUpDisplay(state);
+    }
+
+    final text = state.status == VoiceStatus.responding ? state.response : state.transcript;
     if (text.isEmpty) return const SizedBox.shrink();
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -107,12 +131,76 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
           textAlign: TextAlign.center,
         ),
         if (state.status == VoiceStatus.listening && text.isNotEmpty)
-          TextButton.icon(
-            onPressed: () => ref.read(voiceProvider.notifier).startListening(),
-            icon: const Icon(Icons.refresh, color: Colors.white70),
-            label: const Text('Retry', style: TextStyle(color: Colors.white70)),
-          ),
+          _buildSubmitRow(canRetry: true),
       ],
+    );
+  }
+
+  // During the follow-up turn: show the AI's question dimmed above, and the
+  // user's in-progress answer below so they can see what's being captured.
+  Widget _buildFollowUpDisplay(VoiceState state) {
+    final hasTranscript = state.transcript.isNotEmpty;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (state.response.isNotEmpty)
+          Text(
+            state.response,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.55),
+              fontSize: 16,
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        if (state.micPhase == MicPhase.preparing) ...[
+          const SizedBox(height: 12),
+          Text(
+            'Getting ready…',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+          ),
+        ],
+        if (state.micPhase == MicPhase.paused) ...[
+          const SizedBox(height: 12),
+          Text(
+            'Tap the mic when you’re ready',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+          ),
+        ],
+        if (hasTranscript) ...[
+          const SizedBox(height: 12),
+          Text(
+            state.transcript,
+            style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.5),
+            textAlign: TextAlign.center,
+          ),
+          _buildSubmitRow(canRetry: false),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSubmitRow({required bool canRetry}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          FilledButton.icon(
+            onPressed: () => ref.read(voiceProvider.notifier).setThinking(),
+            icon: const Icon(Icons.send),
+            label: const Text('Submit'),
+          ),
+          if (canRetry) ...[
+            const SizedBox(width: 12),
+            TextButton.icon(
+              onPressed: () => ref.read(voiceProvider.notifier).startListening(),
+              icon: const Icon(Icons.refresh, color: Colors.white70),
+              label: const Text('Re-record', style: TextStyle(color: Colors.white70)),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
