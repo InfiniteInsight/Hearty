@@ -97,11 +97,18 @@ class HeartyApiClient {
     });
   }
 
-  Future<MealLog> updateMeal(String id, String description) async {
+  Future<MealLog> updateMeal(
+    String id,
+    String description, {
+    List<String>? foods,
+  }) async {
     return _call(() async {
       final response = await _dio.patch<Map<String, dynamic>>(
         '/api/meals/$id',
-        data: {'description': description},
+        data: <String, dynamic>{
+          'description': description,
+          'foods': ?foods,
+        },
       );
       return MealLog.fromJson(response.data!);
     });
