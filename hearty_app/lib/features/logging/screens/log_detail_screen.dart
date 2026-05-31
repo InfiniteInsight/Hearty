@@ -191,7 +191,11 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                 onPressed: () async {
                   await context.push(
                     '/meals/edit',
-                    extra: {'id': m.id, 'description': m.description},
+                    extra: {
+                      'id': m.id,
+                      'description': m.description,
+                      'foods': m.foods,
+                    },
                   );
                   if (mounted) _resolveEntry();
                 },

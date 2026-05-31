@@ -392,7 +392,11 @@ class _MealCard extends ConsumerWidget {
           onLongPress: () => _showEntryActions(
             context, ref,
             editRoute: '/meals/edit',
-            editExtra: {'id': meal.id, 'description': meal.description},
+            editExtra: {
+              'id': meal.id,
+              'description': meal.description,
+              'foods': meal.foods,
+            },
             onDelete: () async {
               await ref.read(heartyApiClientProvider).deleteMeal(meal.id);
               await ref.read(localMealDaoProvider).deleteByServerId(meal.id);

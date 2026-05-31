@@ -226,10 +226,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/meals/edit',
         name: Routes.editMeal,
         builder: (context, state) {
-          final extra = state.extra as Map<String, String>;
+          final extra = state.extra as Map<String, dynamic>;
           return EditMealScreen(
-            id: extra['id']!,
-            initialDescription: extra['description']!,
+            id: extra['id'] as String,
+            initialDescription: extra['description'] as String,
+            initialFoods:
+                (extra['foods'] as List?)?.map((e) => e.toString()).toList() ??
+                    const <String>[],
           );
         },
       ),
@@ -408,7 +411,11 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
                 if (context.mounted) {
                   context.push(
                     '/meals/edit',
-                    extra: {'id': loggedMealId, 'description': description},
+                    extra: {
+                      'id': loggedMealId,
+                      'description': description,
+                      'foods': meal?.foods ?? const <String>[],
+                    },
                   );
                 }
               },
