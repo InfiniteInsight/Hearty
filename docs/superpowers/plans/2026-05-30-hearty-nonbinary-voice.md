@@ -746,18 +746,60 @@ For `stopSpeaking`, `dismiss`, `primeForSymptomFollowUp`, `dispose`: call `_tts.
 
 **Prompt:** SSH to pkix, create a working dir and a conda env, install Qwen3-TTS (1.7B) and audio-analysis tooling (parselmouth/praat), and confirm the GPU is visible. Do not train anything yet.
 
-- [ ] **Step 1: Connect.** `ssh -i ~/.ssh/pkix_training evan@192.168.1.220`. Confirm `nvidia-smi` shows the RTX PRO 4000 with 24 GB.
+**pkix recon (2026-05-30, confirmed live):** GPU = NVIDIA RTX PRO 4000 Blackwell SFF, 24467 MiB,
+driver 580.159.04. CUDA 12.6 (nvcc V12.6.85). conda env `training` at
+`/data/miniconda/envs/training/` → Python 3.10.20. `/data` has 4.3 TB free. `/data/hey-hearty-training`
+exists (wake-word work). pkix shell is **fish** — wrap remote commands in `bash -lc "..."`.
+
+- [ ] **Step 1: Connect.** `ssh -i ~/.ssh/pkix_training evan@192.168.1.220`. Confirm `nvidia-smi` shows the RTX PRO 4000 with 24 GB. ✅ DONE (above).
 - [ ] **Step 2: Create env + dirs.**
 ```bash
 mkdir -p /data/hearty-voice/{design,corpus,piper-train,export}
 conda create -y -n hearty-voice python=3.10 && conda activate hearty-voice
 pip install -U qwen-tts praat-parselmouth soundfile numpy
 ```
-- [ ] **Step 3: Smoke-test Qwen3-TTS.** Generate one short sample with any built-in voice; confirm it writes a wav and uses the GPU (watch `nvidia-smi`). Record VRAM use.
+- [x] **Step 3: Smoke-test Qwen3-TTS.** Toolchain imports verified (torch 2.11.0+cu128 CUDA True,
+  numpy 2.4.6, transformers 4.57.3, torchaudio 2.11.0+cu128, parselmouth 0.4.7, qwen_tts 0.1.1).
+  qwen_tts imports cleanly on GPU. Actual weight download + first generation = start of Task 2.2.
+  WATCH-ITEMS (corrected after testing — earlier claims were wrong):
+  - **CLI = `qwen-tts-demo` ONLY** (the only entrypoint in bin/). NO `qwen-tts download/run/serve`.
+    Download weights via `hf` / `huggingface-cli` (both present): e.g.
+    `huggingface-cli download Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign` + `Qwen/Qwen3-TTS-Tokenizer-12Hz`.
+    For generation, drive via the qwen_tts Python API (check repo README for the class) or
+    `qwen-tts-demo Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign --ip 0.0.0.0 --port 8000` (Gradio UI; needs
+    SSH tunnel to reach from dev box).
+  - **`sox` IS referenced** in `qwen_tts/core/tokenizer_25hz/vq/speech_vq.py` — import works but the
+    tokenizer MAY need the sox binary at generation time. NOT yet proven blocking. apt candidate
+    14.4.2 (needs sudo) if generation fails on it. Watch in 2.2.
+  - **flash-attn not installed** → qwen runs the manual PyTorch path (works, slower). Fine at our scale.
 
 **Living State — Task 2.1**
-- Status: ⬜ Not Started
+- Status: ✅ Done. Env `hearty-voice` (py3.12.13) on pkix; sm_120 GPU kernel verified (real matmul);
+  full Phase 2 toolchain installed & imports clean. `training` env untouched. See WATCH-ITEMS above
+  for the corrected CLI/sox/flash-attn facts that feed Task 2.2.
+
+**Living State — Task 2.1 (recon + blocker history; see ✅ Done block above for final status)**
+- Status: ✅ Done (see consolidated block under Step 3). History below.
+- **Confirmed:** Qwen3-TTS is genuinely open-source (released 2026-01-22). pip pkg = `qwen-tts`; HF repos
+  `Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign` (text-desc voice creation — EXACTLY what Phase 2 step 2.2
+  needs, open-source ✓), `-CustomVoice`, `-Base`, `-0.6B-*`, tokenizer `Qwen/Qwen3-TTS-Tokenizer-12Hz`.
+  Wants **Python 3.12**; optional flash-attn. Launch VoiceDesign UI:
+  `qwen-tts-demo Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign --ip 0.0.0.0 --port 8000`.
+- **⚠️ BLOCKER (GPU/torch compat):** the existing `training` env torch (2.12.0+cu126) does NOT support
+  this GPU — Blackwell is **sm_120 (CC 12.0)**; that torch build only covers up to sm_90, and warns
+  "not compatible … install PyTorch supporting CUDA 13.0/13.2". So the `training` env is unusable for
+  Phase 2 as-is. Need a fresh env (py3.12 anyway for qwen-tts) with a torch build that has sm_120
+  kernels (cu128/cu129/cu130 wheels, torch ≥2.7; driver 580.x supports CUDA 13 ✓).
+- Plan: `conda create -n hearty-voice python=3.12` → install torch from the cu12.8+/cu13 index (verify
+  `torch.cuda.is_available()` AND a real kernel runs, not just detection) → `pip install -U qwen-tts
+  praat-parselmouth soundfile` → smoke-test VoiceDesign. ~several GB download.
+- **BLOCKER RESOLVED:** created `hearty-voice` env (py3.12.13), installed `torch 2.11.0+cu128`. GPU
+  kernel test PASSED on Blackwell: capability (12,0)=sm_120, real 2048² matmul ran on CUDA
+  (`KERNEL_RAN_OK`) — not just detection. (cu128 index, not cu130 — 2.11.0+cu128 has sm_120 kernels.)
+  Next: install qwen-tts + numpy + parselmouth + soundfile, then smoke-test VoiceDesign.
 - Deviations (esp. actual package name/version for Qwen3-TTS, any CUDA/driver issues on Blackwell):
+  Python 3.12 (not the 3.10 training env); torch 2.11.0+cu128 (cu128 wheel index gives sm_120 support);
+  numpy must be installed explicitly (not pulled by torch). `training` env left untouched.
 - Notes for later phases:
 
 ---
