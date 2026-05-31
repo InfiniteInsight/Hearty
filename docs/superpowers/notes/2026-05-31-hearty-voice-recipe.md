@@ -1,7 +1,8 @@
 # Hearty Non-Binary Voice — Full Generation Recipe
 
 **Date:** 2026-05-31
-**Status:** Voice CHOSEN (`blend_older`). This document records every step to reproduce it.
+**Name:** **hearty-neutral-voice** (official name for this voice; internal build id was `blend_older`).
+**Status:** Voice CHOSEN. This document records every step to reproduce it.
 **Chosen voice:** the aged blend of two VoiceDesign descriptions, cloned to a stable speaker embedding.
 **Measured:** avg F0 median ≈ **166 Hz** (in the 145–175 Hz gender-neutral target band), F2 ≈ 1830–1925 Hz (intermediate).
 
@@ -135,4 +136,4 @@ This embedding is the **locked source voice**. Remaining pipeline:
 3. **Validate (2.5):** blind listening panel (male/female/neutral) — the real success gate.
 4. **Export (2.6):** to ONNX, opset matched to sherpa-onnx ORT 1.24.3 → drop into `hearty_app/assets/tts/`.
 
-The Qwen voice is the *teacher*; the shipped on-device voice is the distilled Piper student.
+`hearty-neutral-voice` (the Qwen-cloned embedding) is the source/reference voice; the shipped on-device voice is the small Piper model distilled from it.
