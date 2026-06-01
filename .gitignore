@@ -1,3 +1,6 @@
 .env
 node_modules
 hearty_app/.vscode/
+
+# Git worktrees created for isolated feature work
+.claude/worktrees/
