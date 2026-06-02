@@ -33,6 +33,11 @@ class NeuralTtsEngine implements TtsEngine {
   VoidCallback? _onDone;
   TtsStyle _style = TtsStyle.warm;
   bool _completionWired = false;
+  // just_audio re-emits player state while it remains in `completed` (and the
+  // follow-up mic grabbing the audio device pokes it). Edge-detect so a single
+  // utterance fires _onDone exactly once — otherwise the follow-up flow gets
+  // re-armed repeatedly (listening "ding storm").
+  bool _completedSignaled = false;
 
   @override
   Future<bool> init({String? voiceName}) async {
@@ -52,7 +57,14 @@ class NeuralTtsEngine implements TtsEngine {
           sherpa.OfflineTtsConfig(model: model, maxNumSenetences: 1));
       if (!_completionWired) {
         _player.playerStateStream.listen((s) {
-          if (s.processingState == ProcessingState.completed) _onDone?.call();
+          if (s.processingState == ProcessingState.completed) {
+            if (!_completedSignaled) {
+              _completedSignaled = true;
+              _onDone?.call();
+            }
+          } else {
+            _completedSignaled = false;
+          }
         });
         _completionWired = true;
       }
@@ -73,6 +85,7 @@ class NeuralTtsEngine implements TtsEngine {
     final wav = pcmToWav(audio.samples, audio.sampleRate);
     final tmp = File('${Directory.systemTemp.path}/hearty_tts.wav');
     await tmp.writeAsBytes(wav, flush: true);
+    _completedSignaled = false;
     await _player.stop();
     await _player.setFilePath(tmp.path);
     await _player.play();

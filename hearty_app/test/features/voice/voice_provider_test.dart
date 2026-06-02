@@ -211,5 +211,21 @@ void main() {
       expect(notifier.state.micPhase, MicPhase.listening);
       notifier.dispose();
     });
+
+    test('duplicate TTS completions arm the follow-up mic only once', () async {
+      final notifier = VoiceNotifier(
+        sttForTesting: fakeStt,
+        ttsForTesting: fakeTts,
+      );
+      // First completion arms the follow-up turn.
+      notifier.setAwaitingFollowUp();
+      expect(notifier.state.status, VoiceStatus.awaitingFollowUp);
+      // A duplicate completion (the ding-storm trigger) must be a no-op.
+      notifier.setAwaitingFollowUp();
+      // _beginFollowUpStt opens the mic after a 350ms internal delay.
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      expect(fakeStt.listenCount, 1); // armed exactly once, not twice
+      notifier.dispose();
+    });
   });
 }

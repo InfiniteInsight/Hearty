@@ -117,7 +117,14 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         _pauseFollowUpMic();
         return;
       }
-      _autoSubmitIfPending();
+      // Android frequently fires notListening/done a beat BEFORE the final
+      // recognition result lands. Submitting immediately ships a truncated
+      // transcript (e.g. "I had" instead of "I had an Oreo"). Defer the
+      // auto-submit so the finalResult can arrive first — finalResult calls
+      // setThinking, which moves us out of listening and no-ops this fallback.
+      Future.delayed(const Duration(milliseconds: 700), () {
+        _autoSubmitIfPending();
+      });
     }
   }
 
@@ -188,7 +195,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
   Future<void> _beginStt({bool isFollowUp = false}) async {
     _inFollowUpListen = isFollowUp;
-    if (!await _ensureSttInitialized()) return;
+    if (!await _ensureSttInitialized()) {
+      return;
+    }
     if (isFollowUp && mounted) {
       state = state.copyWith(micPhase: MicPhase.listening);
     }
@@ -306,6 +315,11 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
   void setAwaitingFollowUp() {
     if (!mounted) return;
+    // Re-entry guard: arming a follow-up should happen once per turn. If we're
+    // already in a follow-up turn, ignore duplicate TTS-completion callbacks so
+    // they can't re-arm the mic in a loop (defense-in-depth behind the
+    // edge-detected completion in NeuralTtsEngine).
+    if (state.status == VoiceStatus.awaitingFollowUp) return;
     final updatedHistory = [
       ...state.history,
       if (state.transcript.isNotEmpty) {'role': 'user', 'content': state.transcript},
