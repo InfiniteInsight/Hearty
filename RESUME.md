@@ -63,8 +63,13 @@ App integration done:
 - `NeuralTtsEngine`: default modelAssetDir → `assets/tts/hearty-neutral`, onnx → `hearty-neutral.onnx`;
   added `_applyPronunciationFixes` runtime lexicon (caffeine→caffeen; extend map as needed).
 - `flutter analyze lib/core/tts/` → clean.
-REMAINING: device run (`make run`, NEVER bare flutter run) to confirm neural voice loads + speaks on
-phone (fricatives clean, caffeine fixed), + SystemTtsEngine fallback path = Task 1.6.
+DONE: device run confirmed (user: "runs well on the phone") = Task 1.6 ✓.
+SHIPPED TO MAIN 2026-06-01: commit 455d97e fast-forwarded onto origin/master (GitHub). Push included
+voice + curated app/api WIP (wellbeing removal, health-profile widgets, screen refactors, symptom
+taxonomy, migrations) + android native + docs/images; EXCLUDED only tooling scratch (.claude,
+.superpowers, .playwright-mcp) and voice scratch (voice-candidates-*, voice-final 62MB dup). Secret scan
+clean. NOTE: 63MB onnx triggered GitHub LFS *warning* (under 100MB hard limit, OK); consider git-lfs if
+more models get added.
 v-NEXT queued: less-breathy source re-clone (same neutral pitch/tone) → corpus regen → retrain with the
 buzz-avoiding recipe (low LR / early-clean checkpoint) → drop-in onnx swap (no re-integration needed).
 
