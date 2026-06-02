@@ -4,3 +4,12 @@ hearty_app/.vscode/
 
 # Git worktrees created for isolated feature work
 .claude/worktrees/
+
+# Agent / tooling scratch
+.claude/
+.playwright-mcp/
+.superpowers/
+
+# Voice-design scratch (large WAV/onnx artifacts; kept off the repo)
+voice-candidates-*/
+voice-final/
