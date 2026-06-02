@@ -437,6 +437,34 @@ The screens under Settings (Notifications, Voice, Conversation Style, Health Pro
 
 ---
 
+## Trends Screen
+
+The fourth main tab (Home / History / **Trends** / Settings). Analytics surface for the food-intelligence engine. Prototype: `docs/superpowers/mockups/trends_themes.html` (all three themes).
+
+Built on the same theme-variable component system as the settings detail screens, plus one extra token:
+
+```
+--good : protective/inverse-risk colour (Warm #7E8B46 · Aurora #34D399 · Cosmic #4dff03)
+```
+
+**Structure (top → bottom):**
+1. **Header** — "Trends" + eyebrow (`ANALYSED 2H AGO · 142 LOGS`) + gradient **Analyse** pill (`--accg`)
+2. **Hero "Strongest signal" callout** — the single highest-confidence correlation. Gradient-tinted card (`--accg` at ~0.16 opacity + a blurred underglow copy), eyebrow `⚡ Strongest signal`, `Food → Outcome` headline, and a 3-up stat row (relative risk · peak window · evidence count) with values in `--acc`.
+3. **Food Signals list** — one `--card` per signal:
+   - gradient icon chip (`--accg`)
+   - `Food` title + `→ Outcome · peaks ~Nmin` subline
+   - relative-risk value, right-aligned: trigger → `--acc` (e.g. `1.9×`), protective → `--good` (e.g. `0.6×`)
+   - **strength bar** — `--faint` track, fill = `--accg` for triggers / `--good` for protective, width ∝ strength
+   - meta row: `based on N logs` + optional `⚡ CONVERGENT` badge (`--accg`, white) when multiple channels agree
+4. **Symptom frequency** — 30-day vertical bar chart, bars filled `--accg`, labels `--sub`
+5. **Meal-type mix** — compact stacked proportion bar + legend; segments use four distinct palette hues (not the accent gradient) so the four meal types stay separable
+
+**Direction encoding:** trigger signals use the accent gradient and an "up/risk" reading; protective signals use `--good` and a lower bar — this is the one place the palette intentionally diverges from a single accent so users can tell harmful from helpful at a glance.
+
+**Legibility note:** Trends reads most emphatically on the dark themes (Aurora, Cosmic Bloom) where the strength bars and risk numbers glow; Warm & Grounded is calmer and slightly less punchy for this data-dense screen.
+
+---
+
 ## Design Shortlist Index
 
 | ID | Screen | Layout | Palette |
@@ -448,6 +476,7 @@ The screens under Settings (Notifications, Voice, Conversation Style, Health Pro
 | History A | History | Calendar + Day | Cosmic Bloom |
 | History B | History | Calendar + Day | Aurora |
 | History C | History | Calendar + Day | Warm & Grounded |
+| Trends | Trends | Signal cards + charts | All three |
 | Settings (L2) | Settings | Glass Rows + Chip | Warm & Grounded · Cosmic Bloom · Aurora |
 | Settings (L1) | Settings | Skew Gradient Cards | Aurora (reference) |
 | Settings detail | Notifications / Voice / Conversation / Health Profile | Themed component set (L2 glass) | All three |

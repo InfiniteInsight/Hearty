@@ -249,6 +249,51 @@
   .dt-chip2 { font-size:8.5px; font-weight:600; padding:4px 10px; border-radius:20px; background:var(--accg); color:#fff; }
   .dt-chip-add { font-size:8.5px; font-weight:600; padding:4px 10px; border-radius:20px; border:1px dashed var(--sub); color:var(--sub); }
 
+  /* ════════════════════════════════════════════
+     TRENDS (themed components) — reuses dt-* palette vars + --good
+  ════════════════════════════════════════════ */
+  .dt-warm   { --good:#7E8B46; }
+  .dt-aurora { --good:#34D399; }
+  .dt-cosmic { --good:#4dff03; }
+  .tr-hdr { display:flex; align-items:center; justify-content:space-between; padding:20px 13px 7px; position:relative; z-index:5; }
+  .tr-title { font-family:'Fraunces',serif; font-size:18px; font-weight:700; }
+  .tr-sub { font-size:7px; color:var(--sub); font-family:'JetBrains Mono',monospace; letter-spacing:0.06em; margin-top:2px; }
+  .tr-analyse { font-size:8px; font-weight:700; padding:5px 10px; border-radius:18px; background:var(--accg); color:#fff; }
+  .tr-body { padding:3px 12px 12px; position:relative; z-index:5; }
+  .tr-seclabel { font-size:7px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--sub); margin:11px 3px 7px; font-family:'JetBrains Mono',monospace; }
+  .tr-hero { position:relative; border-radius:14px; overflow:hidden; padding:12px; margin-top:5px; }
+  .tr-hero-bg { position:absolute; inset:0; background:var(--accg); opacity:0.16; }
+  .tr-hero-bg2 { position:absolute; inset:0; background:var(--accg); opacity:0.5; filter:blur(28px); transform:translateY(45%); }
+  .tr-hero-c { position:relative; z-index:2; }
+  .tr-hero-eyebrow { font-size:6.5px; font-weight:700; letter-spacing:0.13em; text-transform:uppercase; color:var(--acc); font-family:'JetBrains Mono',monospace; margin-bottom:5px; }
+  .tr-hero-main { display:flex; align-items:baseline; gap:6px; }
+  .tr-hero-food { font-size:15px; font-weight:800; color:var(--tx); font-family:'Fraunces',serif; }
+  .tr-hero-arrow { font-size:11px; color:var(--sub); }
+  .tr-hero-out { font-size:12px; font-weight:700; color:var(--tx); }
+  .tr-hero-stats { display:flex; gap:13px; margin-top:8px; }
+  .tr-stat-v { font-size:13px; font-weight:800; color:var(--acc); }
+  .tr-stat-l { font-size:6.5px; color:var(--sub); margin-top:1px; }
+  .tr-card { background:var(--card); border:1px solid var(--cardbd); border-radius:12px; padding:10px 11px; margin-bottom:8px; backdrop-filter:blur(8px); }
+  .tr-c-top { display:flex; align-items:center; gap:9px; }
+  .tr-c-ico { width:27px; height:27px; border-radius:8px; background:var(--accg); display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
+  .tr-c-food { font-size:10.5px; font-weight:700; color:var(--tx); }
+  .tr-c-rel { font-size:7px; color:var(--sub); margin-top:1px; }
+  .tr-c-rr { margin-left:auto; text-align:right; }
+  .tr-c-rrv { font-size:13px; font-weight:800; }
+  .tr-c-rrv.up { color:var(--acc); } .tr-c-rrv.down { color:var(--good); }
+  .tr-c-rrl { font-size:6px; color:var(--sub); letter-spacing:0.05em; }
+  .tr-bar { height:5px; border-radius:3px; background:var(--faint); margin-top:8px; position:relative; overflow:hidden; }
+  .tr-bar-fill { position:absolute; left:0; top:0; bottom:0; border-radius:3px; background:var(--accg); }
+  .tr-bar-fill.good { background:var(--good); }
+  .tr-c-meta { display:flex; align-items:center; gap:6px; margin-top:6px; }
+  .tr-c-evi { font-size:6.5px; color:var(--sub); }
+  .tr-badge { font-size:6px; font-weight:800; letter-spacing:0.05em; padding:2px 6px; border-radius:5px; background:var(--accg); color:#fff; margin-left:auto; }
+  .tr-chart { background:var(--card); border:1px solid var(--cardbd); border-radius:12px; padding:12px 11px 9px; backdrop-filter:blur(8px); }
+  .tr-bars { display:flex; align-items:flex-end; justify-content:space-between; height:64px; gap:5px; }
+  .tr-barcol { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; height:100%; justify-content:flex-end; }
+  .tr-vbar { width:100%; border-radius:3px 3px 0 0; background:var(--accg); }
+  .tr-blabel { font-size:6px; color:var(--sub); white-space:nowrap; }
+
   /* footer */
   .footer {
     text-align: center;
@@ -573,7 +618,7 @@
      HOME SCREEN — 4 designs
 ════════════════════════════ -->
 <div class="section">
-  <p class="section-label">Screen 1 of 4</p>
+  <p class="section-label">Screen 1 of 5</p>
   <h2 class="section-title">Home Screen — Today's Log</h2>
   <div class="section-grid">
 
@@ -789,7 +834,7 @@
      HISTORY SCREEN — 3 designs
 ════════════════════════════ -->
 <div class="section">
-  <p class="section-label">Screen 2 of 4</p>
+  <p class="section-label">Screen 2 of 5</p>
   <h2 class="section-title">History Screen — Calendar + Day View</h2>
   <div class="section-grid">
 
@@ -939,7 +984,7 @@
 </div><!-- /section -->
 
 <div class="section">
-  <p class="section-label">Screen 3 of 4</p>
+  <p class="section-label">Screen 3 of 5</p>
   <h2 class="section-title">Settings Screen — hearty.ltd Skew-Gradient Cards</h2>
   <div class="section-grid">
 
@@ -1069,7 +1114,7 @@
 </div><!-- /section -->
 
 <div class="section">
-  <p class="section-label">Screen 4 of 4</p>
+  <p class="section-label">Screen 4 of 5</p>
   <h2 class="section-title">Settings Detail Screens — themed component set</h2>
   <div class="section-grid">
 
@@ -1193,6 +1238,56 @@
         <div class="dt-seclabel">Medications &amp; Supplements</div><div class="dt-chips"><span class="dt-chip2">Omeprazole</span><span class="dt-chip2">Vit D</span><span class="dt-chip-add">+ Add</span></div>
         <div class="dt-save">Save</div></div>
     </div></div></div><div class="card-info"><div class="card-screen">HEALTH PROFILE</div><div class="card-name">Health Profile × Cosmic Bloom</div><div class="palette"><div class="swatch" style="background:#07021A;border-color:#555"></div><div class="swatch" style="background:#B700FF"></div><div class="swatch" style="background:#00C8FF"></div><div class="swatch" style="background:#FF3C78"></div><div class="palette-label">Cosmic Bloom</div></div></div></div>
+
+  </div><!-- /section-grid -->
+</div><!-- /section -->
+
+<div class="section">
+  <p class="section-label">Screen 5 of 5</p>
+  <h2 class="section-title">Trends Screen — Food Signals &amp; charts</h2>
+  <div class="section-grid">
+
+    <!-- WARM & GROUNDED -->
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-warm">
+      <div class="tr-hdr"><div><div class="tr-title">Trends</div><div class="tr-sub">ANALYSED 2H AGO · 142 LOGS</div></div><div class="tr-analyse">⟳ Analyse</div></div>
+      <div class="tr-body">
+        <div class="tr-hero"><div class="tr-hero-bg"></div><div class="tr-hero-bg2"></div><div class="tr-hero-c"><div class="tr-hero-eyebrow">⚡ Strongest signal</div><div class="tr-hero-main"><span class="tr-hero-food">Garlic &amp; Onion</span><span class="tr-hero-arrow">→</span><span class="tr-hero-out">Bloating</span></div><div class="tr-hero-stats"><div><div class="tr-stat-v">2.4×</div><div class="tr-stat-l">more likely</div></div><div><div class="tr-stat-v">~2h</div><div class="tr-stat-l">peak</div></div><div><div class="tr-stat-v">18</div><div class="tr-stat-l">logs</div></div></div></div></div>
+        <div class="tr-seclabel">Food Signals</div>
+        <div class="tr-card"><div class="tr-c-top"><div class="tr-c-ico">☕</div><div><div class="tr-c-food">Caffeine</div><div class="tr-c-rel">→ Reflux · peaks ~45 min</div></div><div class="tr-c-rr"><div class="tr-c-rrv up">1.9×</div><div class="tr-c-rrl">RISK</div></div></div><div class="tr-bar"><div class="tr-bar-fill" style="width:70%"></div></div><div class="tr-c-meta"><span class="tr-c-evi">12 logs</span><span class="tr-badge">⚡ CONVERGENT</span></div></div>
+        <div class="tr-card"><div class="tr-c-top"><div class="tr-c-ico">🧀</div><div><div class="tr-c-food">High Fat</div><div class="tr-c-rel">→ Bloating · peaks ~3h</div></div><div class="tr-c-rr"><div class="tr-c-rrv up">1.6×</div><div class="tr-c-rrl">RISK</div></div></div><div class="tr-bar"><div class="tr-bar-fill" style="width:55%"></div></div><div class="tr-c-meta"><span class="tr-c-evi">9 logs</span></div></div>
+        <div class="tr-card"><div class="tr-c-top"><div class="tr-c-ico">🫚</div><div><div class="tr-c-food">Ginger</div><div class="tr-c-rel">→ calmer gut · protective</div></div><div class="tr-c-rr"><div class="tr-c-rrv down">0.6×</div><div class="tr-c-rrl">RISK</div></div></div><div class="tr-bar"><div class="tr-bar-fill good" style="width:40%"></div></div><div class="tr-c-meta"><span class="tr-c-evi">7 logs</span></div></div>
+        <div class="tr-seclabel">Symptom frequency · 30d</div>
+        <div class="tr-chart"><div class="tr-bars"><div class="tr-barcol"><div class="tr-vbar" style="height:80%"></div><div class="tr-blabel">Bloat</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:62%"></div><div class="tr-blabel">Reflux</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:48%"></div><div class="tr-blabel">Cramp</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:35%"></div><div class="tr-blabel">Fatig</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:22%"></div><div class="tr-blabel">Head</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:14%"></div><div class="tr-blabel">Naus</div></div></div></div>
+      </div>
+    </div></div></div><div class="card-info"><div class="card-screen">TRENDS</div><div class="card-name">Trends × Warm & Grounded</div><div class="palette"><div class="swatch" style="background:#FDFBF7;border-color:#555"></div><div class="swatch" style="background:#C0392B"></div><div class="swatch" style="background:#9B8C78"></div><div class="swatch" style="background:#1A1209"></div><div class="palette-label">Warm & Grounded</div></div></div></div>
+
+    <!-- AURORA -->
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-aurora">
+      <div class="tr-hdr"><div><div class="tr-title">Trends</div><div class="tr-sub">ANALYSED 2H AGO · 142 LOGS</div></div><div class="tr-analyse">⟳ Analyse</div></div>
+      <div class="tr-body">
+        <div class="tr-hero"><div class="tr-hero-bg"></div><div class="tr-hero-bg2"></div><div class="tr-hero-c"><div class="tr-hero-eyebrow">⚡ Strongest signal</div><div class="tr-hero-main"><span class="tr-hero-food">Garlic &amp; Onion</span><span class="tr-hero-arrow">→</span><span class="tr-hero-out">Bloating</span></div><div class="tr-hero-stats"><div><div class="tr-stat-v">2.4×</div><div class="tr-stat-l">more likely</div></div><div><div class="tr-stat-v">~2h</div><div class="tr-stat-l">peak</div></div><div><div class="tr-stat-v">18</div><div class="tr-stat-l">logs</div></div></div></div></div>
+        <div class="tr-seclabel">Food Signals</div>
+        <div class="tr-card"><div class="tr-c-top"><div class="tr-c-ico">☕</div><div><div class="tr-c-food">Caffeine</div><div class="tr-c-rel">→ Reflux · peaks ~45 min</div></div><div class="tr-c-rr"><div class="tr-c-rrv up">1.9×</div><div class="tr-c-rrl">RISK</div></div></div><div class="tr-bar"><div class="tr-bar-fill" style="width:70%"></div></div><div class="tr-c-meta"><span class="tr-c-evi">12 logs</span><span class="tr-badge">⚡ CONVERGENT</span></div></div>
+        <div class="tr-card"><div class="tr-c-top"><div class="tr-c-ico">🧀</div><div><div class="tr-c-food">High Fat</div><div class="tr-c-rel">→ Bloating · peaks ~3h</div></div><div class="tr-c-rr"><div class="tr-c-rrv up">1.6×</div><div class="tr-c-rrl">RISK</div></div></div><div class="tr-bar"><div class="tr-bar-fill" style="width:55%"></div></div><div class="tr-c-meta"><span class="tr-c-evi">9 logs</span></div></div>
+        <div class="tr-card"><div class="tr-c-top"><div class="tr-c-ico">🫚</div><div><div class="tr-c-food">Ginger</div><div class="tr-c-rel">→ calmer gut · protective</div></div><div class="tr-c-rr"><div class="tr-c-rrv down">0.6×</div><div class="tr-c-rrl">RISK</div></div></div><div class="tr-bar"><div class="tr-bar-fill good" style="width:40%"></div></div><div class="tr-c-meta"><span class="tr-c-evi">7 logs</span></div></div>
+        <div class="tr-seclabel">Symptom frequency · 30d</div>
+        <div class="tr-chart"><div class="tr-bars"><div class="tr-barcol"><div class="tr-vbar" style="height:80%"></div><div class="tr-blabel">Bloat</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:62%"></div><div class="tr-blabel">Reflux</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:48%"></div><div class="tr-blabel">Cramp</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:35%"></div><div class="tr-blabel">Fatig</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:22%"></div><div class="tr-blabel">Head</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:14%"></div><div class="tr-blabel">Naus</div></div></div></div>
+      </div>
+    </div></div></div><div class="card-info"><div class="card-screen">TRENDS</div><div class="card-name">Trends × Aurora</div><div class="palette"><div class="swatch" style="background:#112240"></div><div class="swatch" style="background:#34D399"></div><div class="swatch" style="background:#8B5CF6"></div><div class="swatch" style="background:#F87171"></div><div class="palette-label">Aurora</div></div></div></div>
+
+    <!-- COSMIC BLOOM -->
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-cosmic">
+      <div class="tr-hdr"><div><div class="tr-title">Trends</div><div class="tr-sub">ANALYSED 2H AGO · 142 LOGS</div></div><div class="tr-analyse">⟳ Analyse</div></div>
+      <div class="tr-body">
+        <div class="tr-hero"><div class="tr-hero-bg"></div><div class="tr-hero-bg2"></div><div class="tr-hero-c"><div class="tr-hero-eyebrow">⚡ Strongest signal</div><div class="tr-hero-main"><span class="tr-hero-food">Garlic &amp; Onion</span><span class="tr-hero-arrow">→</span><span class="tr-hero-out">Bloating</span></div><div class="tr-hero-stats"><div><div class="tr-stat-v">2.4×</div><div class="tr-stat-l">more likely</div></div><div><div class="tr-stat-v">~2h</div><div class="tr-stat-l">peak</div></div><div><div class="tr-stat-v">18</div><div class="tr-stat-l">logs</div></div></div></div></div>
+        <div class="tr-seclabel">Food Signals</div>
+        <div class="tr-card"><div class="tr-c-top"><div class="tr-c-ico">☕</div><div><div class="tr-c-food">Caffeine</div><div class="tr-c-rel">→ Reflux · peaks ~45 min</div></div><div class="tr-c-rr"><div class="tr-c-rrv up">1.9×</div><div class="tr-c-rrl">RISK</div></div></div><div class="tr-bar"><div class="tr-bar-fill" style="width:70%"></div></div><div class="tr-c-meta"><span class="tr-c-evi">12 logs</span><span class="tr-badge">⚡ CONVERGENT</span></div></div>
+        <div class="tr-card"><div class="tr-c-top"><div class="tr-c-ico">🧀</div><div><div class="tr-c-food">High Fat</div><div class="tr-c-rel">→ Bloating · peaks ~3h</div></div><div class="tr-c-rr"><div class="tr-c-rrv up">1.6×</div><div class="tr-c-rrl">RISK</div></div></div><div class="tr-bar"><div class="tr-bar-fill" style="width:55%"></div></div><div class="tr-c-meta"><span class="tr-c-evi">9 logs</span></div></div>
+        <div class="tr-card"><div class="tr-c-top"><div class="tr-c-ico">🫚</div><div><div class="tr-c-food">Ginger</div><div class="tr-c-rel">→ calmer gut · protective</div></div><div class="tr-c-rr"><div class="tr-c-rrv down">0.6×</div><div class="tr-c-rrl">RISK</div></div></div><div class="tr-bar"><div class="tr-bar-fill good" style="width:40%"></div></div><div class="tr-c-meta"><span class="tr-c-evi">7 logs</span></div></div>
+        <div class="tr-seclabel">Symptom frequency · 30d</div>
+        <div class="tr-chart"><div class="tr-bars"><div class="tr-barcol"><div class="tr-vbar" style="height:80%"></div><div class="tr-blabel">Bloat</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:62%"></div><div class="tr-blabel">Reflux</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:48%"></div><div class="tr-blabel">Cramp</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:35%"></div><div class="tr-blabel">Fatig</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:22%"></div><div class="tr-blabel">Head</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:14%"></div><div class="tr-blabel">Naus</div></div></div></div>
+      </div>
+    </div></div></div><div class="card-info"><div class="card-screen">TRENDS</div><div class="card-name">Trends × Cosmic Bloom</div><div class="palette"><div class="swatch" style="background:#07021A;border-color:#555"></div><div class="swatch" style="background:#B700FF"></div><div class="swatch" style="background:#00C8FF"></div><div class="swatch" style="background:#FF3C78"></div><div class="palette-label">Cosmic Bloom</div></div></div></div>
 
   </div><!-- /section-grid -->
 </div><!-- /section -->
