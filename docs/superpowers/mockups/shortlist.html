@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hearty — Design Shortlist</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:ital,wght@0,300;0,700;1,300;1,700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Space+Grotesk:wght@300;400;500;600;700&family=Abril+Fatface&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #080810;
+    color: #f0f0f0;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 48px 24px 80px;
+  }
+
+  /* ── Page header ── */
+  .page-eyebrow {
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #444;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 12px;
+  }
+  .page-logo {
+    text-align: center;
+    font-family: 'Fraunces', serif;
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .page-logo span { color: #C0392B; }
+  .page-headline {
+    text-align: center;
+    font-size: clamp(14px, 2vw, 18px);
+    color: #555;
+    font-family: 'Space Grotesk', sans-serif;
+    margin-bottom: 56px;
+  }
+
+  /* ── Section header ── */
+  .section {
+    max-width: 1400px;
+    margin: 0 auto 56px;
+  }
+  .section-label {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #444;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 6px;
+  }
+  .section-title {
+    font-size: clamp(20px, 3vw, 28px);
+    font-weight: 700;
+    color: #fff;
+    font-family: 'Space Grotesk', sans-serif;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #1e1e2e;
+  }
+  .section-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    gap: 28px;
+  }
+
+  /* ── Card shell ── */
+  .design-card {
+    background: #11111a;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid #1e1e2a;
+  }
+  .phone-wrapper {
+    padding: 24px 24px 0;
+    display: flex;
+    justify-content: center;
+    background: #0c0c12;
+  }
+  .phone {
+    width: 210px;
+    height: 420px;
+    border-radius: 34px;
+    overflow: hidden;
+    border: 5px solid #252535;
+    position: relative;
+    flex-shrink: 0;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+  }
+  .phone::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 56px; height: 18px;
+    background: #252535;
+    border-radius: 0 0 11px 11px;
+    z-index: 100;
+  }
+  .card-info {
+    padding: 16px 20px 20px;
+  }
+  .card-screen {
+    font-size: 9px;
+    color: #444;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.12em;
+    margin-bottom: 4px;
+  }
+  .card-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'Space Grotesk', sans-serif;
+    margin-bottom: 4px;
+  }
+  .card-desc {
+    font-size: 11px;
+    color: #666;
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  .palette { display: flex; gap: 5px; align-items: center; }
+  .swatch {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.07);
+  }
+  .palette-label {
+    font-size: 9px; color: #3a3a4a;
+    margin-left: 5px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 8px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 5px; margin-bottom: 5px;
+  }
+
+  /* ════════════════════════════════════════════
+     SETTINGS CARDS (compact, 210×420)
+  ════════════════════════════════════════════ */
+  .set-scr { width:100%; height:100%; position:relative; overflow:hidden; }
+  .set-warm   { background:#FDFBF7; }
+  .set-aurora { background:linear-gradient(165deg,#0c1626 0%,#0e1d38 60%,#0c1730 100%); }
+  .set-cosmic { background:#07021A; }
+  .set-cosmic::after { content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      radial-gradient(1px 1px at 30px 50px, rgba(255,255,255,0.5), transparent),
+      radial-gradient(1px 1px at 90px 120px, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1px 1px at 150px 70px, rgba(255,255,255,0.5), transparent),
+      radial-gradient(1px 1px at 185px 200px, rgba(255,255,255,0.35), transparent),
+      radial-gradient(1px 1px at 55px 260px, rgba(255,255,255,0.45), transparent),
+      radial-gradient(1px 1px at 165px 340px, rgba(255,255,255,0.4), transparent); }
+  .set-glow { position:absolute; border-radius:50%; pointer-events:none; z-index:0; }
+  .set-hdr { padding:24px 13px 8px; display:flex; align-items:center; justify-content:space-between; position:relative; z-index:5; }
+  .set-title { font-family:'Fraunces',serif; font-size:15px; font-weight:700; }
+  .set-warm .set-title { color:#1A1209; }
+  .set-aurora .set-title, .set-cosmic .set-title { color:#fff; }
+  .set-logo { font-size:11px; font-weight:700; }
+  .set-logo.f { font-family:'Fraunces',serif; }
+  .set-body { padding:2px 11px; position:relative; z-index:5; }
+
+  /* L2 compact glass rows */
+  .set-row { display:flex; align-items:center; gap:9px; padding:8px 9px; margin-bottom:7px; border-radius:11px; }
+  .set-aurora .set-row, .set-cosmic .set-row { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); }
+  .set-warm .set-row { background:#fff; border:1px solid #EDE8DF; box-shadow:0 3px 9px -5px rgba(140,90,60,0.3); }
+  .set-chip { width:28px; height:28px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; background:linear-gradient(315deg,var(--gf),var(--gt)); box-shadow:0 3px 10px -3px var(--gf); }
+  .set-t { font-size:10.5px; font-weight:600; }
+  .set-s { font-size:7px; margin-top:1px; }
+  .set-warm .set-t { color:#1A1209; } .set-warm .set-s { color:#9B8C78; } .set-warm .set-chev { color:#C8B89A; }
+  .set-aurora .set-t, .set-cosmic .set-t { color:#fff; }
+  .set-aurora .set-s, .set-cosmic .set-s { color:rgba(255,255,255,0.45); }
+  .set-aurora .set-chev, .set-cosmic .set-chev { color:rgba(255,255,255,0.3); }
+  .set-chev { margin-left:auto; font-size:12px; }
+
+  /* L1 compact skew gradient cards */
+  .set-card { position:relative; height:48px; margin-bottom:16px; }
+  .set-panel { position:absolute; top:0; left:22px; width:60%; height:100%; border-radius:10px; transform:skewX(12deg); background:linear-gradient(315deg,var(--gf),var(--gt)); }
+  .set-panel.blur { filter:blur(12px); opacity:0.6; }
+  .set-face { position:absolute; inset:0; left:0; padding:0 13px; border-radius:10px; display:flex; align-items:center; gap:9px; z-index:2; }
+  .set-aurora .set-face { background:rgba(255,255,255,0.06); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.12); }
+  .set-fico { font-size:15px; }
+
+  /* ════════════════════════════════════════════
+     SETTINGS DETAIL SUB-SCREENS (themed components)
+  ════════════════════════════════════════════ */
+  .phone-lg { width:248px !important; height:520px !important; }
+  .dt-scr { width:100%; height:100%; position:relative; overflow:hidden; background:var(--bg); color:var(--tx); }
+  .dt-warm { --bg:#FDFBF7; --card:#fff; --cardbd:#EDE8DF; --tx:#1A1209; --sub:#9B8C78; --acc:#C0392B; --accg:linear-gradient(135deg,#E8A87C,#C0392B); --faint:rgba(26,18,9,0.06); }
+  .dt-aurora { --card:rgba(255,255,255,0.055); --cardbd:rgba(255,255,255,0.09); --tx:#fff; --sub:rgba(255,255,255,0.5); --acc:#34D399; --accg:linear-gradient(135deg,#34D399,#059669); --faint:rgba(255,255,255,0.08);
+    background:radial-gradient(200px 200px at 112% -4%,rgba(52,211,153,0.13),transparent 70%),radial-gradient(180px 180px at -12% 82%,rgba(139,92,246,0.13),transparent 70%),linear-gradient(165deg,#0c1626,#0e1d38 60%,#0c1730); }
+  .dt-cosmic { --card:rgba(255,255,255,0.05); --cardbd:rgba(255,255,255,0.1); --tx:#fff; --sub:rgba(255,255,255,0.5); --acc:#00C8FF; --accg:linear-gradient(135deg,#B700FF,#00C8FF); --faint:rgba(255,255,255,0.07);
+    background:radial-gradient(180px 180px at 112% 0%,rgba(183,0,255,0.24),transparent 70%),radial-gradient(160px 160px at -12% 72%,rgba(0,200,255,0.2),transparent 70%),radial-gradient(140px 140px at 112% 46%,rgba(255,60,120,0.16),transparent 70%),#07021A; }
+  .dt-cosmic::after { content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
+    background-image:radial-gradient(1px 1px at 30px 60px,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 110px 140px,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 200px 90px,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 60px 300px,rgba(255,255,255,0.45),transparent),radial-gradient(1px 1px at 170px 400px,rgba(255,255,255,0.4),transparent); }
+  .dt-appbar { display:flex; align-items:center; gap:9px; padding:20px 13px 9px; position:relative; z-index:5; }
+  .dt-back { font-size:18px; opacity:0.65; }
+  .dt-abtitle { font-family:'Fraunces',serif; font-size:15px; font-weight:700; }
+  .dt-reset { margin-left:auto; font-size:9px; color:var(--acc); font-weight:700; }
+  .dt-body { padding:2px 12px 12px; position:relative; z-index:5; }
+  .dt-intro { font-size:9px; color:var(--sub); line-height:1.5; margin-bottom:10px; }
+  .dt-seclabel { font-size:7px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--sub); margin:11px 4px 6px; font-family:'JetBrains Mono',monospace; }
+  .dt-card { background:var(--card); border:1px solid var(--cardbd); border-radius:12px; overflow:hidden; backdrop-filter:blur(8px); }
+  .dt-srow { display:flex; align-items:center; gap:9px; padding:9px 11px; border-bottom:1px solid var(--faint); }
+  .dt-srow:last-child { border-bottom:none; }
+  .dt-ico2 { width:27px; height:27px; border-radius:8px; background:var(--accg); display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
+  .dt-st { font-size:10px; font-weight:600; color:var(--tx); }
+  .dt-ss { font-size:7px; color:var(--sub); margin-top:1px; }
+  .dt-toggle { margin-left:auto; width:30px; height:18px; border-radius:10px; position:relative; flex-shrink:0; }
+  .dt-toggle.on { background:var(--accg); } .dt-toggle.off { background:var(--faint); }
+  .dt-knob { position:absolute; top:2px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.35); }
+  .dt-toggle.on .dt-knob { right:2px; } .dt-toggle.off .dt-knob { left:2px; }
+  .dt-slide { padding:9px 11px; border-bottom:1px solid var(--faint); }
+  .dt-slide-top { display:flex; justify-content:space-between; font-size:8px; margin-bottom:7px; }
+  .dt-slide-lab { color:var(--sub); } .dt-slide-val { color:var(--acc); font-weight:700; }
+  .dt-track { height:4px; border-radius:2px; background:var(--faint); position:relative; }
+  .dt-fill { position:absolute; left:0; top:0; bottom:0; border-radius:2px; background:var(--accg); }
+  .dt-knob2 { position:absolute; top:50%; transform:translate(-50%,-50%); width:13px; height:13px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.45); }
+  .dt-save { margin-top:13px; width:100%; padding:10px; border-radius:11px; background:var(--accg); color:#fff; font-size:11px; font-weight:700; text-align:center; }
+  .dt-opt { background:var(--card); border:1px solid var(--cardbd); border-radius:12px; padding:10px 11px; margin-bottom:9px; backdrop-filter:blur(8px); }
+  .dt-opt.sel { border-color:transparent; box-shadow:0 0 0 2px var(--acc); }
+  .dt-opt-h { display:flex; align-items:center; gap:7px; margin-bottom:4px; }
+  .dt-radio { width:14px; height:14px; border-radius:50%; border:2px solid var(--sub); flex-shrink:0; }
+  .dt-opt.sel .dt-radio { border-color:var(--acc); background:radial-gradient(circle,var(--acc) 42%,transparent 46%); }
+  .dt-opt-t { font-size:10px; font-weight:700; }
+  .dt-opt-s { font-size:8px; color:var(--sub); line-height:1.4; margin-bottom:7px; }
+  .dt-bubs { display:flex; flex-direction:column; gap:3px; }
+  .dt-bub { font-size:7.5px; border-radius:7px; padding:4px 7px; line-height:1.35; max-width:88%; }
+  .dt-bub-u { background:var(--faint); color:var(--tx); align-self:flex-end; }
+  .dt-bub-ai { background:var(--accg); color:#fff; align-self:flex-start; }
+  .dt-vrow { display:flex; align-items:center; gap:9px; padding:9px 11px; border-bottom:1px solid var(--faint); }
+  .dt-vrow:last-child { border-bottom:none; }
+  .dt-vcheck { width:15px; height:15px; border-radius:50%; border:2px solid var(--sub); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:8px; color:#fff; }
+  .dt-vrow.sel .dt-vcheck { background:var(--accg); border-color:transparent; }
+  .dt-vt { font-size:10px; font-weight:600; } .dt-vs { font-size:7px; color:var(--sub); margin-top:1px; }
+  .dt-play { margin-left:auto; width:24px; height:24px; border-radius:50%; background:var(--faint); display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--acc); flex-shrink:0; }
+  .dt-chips { display:flex; flex-wrap:wrap; gap:5px; }
+  .dt-chip2 { font-size:8.5px; font-weight:600; padding:4px 10px; border-radius:20px; background:var(--accg); color:#fff; }
+  .dt-chip-add { font-size:8.5px; font-weight:600; padding:4px 10px; border-radius:20px; border:1px dashed var(--sub); color:var(--sub); }
+
+  /* footer */
+  .footer {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 11px;
+    color: #333;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .footer span { color: #C0392B; }
+
+  /* ════════════════════════════════════════════
+     L1: RADIAL CLOCK × WARM & GROUNDED
+  ════════════════════════════════════════════ */
+  .l1-phone { background: #FDFBF7; }
+  .l1-inner { width: 100%; height: 100%; position: relative; overflow: hidden; }
+  .l1-topbar {
+    background: #FDFBF7; border-bottom: 1px solid #EDE8DF;
+    padding: 26px 13px 7px;
+    display: flex; justify-content: space-between; align-items: center;
+    position: relative; z-index: 2;
+  }
+  .l1-logo { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 700; color: #1A1209; letter-spacing: -0.02em; }
+  .l1-logo span { color: #C0392B; }
+  .l1-date-label { font-size: 9px; color: #9B8C78; font-family: 'DM Sans', sans-serif; }
+  .l1-clock-zone {
+    position: relative; width: 100%; height: 192px;
+    display: flex; align-items: center; justify-content: center;
+    background: #FDFBF7;
+  }
+  .l1-clock-bg {
+    position: absolute; width: 154px; height: 154px; border-radius: 50%;
+    border: 1.5px solid #EDE8DF;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+  }
+  .l1-clock-inner {
+    position: absolute; width: 96px; height: 96px; border-radius: 50%;
+    border: 1px solid #F0EBE0;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+  }
+  .l1-clock-center {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%); text-align: center; z-index: 2;
+  }
+  .l1-time { font-size: 19px; font-weight: 800; color: #1A1209; font-family: 'Fraunces', serif; line-height: 1; }
+  .l1-time-label { font-size: 7px; color: #9B8C78; font-family: 'DM Sans', sans-serif; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 2px; }
+  .l1-entry-dot {
+    position: absolute; width: 30px; height: 30px; border-radius: 50%;
+    background: #fff; border: 2px solid #EDE8DF;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; top: 50%; left: 50%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  }
+  .l1-dot-meal  { transform: translate(calc(-50% + 59px), calc(-50% - 18px)); }
+  .l1-dot-lunch { transform: translate(calc(-50% + 47px), calc(-50% + 37px)); }
+  .l1-dot-sym   { transform: translate(calc(-50% - 53px), calc(-50% + 47px)); border-color: #FDF0EE; }
+  .l1-dot-din   { transform: translate(calc(-50% - 57px), calc(-50% - 12px)); }
+  .l1-dot-snack { transform: translate(calc(-50% + 0px),  calc(-50% - 62px)); }
+  .l1-dot-label {
+    position: absolute; font-size: 7px; font-weight: 600; color: #9B8C78;
+    font-family: 'DM Sans', sans-serif; white-space: nowrap;
+  }
+  .l1-label-meal   { transform: translate(calc(-50% + 94px),  calc(-50% - 16px)); }
+  .l1-label-lunch  { transform: translate(calc(-50% + 84px),  calc(-50% + 41px)); }
+  .l1-label-sym    { transform: translate(calc(-50% - 94px),  calc(-50% + 52px)); color: #C0392B; }
+  .l1-label-din    { transform: translate(calc(-50% - 96px),  calc(-50% - 10px)); }
+  .l1-dot-meal.active { border-color: #C0392B; background: #FDF0EE; }
+  .l1-recents { padding: 0 11px 6px; background: #FDFBF7; }
+  .l1-section-label { font-size: 8px; font-weight: 600; color: #C0392B; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; font-family: 'DM Sans', sans-serif; }
+  .l1-recent-entry {
+    background: #fff; border: 1px solid #EDE8DF; border-radius: 9px;
+    padding: 6px 9px; margin-bottom: 4px;
+    display: flex; gap: 7px; align-items: center;
+  }
+  .l1-re-icon { font-size: 11px; }
+  .l1-re-title { font-size: 9px; font-weight: 600; color: #1A1209; font-family: 'DM Sans', sans-serif; }
+  .l1-re-time { margin-left: auto; font-size: 7px; color: #9B8C78; font-family: 'JetBrains Mono', monospace; }
+  .l1-fab {
+    position: absolute; bottom: 44px; right: 13px;
+    width: 34px; height: 34px; background: #C0392B; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 17px; box-shadow: 0 4px 12px rgba(192,57,43,0.45); z-index: 10;
+  }
+  .l1-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: #FDFBF7; border-top: 1px solid #EDE8DF;
+    padding: 7px 0 4px; display: flex; justify-content: space-around; z-index: 5;
+  }
+  .l1-nav-item { font-size: 15px; opacity: 0.25; }
+  .l1-nav-item.active { opacity: 1; }
+
+  /* ════════════════════════════════════════════
+     L4: HOUR GRID × COSMIC BLOOM
+  ════════════════════════════════════════════ */
+  .l4-phone { background: #07021A; }
+  .l4-inner { width: 100%; height: 100%; position: relative; overflow: hidden; }
+  .l4-nebula1 { position: absolute; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, rgba(183,0,255,0.22) 0%, transparent 65%); top: -70px; left: -50px; }
+  .l4-nebula2 { position: absolute; width: 160px; height: 160px; border-radius: 50%; background: radial-gradient(circle, rgba(0,200,255,0.18) 0%, transparent 65%); top: 100px; right: -50px; }
+  .l4-nebula3 { position: absolute; width: 130px; height: 130px; border-radius: 50%; background: radial-gradient(circle, rgba(255,60,120,0.15) 0%, transparent 65%); bottom: 80px; left: 20px; }
+  .l4-stars { position: absolute; inset: 0; background-image: radial-gradient(1px 1px at 25px 40px, rgba(255,255,255,0.5) 0%, transparent 100%), radial-gradient(1px 1px at 90px 110px, rgba(255,255,255,0.35) 0%, transparent 100%), radial-gradient(1px 1px at 160px 30px, rgba(255,255,255,0.4) 0%, transparent 100%), radial-gradient(1px 1px at 180px 190px, rgba(255,255,255,0.25) 0%, transparent 100%), radial-gradient(1px 1px at 60px 310px, rgba(255,255,255,0.35) 0%, transparent 100%); }
+  .l4-content { position: relative; z-index: 2; height: 100%; }
+  .l4-topbar { padding: 26px 13px 9px; display: flex; justify-content: space-between; align-items: center; }
+  .l4-logo { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; background: linear-gradient(135deg, #B700FF, #00C8FF, #FF3C78); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .l4-date { font-size: 8px; color: rgba(255,255,255,0.25); font-family: 'JetBrains Mono', monospace; }
+  .l4-grid-header { display: flex; padding: 0 9px 3px 40px; gap: 3px; }
+  .l4-col-head { flex: 1; text-align: center; font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-family: 'Syne', sans-serif; }
+  .l4-col-head.meals { color: rgba(255,200,0,0.6); }
+  .l4-col-head.symptoms { color: rgba(255,60,120,0.6); }
+  .l4-col-head.mood { color: rgba(0,200,255,0.6); }
+  .l4-grid-body { padding: 0 9px 0 0; }
+  .l4-row { display: flex; align-items: center; height: 27px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .l4-row.now { background: rgba(183,0,255,0.08); }
+  .l4-hour { width: 32px; flex-shrink: 0; text-align: right; padding-right: 7px; font-size: 7px; color: rgba(255,255,255,0.25); font-family: 'JetBrains Mono', monospace; }
+  .l4-row.now .l4-hour { color: rgba(183,0,255,0.8); }
+  .l4-cells { flex: 1; display: flex; gap: 3px; align-items: center; padding: 0 3px; }
+  .l4-cell { flex: 1; height: 19px; display: flex; align-items: center; justify-content: center; }
+  .l4-pill { border-radius: 7px; font-size: 8px; display: flex; align-items: center; justify-content: center; gap: 2px; padding: 0 4px; height: 15px; width: 100%; }
+  .l4-pill.meal { background: rgba(255,200,0,0.15); border: 1px solid rgba(255,200,0,0.25); color: rgba(255,200,0,0.9); }
+  .l4-pill.sym { background: rgba(255,60,120,0.15); border: 1px solid rgba(255,60,120,0.25); color: rgba(255,60,120,0.9); }
+  .l4-pill.mood-p { background: rgba(0,200,255,0.12); border: 1px solid rgba(0,200,255,0.22); color: rgba(0,200,255,0.9); }
+  .l4-pill.empty { background: transparent; border: none; }
+  .l4-fab { position: absolute; bottom: 9px; right: 11px; width: 32px; height: 32px; background: linear-gradient(135deg, #B700FF, #00C8FF); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; box-shadow: 0 0 18px rgba(183,0,255,0.5); z-index: 10; }
+
+  /* ════════════════════════════════════════════
+     L7: RADIAL CLOCK × AURORA
+  ════════════════════════════════════════════ */
+  .l7-phone { background: linear-gradient(160deg, #0F1F2E 0%, #112240 100%); }
+  .l7-inner { width: 100%; height: 100%; position: relative; overflow: hidden; }
+  .l7-glow1 { position: absolute; width: 190px; height: 190px; border-radius: 50%; background: radial-gradient(circle, rgba(52,211,153,0.16) 0%, transparent 70%); top: -55px; right: -55px; }
+  .l7-glow2 { position: absolute; width: 155px; height: 155px; border-radius: 50%; background: radial-gradient(circle, rgba(139,92,246,0.14) 0%, transparent 70%); bottom: 90px; left: -48px; }
+  .l7-content { position: relative; z-index: 2; height: 100%; }
+  .l7-topbar { padding: 26px 13px 5px; display: flex; justify-content: space-between; align-items: center; }
+  .l7-logo { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+  .l7-logo span { color: #34D399; }
+  .l7-date { font-size: 7px; color: rgba(255,255,255,0.3); font-family: 'JetBrains Mono', monospace; }
+  .l7-clock-zone { position: relative; width: 100%; height: 188px; display: flex; align-items: center; justify-content: center; }
+  .l7-ring-outer { position: absolute; width: 150px; height: 150px; border-radius: 50%; border: 1px solid rgba(52,211,153,0.2); top: 50%; left: 50%; transform: translate(-50%, -50%); }
+  .l7-ring-inner { position: absolute; width: 92px; height: 92px; border-radius: 50%; border: 1px solid rgba(52,211,153,0.1); top: 50%; left: 50%; transform: translate(-50%, -50%); }
+  .l7-clock-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 2; }
+  .l7-time { font-size: 18px; font-weight: 800; color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1; }
+  .l7-time-label { font-size: 7px; color: rgba(52,211,153,0.6); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 2px; }
+  .l7-entry-dot { position: absolute; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; font-size: 11px; top: 50%; left: 50%; }
+  .l7-edot-meal  { transform: translate(calc(-50% + 57px), calc(-50% - 17px)); border-color: rgba(52,211,153,0.35); }
+  .l7-edot-lunch { transform: translate(calc(-50% + 46px), calc(-50% + 36px)); border-color: rgba(52,211,153,0.25); }
+  .l7-edot-sym   { transform: translate(calc(-50% - 51px), calc(-50% + 44px)); border-color: rgba(239,68,68,0.35); }
+  .l7-edot-din   { transform: translate(calc(-50% - 55px), calc(-50% - 11px)); border-color: rgba(52,211,153,0.2); }
+  .l7-edot-snack { transform: translate(calc(-50% + 1px),  calc(-50% - 59px)); border-color: rgba(139,92,246,0.35); }
+  .l7-recents { padding: 0 11px 5px; }
+  .l7-section-label { font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(52,211,153,0.6); margin-bottom: 4px; font-family: 'Plus Jakarta Sans', sans-serif; }
+  .l7-recent-entry { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 5px 9px; margin-bottom: 4px; display: flex; gap: 7px; align-items: center; }
+  .l7-re-icon { font-size: 10px; }
+  .l7-re-title { font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.85); font-family: 'Plus Jakarta Sans', sans-serif; }
+  .l7-re-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .l7-re-dot.g { background: #34D399; box-shadow: 0 0 4px #34D399; }
+  .l7-re-dot.r { background: #F87171; box-shadow: 0 0 4px #F87171; }
+  .l7-re-dot.p { background: #A78BFA; box-shadow: 0 0 4px #A78BFA; }
+  .l7-re-time { margin-left: auto; font-size: 7px; color: rgba(255,255,255,0.2); font-family: 'JetBrains Mono', monospace; }
+  .l7-nav { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(10,20,35,0.85); border-top: 1px solid rgba(255,255,255,0.07); padding: 5px 0 3px; display: flex; justify-content: space-around; backdrop-filter: blur(20px); z-index: 5; }
+  .l7-nav-item { font-size: 14px; opacity: 0.2; }
+  .l7-nav-item.active { opacity: 1; }
+  .l7-fab { position: absolute; bottom: 30px; right: 12px; width: 32px; height: 32px; background: linear-gradient(135deg, #34D399, #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; box-shadow: 0 4px 14px rgba(52,211,153,0.45); z-index: 10; }
+
+  /* ════════════════════════════════════════════
+     L8: STORY MODE × COSMIC BLOOM
+  ════════════════════════════════════════════ */
+  .l8-phone { background: #07021A; height: 100%; }
+  .l8-inner { width: 100%; height: 100%; position: relative; overflow: hidden; }
+  .l8-stars { position: absolute; inset: 0; background-image: radial-gradient(1px 1px at 35px 55px, rgba(255,255,255,0.6) 0%, transparent 100%), radial-gradient(1px 1px at 95px 125px, rgba(255,255,255,0.4) 0%, transparent 100%), radial-gradient(1px 1px at 165px 35px, rgba(255,255,255,0.5) 0%, transparent 100%), radial-gradient(1px 1px at 185px 210px, rgba(255,255,255,0.3) 0%, transparent 100%), radial-gradient(1px 1px at 55px 320px, rgba(255,255,255,0.35) 0%, transparent 100%); }
+  .l8-story-bar { position: absolute; top: 24px; left: 11px; right: 11px; display: flex; gap: 3px; z-index: 10; }
+  .l8-story-seg { flex: 1; height: 2px; border-radius: 2px; background: rgba(255,255,255,0.15); }
+  .l8-story-seg.done { background: rgba(183,0,255,0.7); }
+  .l8-story-seg.active { background: rgba(0,200,255,0.6); }
+  .l8-slide { position: absolute; inset: 0; background: linear-gradient(160deg, #1A004A 0%, #07021A 50%, #001A2A 100%); padding: 48px 15px 15px; z-index: 1; }
+  .l8-nebula-slide { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 30% 20%, rgba(183,0,255,0.28) 0%, transparent 65%), radial-gradient(ellipse 60% 50% at 80% 70%, rgba(0,200,255,0.2) 0%, transparent 65%); z-index: 0; }
+  .l8-slide-content { position: relative; z-index: 2; }
+  .l8-slide-tag { display: inline-block; border-radius: 20px; padding: 2px 9px; font-size: 8px; font-weight: 700; font-family: 'Syne', sans-serif; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 9px; }
+  .l8-slide-tag.meal { color: #FFC800; border: 1px solid rgba(255,200,0,0.4); background: rgba(255,200,0,0.1); }
+  .l8-slide-time { font-size: 9px; color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono', monospace; margin-bottom: 3px; }
+  .l8-slide-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; background: linear-gradient(135deg, #B700FF, #00C8FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.15; margin-bottom: 7px; }
+  .l8-slide-sub { font-size: 9px; color: rgba(255,255,255,0.55); line-height: 1.5; font-family: 'Plus Jakarta Sans', sans-serif; }
+  .l8-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 9px; }
+  .l8-chip { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; padding: 2px 8px; font-size: 8px; font-weight: 600; color: rgba(255,255,255,0.6); font-family: 'Plus Jakarta Sans', sans-serif; }
+  .l8-thumb { position: absolute; bottom: 76px; right: 15px; width: 64px; height: 64px; border-radius: 14px; background: rgba(183,0,255,0.15); border: 1px solid rgba(183,0,255,0.3); display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 0 18px rgba(183,0,255,0.25); z-index: 2; }
+  .l8-bottom { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(7,2,26,0.95); border-top: 1px solid rgba(255,255,255,0.07); padding: 7px 13px 5px; z-index: 5; }
+  .l8-dots { display: flex; gap: 4px; justify-content: center; margin-bottom: 5px; }
+  .l8-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.12); }
+  .l8-dot.active { background: #B700FF; width: 13px; border-radius: 3px; box-shadow: 0 0 7px rgba(183,0,255,0.6); }
+  .l8-nav-row { display: flex; justify-content: space-around; }
+  .l8-nav-item { font-size: 14px; opacity: 0.18; }
+  .l8-nav-item.active { opacity: 1; }
+
+  /* ════════════════════════════════════════════
+     H1: CALENDAR+DAY × COSMIC BLOOM
+  ════════════════════════════════════════════ */
+  .h1-phone { background: #07021A; height: 100%; }
+  .h1-inner { width: 100%; height: 100%; position: relative; overflow: hidden; }
+  .h1-nebula1 { position: absolute; width: 210px; height: 210px; border-radius: 50%; background: radial-gradient(circle, rgba(183,0,255,0.28) 0%, transparent 65%); top: -75px; left: -55px; }
+  .h1-nebula2 { position: absolute; width: 155px; height: 155px; border-radius: 50%; background: radial-gradient(circle, rgba(0,200,255,0.2) 0%, transparent 65%); top: 80px; right: -48px; }
+  .h1-nebula3 { position: absolute; width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle, rgba(255,60,120,0.16) 0%, transparent 65%); bottom: 75px; left: 18px; }
+  .h1-stars { position: absolute; inset: 0; background-image: radial-gradient(1px 1px at 25px 35px, rgba(255,255,255,0.55) 0%, transparent 100%), radial-gradient(1px 1px at 85px 100px, rgba(255,255,255,0.35) 0%, transparent 100%), radial-gradient(1px 1px at 155px 28px, rgba(255,255,255,0.45) 0%, transparent 100%), radial-gradient(1px 1px at 180px 185px, rgba(255,255,255,0.28) 0%, transparent 100%), radial-gradient(1px 1px at 60px 310px, rgba(255,255,255,0.35) 0%, transparent 100%); }
+  .h1-content { position: relative; z-index: 2; height: 100%; }
+  .h1-header { padding: 23px 13px 11px; border-bottom: 1px solid rgba(183,0,255,0.15); }
+  .h1-header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; }
+  .h1-logo { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 800; background: linear-gradient(135deg, #B700FF, #00C8FF, #FF3C78); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .h1-month { font-size: 7px; font-weight: 700; color: rgba(183,0,255,0.7); font-family: 'Syne', sans-serif; text-transform: uppercase; letter-spacing: 0.1em; }
+  .h1-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .h1-cal-head { text-align: center; font-size: 7px; font-weight: 600; color: rgba(255,255,255,0.25); font-family: 'Syne', sans-serif; padding: 2px 0; }
+  .h1-cal-day { text-align: center; font-size: 8px; color: rgba(255,255,255,0.42); font-family: 'Plus Jakarta Sans', sans-serif; padding: 2px 0; border-radius: 4px; position: relative; }
+  .h1-cal-day.has-entry::after { content: ''; display: block; width: 3px; height: 3px; border-radius: 50%; background: rgba(183,0,255,0.7); box-shadow: 0 0 4px rgba(183,0,255,0.5); margin: 1px auto 0; }
+  .h1-cal-day.today { background: rgba(183,0,255,0.15); border: 1px solid rgba(183,0,255,0.3); color: rgba(255,255,255,0.9); font-weight: 700; }
+  .h1-cal-day.selected { background: linear-gradient(135deg, rgba(183,0,255,0.5), rgba(0,200,255,0.35)); color: #fff; font-weight: 800; box-shadow: 0 0 9px rgba(183,0,255,0.4); }
+  .h1-cal-day.selected::after { display: none; }
+  .h1-cal-day.other { color: rgba(255,255,255,0.15); }
+  .h1-day-view { padding: 9px 11px 7px; }
+  .h1-day-label { font-size: 7px; font-weight: 700; background: linear-gradient(135deg, #B700FF, #00C8FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-family: 'Syne', sans-serif; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; }
+  .h1-tl-entry { display: flex; gap: 7px; align-items: flex-start; margin-bottom: 5px; }
+  .h1-tl-time { width: 23px; flex-shrink: 0; font-size: 7px; color: rgba(255,255,255,0.22); font-family: 'JetBrains Mono', monospace; padding-top: 3px; text-align: right; }
+  .h1-tl-spine { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+  .h1-tl-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 2px; }
+  .h1-tl-dot.meal { background: #FFC800; box-shadow: 0 0 5px rgba(255,200,0,0.6); }
+  .h1-tl-dot.sym  { background: #FF3C78; box-shadow: 0 0 5px rgba(255,60,120,0.6); }
+  .h1-tl-dot.mood { background: #00C8FF; box-shadow: 0 0 5px rgba(0,200,255,0.6); }
+  .h1-tl-connector { width: 1px; flex: 1; min-height: 9px; background: rgba(255,255,255,0.06); }
+  .h1-tl-card { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 5px 8px; }
+  .h1-tl-card.meal { border-color: rgba(255,200,0,0.18); }
+  .h1-tl-card.sym  { border-color: rgba(255,60,120,0.18); }
+  .h1-tl-card.mood { border-color: rgba(0,200,255,0.15); }
+  .h1-tl-title { font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.88); font-family: 'Syne', sans-serif; }
+  .h1-tl-sub { font-size: 7px; color: rgba(255,255,255,0.35); font-family: 'Plus Jakarta Sans', sans-serif; margin-top: 1px; }
+  .h1-chip { display: inline-block; margin-top: 2px; font-size: 6px; font-weight: 700; font-family: 'Syne', sans-serif; padding: 1px 5px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .h1-chip.meal { background: rgba(255,200,0,0.12); color: rgba(255,200,0,0.8); }
+  .h1-chip.sym  { background: rgba(255,60,120,0.12); color: rgba(255,60,120,0.8); }
+  .h1-chip.mood { background: rgba(0,200,255,0.1); color: rgba(0,200,255,0.8); }
+
+  /* ════════════════════════════════════════════
+     H2: CALENDAR+DAY × AURORA
+  ════════════════════════════════════════════ */
+  .h2-phone { background: linear-gradient(160deg, #0F1F2E 0%, #112240 100%); height: 100%; }
+  .h2-inner { width: 100%; height: 100%; position: relative; overflow: hidden; }
+  .h2-glow1 { position: absolute; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, rgba(52,211,153,0.14) 0%, transparent 70%); top: -55px; right: -55px; }
+  .h2-glow2 { position: absolute; width: 160px; height: 160px; border-radius: 50%; background: radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%); bottom: 90px; left: -48px; }
+  .h2-content { position: relative; z-index: 2; height: 100%; }
+  .h2-header { padding: 23px 13px 11px; border-bottom: 1px solid rgba(52,211,153,0.12); }
+  .h2-header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; }
+  .h2-logo { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+  .h2-logo span { color: #34D399; }
+  .h2-month { font-size: 7px; font-weight: 700; color: rgba(52,211,153,0.6); font-family: 'Plus Jakarta Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.1em; }
+  .h2-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .h2-cal-head { text-align: center; font-size: 7px; font-weight: 600; color: rgba(255,255,255,0.22); font-family: 'Plus Jakarta Sans', sans-serif; padding: 2px 0; }
+  .h2-cal-day { text-align: center; font-size: 8px; color: rgba(255,255,255,0.38); font-family: 'Plus Jakarta Sans', sans-serif; padding: 2px 0; border-radius: 4px; position: relative; }
+  .h2-cal-day.has-entry::after { content: ''; display: block; width: 3px; height: 3px; border-radius: 50%; background: #34D399; box-shadow: 0 0 4px rgba(52,211,153,0.6); margin: 1px auto 0; }
+  .h2-cal-day.today { background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.25); color: #fff; font-weight: 700; }
+  .h2-cal-day.selected { background: rgba(52,211,153,0.22); border: 1px solid rgba(52,211,153,0.5); color: #34D399; font-weight: 800; box-shadow: 0 0 8px rgba(52,211,153,0.25); }
+  .h2-cal-day.selected::after { display: none; }
+  .h2-cal-day.other { color: rgba(255,255,255,0.14); }
+  .h2-day-view { padding: 9px 11px 7px; }
+  .h2-day-label { font-size: 7px; font-weight: 700; color: rgba(52,211,153,0.7); font-family: 'Plus Jakarta Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; }
+  .h2-tl-entry { display: flex; gap: 7px; align-items: flex-start; margin-bottom: 5px; }
+  .h2-tl-time { width: 23px; flex-shrink: 0; font-size: 7px; color: rgba(255,255,255,0.2); font-family: 'JetBrains Mono', monospace; padding-top: 3px; text-align: right; }
+  .h2-tl-spine { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+  .h2-tl-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 2px; }
+  .h2-tl-dot.meal { background: #34D399; box-shadow: 0 0 5px rgba(52,211,153,0.5); }
+  .h2-tl-dot.sym  { background: #F87171; box-shadow: 0 0 5px rgba(248,113,113,0.5); }
+  .h2-tl-dot.mood { background: #A78BFA; box-shadow: 0 0 5px rgba(167,139,250,0.5); }
+  .h2-tl-connector { width: 1px; flex: 1; min-height: 9px; background: rgba(52,211,153,0.08); }
+  .h2-tl-card { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 5px 8px; }
+  .h2-tl-card.meal { border-color: rgba(52,211,153,0.2); }
+  .h2-tl-card.sym  { border-color: rgba(248,113,113,0.2); }
+  .h2-tl-card.mood { border-color: rgba(167,139,250,0.18); }
+  .h2-tl-title { font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.88); font-family: 'Plus Jakarta Sans', sans-serif; }
+  .h2-tl-sub { font-size: 7px; color: rgba(255,255,255,0.32); font-family: 'Plus Jakarta Sans', sans-serif; margin-top: 1px; }
+  .h2-chip { display: inline-block; margin-top: 2px; font-size: 6px; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif; padding: 1px 5px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .h2-chip.meal { background: rgba(52,211,153,0.1); color: #34D399; }
+  .h2-chip.sym  { background: rgba(248,113,113,0.1); color: #F87171; }
+  .h2-chip.mood { background: rgba(167,139,250,0.1); color: #A78BFA; }
+
+  /* ════════════════════════════════════════════
+     H3: CALENDAR+DAY × WARM & GROUNDED
+  ════════════════════════════════════════════ */
+  .h3-phone { background: #FDFBF7; }
+  .h3-inner { width: 100%; height: 100%; position: relative; overflow: hidden; }
+  .h3-header { background: #1A1209; padding: 23px 13px 11px; }
+  .h3-header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; }
+  .h3-logo { font-family: 'Fraunces', serif; font-size: 14px; font-weight: 700; color: #FDFBF7; letter-spacing: -0.02em; }
+  .h3-logo span { color: #C0392B; }
+  .h3-month { font-size: 7px; font-weight: 600; color: rgba(253,251,247,0.4); font-family: 'DM Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.1em; }
+  .h3-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .h3-cal-head { text-align: center; font-size: 7px; font-weight: 600; color: rgba(253,251,247,0.3); font-family: 'DM Sans', sans-serif; padding: 2px 0; }
+  .h3-cal-day { text-align: center; font-size: 8px; color: rgba(253,251,247,0.48); font-family: 'DM Sans', sans-serif; padding: 2px 0; border-radius: 4px; position: relative; }
+  .h3-cal-day.has-entry::after { content: ''; display: block; width: 3px; height: 3px; border-radius: 50%; background: #C0392B; margin: 1px auto 0; }
+  .h3-cal-day.today { background: rgba(192,57,43,0.2); color: #fff; font-weight: 700; }
+  .h3-cal-day.selected { background: #C0392B; color: #fff; font-weight: 800; }
+  .h3-cal-day.selected::after { display: none; }
+  .h3-cal-day.other { color: rgba(253,251,247,0.18); }
+  .h3-day-view { padding: 9px 11px 7px; background: #FDFBF7; }
+  .h3-day-label { font-size: 7px; font-weight: 700; color: #C0392B; font-family: 'DM Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; }
+  .h3-tl-entry { display: flex; gap: 7px; align-items: flex-start; margin-bottom: 5px; }
+  .h3-tl-time { width: 23px; flex-shrink: 0; font-size: 7px; color: #9B8C78; font-family: 'JetBrains Mono', monospace; padding-top: 3px; text-align: right; }
+  .h3-tl-spine { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+  .h3-tl-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 2px; }
+  .h3-tl-dot.meal { background: #9B8C78; }
+  .h3-tl-dot.sym  { background: #C0392B; }
+  .h3-tl-dot.mood { background: #7B6B5A; }
+  .h3-tl-connector { width: 1px; flex: 1; min-height: 9px; background: #EDE8DF; }
+  .h3-tl-card { flex: 1; background: #fff; border: 1px solid #EDE8DF; border-radius: 8px; padding: 5px 8px; }
+  .h3-tl-card.sym { border-left: 3px solid #C0392B; }
+  .h3-tl-title { font-size: 9px; font-weight: 600; color: #1A1209; font-family: 'DM Sans', sans-serif; }
+  .h3-tl-sub { font-size: 7px; color: #9B8C78; font-family: 'DM Sans', sans-serif; margin-top: 1px; }
+  .h3-chip { display: inline-block; margin-top: 2px; font-size: 6px; font-weight: 700; font-family: 'DM Sans', sans-serif; padding: 1px 5px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .h3-chip.meal { background: #F5F0E8; color: #9B8C78; }
+  .h3-chip.sym  { background: #FDF0EE; color: #C0392B; }
+  .h3-chip.mood { background: #F5F0E8; color: #7B6B5A; }
+</style>
+</head>
+<body>
+
+<!-- ── Page header ── -->
+<p class="page-eyebrow">Hearty — Design Shortlist</p>
+<h1 class="page-logo">Hear<span>ty</span></h1>
+<p class="page-headline">7 shortlisted designs · feedback welcome</p>
+
+<!-- ════════════════════════════
+     HOME SCREEN — 4 designs
+════════════════════════════ -->
+<div class="section">
+  <p class="section-label">Screen 1 of 4</p>
+  <h2 class="section-title">Home Screen — Today's Log</h2>
+  <div class="section-grid">
+
+    <!-- L1: Radial Clock × Warm & Grounded -->
+    <div class="design-card">
+      <div class="phone-wrapper">
+        <div class="phone">
+          <div class="l1-phone">
+            <div class="l1-inner">
+              <div class="l1-topbar">
+                <div class="l1-logo">Hear<span>ty</span></div>
+                <div class="l1-date-label">Tue, May 26</div>
+              </div>
+              <div class="l1-clock-zone">
+                <div class="l1-clock-bg"></div>
+                <div class="l1-clock-inner"></div>
+                <div class="l1-clock-center">
+                  <div class="l1-time">2:34</div>
+                  <div class="l1-time-label">PM</div>
+                </div>
+                <div class="l1-entry-dot l1-dot-meal active">🥗</div>
+                <div class="l1-dot-label l1-label-meal">Lunch</div>
+                <div class="l1-entry-dot l1-dot-lunch">🍎</div>
+                <div class="l1-dot-label l1-label-lunch">Snack</div>
+                <div class="l1-entry-dot l1-dot-sym">😣</div>
+                <div class="l1-dot-label l1-label-sym">Bloating</div>
+                <div class="l1-entry-dot l1-dot-din">🥞</div>
+                <div class="l1-dot-label l1-label-din">Breakfast</div>
+                <div class="l1-entry-dot l1-dot-snack">☕</div>
+              </div>
+              <div class="l1-recents">
+                <div class="l1-section-label">Today's Log</div>
+                <div class="l1-recent-entry"><span class="l1-re-icon">🥗</span><span class="l1-re-title">Caesar Salad</span><span class="l1-re-time">12:30</span></div>
+                <div class="l1-recent-entry"><span class="l1-re-icon">😣</span><span class="l1-re-title">Mild bloating</span><span class="l1-re-time">1:15</span></div>
+                <div class="l1-recent-entry"><span class="l1-re-icon">🍎</span><span class="l1-re-title">Apple + almond butter</span><span class="l1-re-time">2:00</span></div>
+              </div>
+              <div class="l1-fab">+</div>
+              <div class="l1-nav">
+                <div class="l1-nav-item active">⊙</div><div class="l1-nav-item">📋</div><div class="l1-nav-item">📈</div><div class="l1-nav-item">⚙️</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-info">
+        <div class="card-screen">HOME · A</div>
+        <div class="card-name">Radial Clock × Warm & Grounded</div>
+        <div class="card-desc">Earthy cream, terracotta accent. Meals & symptoms orbit a clock dial — see your whole day at a glance.</div>
+        <div class="palette">
+          <div class="swatch" style="background:#FDFBF7;border-color:#ccc"></div>
+          <div class="swatch" style="background:#C0392B"></div>
+          <div class="swatch" style="background:#9B8C78"></div>
+          <div class="swatch" style="background:#1A1209"></div>
+          <div class="palette-label">Warm & Grounded</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- L4: Hour Grid × Cosmic Bloom -->
+    <div class="design-card">
+      <div class="phone-wrapper">
+        <div class="phone">
+          <div class="l4-phone">
+            <div class="l4-inner">
+              <div class="l4-nebula1"></div><div class="l4-nebula2"></div><div class="l4-nebula3"></div>
+              <div class="l4-stars"></div>
+              <div class="l4-content">
+                <div class="l4-topbar">
+                  <div class="l4-logo">Hearty</div>
+                  <div class="l4-date">MON 26</div>
+                </div>
+                <div class="l4-grid-header">
+                  <div class="l4-col-head meals">🍽 Meals</div>
+                  <div class="l4-col-head symptoms">😣 Symp</div>
+                  <div class="l4-col-head mood">✨ Mood</div>
+                </div>
+                <div class="l4-grid-body">
+                  <div class="l4-row"><div class="l4-hour">8AM</div><div class="l4-cells"><div class="l4-cell"><div class="l4-pill meal">🥣 Oats</div></div><div class="l4-cell"><div class="l4-pill empty"></div></div><div class="l4-cell"><div class="l4-pill empty"></div></div></div></div>
+                  <div class="l4-row"><div class="l4-hour">10AM</div><div class="l4-cells"><div class="l4-cell"><div class="l4-pill empty"></div></div><div class="l4-cell"><div class="l4-pill sym">😣 3/10</div></div><div class="l4-cell"><div class="l4-pill empty"></div></div></div></div>
+                  <div class="l4-row"><div class="l4-hour">12PM</div><div class="l4-cells"><div class="l4-cell"><div class="l4-pill meal">🥗 Lunch</div></div><div class="l4-cell"><div class="l4-pill empty"></div></div><div class="l4-cell"><div class="l4-pill empty"></div></div></div></div>
+                  <div class="l4-row now"><div class="l4-hour">2PM</div><div class="l4-cells"><div class="l4-cell"><div class="l4-pill empty"></div></div><div class="l4-cell"><div class="l4-pill empty"></div></div><div class="l4-cell"><div class="l4-pill mood-p">😊 8/10</div></div></div></div>
+                  <div class="l4-row"><div class="l4-hour">4PM</div><div class="l4-cells"><div class="l4-cell"><div class="l4-pill meal">🍎 Snack</div></div><div class="l4-cell"><div class="l4-pill empty"></div></div><div class="l4-cell"><div class="l4-pill empty"></div></div></div></div>
+                  <div class="l4-row"><div class="l4-hour">6PM</div><div class="l4-cells"><div class="l4-cell"><div class="l4-pill empty"></div></div><div class="l4-cell"><div class="l4-pill sym">😣 2/10</div></div><div class="l4-cell"><div class="l4-pill empty"></div></div></div></div>
+                  <div class="l4-row"><div class="l4-hour">8PM</div><div class="l4-cells"><div class="l4-cell"><div class="l4-pill meal">🍝 Dinner</div></div><div class="l4-cell"><div class="l4-pill empty"></div></div><div class="l4-cell"><div class="l4-pill mood-p">😌 7/10</div></div></div></div>
+                </div>
+                <div class="l4-fab">+</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-info">
+        <div class="card-screen">HOME · B</div>
+        <div class="card-name">Hour Grid × Cosmic Bloom</div>
+        <div class="card-desc">Deep indigo starfield, nebula glows. Time × category grid — your whole day as a scannable matrix.</div>
+        <div class="palette">
+          <div class="swatch" style="background:#07021A"></div>
+          <div class="swatch" style="background:#B700FF"></div>
+          <div class="swatch" style="background:#00C8FF"></div>
+          <div class="swatch" style="background:#FF3C78"></div>
+          <div class="palette-label">Cosmic Bloom</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- L7: Radial Clock × Aurora -->
+    <div class="design-card">
+      <div class="phone-wrapper">
+        <div class="phone">
+          <div class="l7-phone">
+            <div class="l7-inner">
+              <div class="l7-glow1"></div><div class="l7-glow2"></div>
+              <div class="l7-content">
+                <div class="l7-topbar">
+                  <div class="l7-logo">Hear<span>ty</span></div>
+                  <div class="l7-date">MON 26</div>
+                </div>
+                <div class="l7-clock-zone">
+                  <div class="l7-ring-outer"></div>
+                  <div class="l7-ring-inner"></div>
+                  <div class="l7-clock-center">
+                    <div class="l7-time">2:34</div>
+                    <div class="l7-time-label">PM</div>
+                  </div>
+                  <div class="l7-entry-dot l7-edot-meal">🥗</div>
+                  <div class="l7-entry-dot l7-edot-lunch">🍎</div>
+                  <div class="l7-entry-dot l7-edot-sym">😣</div>
+                  <div class="l7-entry-dot l7-edot-din">🥣</div>
+                  <div class="l7-entry-dot l7-edot-snack">☕</div>
+                </div>
+                <div class="l7-recents">
+                  <div class="l7-section-label">Today's Log</div>
+                  <div class="l7-recent-entry"><span class="l7-re-icon">🥗</span><span class="l7-re-title">Caesar Salad</span><div class="l7-re-dot g"></div><span class="l7-re-time">12:30</span></div>
+                  <div class="l7-recent-entry"><span class="l7-re-icon">😣</span><span class="l7-re-title">Mild bloating</span><div class="l7-re-dot r"></div><span class="l7-re-time">1:15</span></div>
+                  <div class="l7-recent-entry"><span class="l7-re-icon">😊</span><span class="l7-re-title">Feeling energised</span><div class="l7-re-dot p"></div><span class="l7-re-time">2:00</span></div>
+                </div>
+                <div class="l7-fab">+</div>
+                <div class="l7-nav">
+                  <div class="l7-nav-item active">⊙</div><div class="l7-nav-item">📋</div><div class="l7-nav-item">📈</div><div class="l7-nav-item">⚙️</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-info">
+        <div class="card-screen">HOME · C</div>
+        <div class="card-name">Radial Clock × Aurora</div>
+        <div class="card-desc">Deep navy, emerald & violet aurora glows. Clock dial with glow-dot orbit entries — calm and meditative.</div>
+        <div class="palette">
+          <div class="swatch" style="background:#112240"></div>
+          <div class="swatch" style="background:#34D399"></div>
+          <div class="swatch" style="background:#8B5CF6"></div>
+          <div class="swatch" style="background:#F87171"></div>
+          <div class="palette-label">Aurora</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- L8: Story Mode × Cosmic Bloom -->
+    <div class="design-card">
+      <div class="phone-wrapper">
+        <div class="phone">
+          <div class="l8-phone">
+            <div class="l8-inner">
+              <div class="l8-stars"></div>
+              <div class="l8-story-bar">
+                <div class="l8-story-seg done"></div><div class="l8-story-seg done"></div><div class="l8-story-seg active"></div><div class="l8-story-seg"></div><div class="l8-story-seg"></div>
+              </div>
+              <div class="l8-slide">
+                <div class="l8-nebula-slide"></div>
+                <div class="l8-slide-content">
+                  <div class="l8-slide-tag meal">🍽 Meal</div>
+                  <div class="l8-slide-time">12:30 PM</div>
+                  <div class="l8-slide-title">Grilled Salmon with Roasted Veg</div>
+                  <div class="l8-slide-sub">Omega-3s, leafy greens, olive oil. Felt satisfied but a little heavy after.</div>
+                  <div class="l8-chips">
+                    <div class="l8-chip">🐟 Fish</div><div class="l8-chip">🥦 Veg</div><div class="l8-chip">😊 Good</div>
+                  </div>
+                </div>
+                <div class="l8-thumb">🐟</div>
+              </div>
+              <div class="l8-bottom">
+                <div class="l8-dots">
+                  <div class="l8-dot"></div><div class="l8-dot"></div><div class="l8-dot active"></div><div class="l8-dot"></div><div class="l8-dot"></div>
+                </div>
+                <div class="l8-nav-row">
+                  <div class="l8-nav-item active">⊙</div><div class="l8-nav-item">📋</div><div class="l8-nav-item">📈</div><div class="l8-nav-item">⚙️</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-info">
+        <div class="card-screen">HOME · D</div>
+        <div class="card-name">Story Mode × Cosmic Bloom</div>
+        <div class="card-desc">Deep space nebula, electric purple-cyan. Swipe through your day like stories — immersive and bold.</div>
+        <div class="palette">
+          <div class="swatch" style="background:#07021A"></div>
+          <div class="swatch" style="background:#B700FF"></div>
+          <div class="swatch" style="background:#00C8FF"></div>
+          <div class="swatch" style="background:#FF3C78"></div>
+          <div class="palette-label">Cosmic Bloom</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /section-grid -->
+</div><!-- /section -->
+
+<!-- ════════════════════════════
+     HISTORY SCREEN — 3 designs
+════════════════════════════ -->
+<div class="section">
+  <p class="section-label">Screen 2 of 4</p>
+  <h2 class="section-title">History Screen — Calendar + Day View</h2>
+  <div class="section-grid">
+
+    <!-- H1: Calendar+Day × Cosmic Bloom -->
+    <div class="design-card">
+      <div class="phone-wrapper">
+        <div class="phone">
+          <div class="h1-phone">
+            <div class="h1-inner">
+              <div class="h1-nebula1"></div><div class="h1-nebula2"></div><div class="h1-nebula3"></div>
+              <div class="h1-stars"></div>
+              <div class="h1-content">
+                <div class="h1-header">
+                  <div class="h1-header-top">
+                    <div class="h1-logo">Hearty · History</div>
+                    <div class="h1-month">May 2026</div>
+                  </div>
+                  <div class="h1-cal-grid">
+                    <div class="h1-cal-head">S</div><div class="h1-cal-head">M</div><div class="h1-cal-head">T</div><div class="h1-cal-head">W</div><div class="h1-cal-head">T</div><div class="h1-cal-head">F</div><div class="h1-cal-head">S</div>
+                    <div class="h1-cal-day other">27</div><div class="h1-cal-day other">28</div><div class="h1-cal-day other">29</div><div class="h1-cal-day other">30</div><div class="h1-cal-day has-entry">1</div><div class="h1-cal-day has-entry">2</div><div class="h1-cal-day">3</div>
+                    <div class="h1-cal-day">4</div><div class="h1-cal-day has-entry">5</div><div class="h1-cal-day has-entry">6</div><div class="h1-cal-day has-entry">7</div><div class="h1-cal-day">8</div><div class="h1-cal-day has-entry">9</div><div class="h1-cal-day">10</div>
+                    <div class="h1-cal-day">11</div><div class="h1-cal-day has-entry">12</div><div class="h1-cal-day has-entry">13</div><div class="h1-cal-day has-entry">14</div><div class="h1-cal-day has-entry">15</div><div class="h1-cal-day has-entry">16</div><div class="h1-cal-day">17</div>
+                    <div class="h1-cal-day">18</div><div class="h1-cal-day has-entry">19</div><div class="h1-cal-day has-entry">20</div><div class="h1-cal-day has-entry">21</div><div class="h1-cal-day has-entry">22</div><div class="h1-cal-day has-entry">23</div><div class="h1-cal-day">24</div>
+                    <div class="h1-cal-day">25</div><div class="h1-cal-day selected">26</div><div class="h1-cal-day today">27</div>
+                  </div>
+                </div>
+                <div class="h1-day-view">
+                  <div class="h1-day-label">Monday, May 26</div>
+                  <div class="h1-tl-entry"><div class="h1-tl-time">8am</div><div class="h1-tl-spine"><div class="h1-tl-dot meal"></div><div class="h1-tl-connector"></div></div><div class="h1-tl-card meal"><div class="h1-tl-title">🥣 Oat porridge</div><div class="h1-tl-sub">Banana, honey, oat milk</div><div class="h1-chip meal">Breakfast</div></div></div>
+                  <div class="h1-tl-entry"><div class="h1-tl-time">10am</div><div class="h1-tl-spine"><div class="h1-tl-dot sym"></div><div class="h1-tl-connector"></div></div><div class="h1-tl-card sym"><div class="h1-tl-title">😣 Bloating · 3/10</div><div class="h1-tl-sub">Upper abdomen</div><div class="h1-chip sym">Symptom</div></div></div>
+                  <div class="h1-tl-entry"><div class="h1-tl-time">12pm</div><div class="h1-tl-spine"><div class="h1-tl-dot meal"></div><div class="h1-tl-connector"></div></div><div class="h1-tl-card meal"><div class="h1-tl-title">🥗 Caesar Salad</div><div class="h1-tl-sub">Romaine, croutons</div><div class="h1-chip meal">Lunch</div></div></div>
+                  <div class="h1-tl-entry"><div class="h1-tl-time">2pm</div><div class="h1-tl-spine"><div class="h1-tl-dot mood"></div></div><div class="h1-tl-card mood"><div class="h1-tl-title">✨ Great · 8/10</div><div class="h1-tl-sub">Energised, clear-headed</div><div class="h1-chip mood">Mood</div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-info">
+        <div class="card-screen">HISTORY · A</div>
+        <div class="card-name">Calendar+Day × Cosmic Bloom</div>
+        <div class="card-desc">Indigo starfield, nebula glows. Purple dots mark diary days; timeline glows in cosmic purple, pink, and cyan.</div>
+        <div class="palette">
+          <div class="swatch" style="background:#07021A"></div>
+          <div class="swatch" style="background:#B700FF"></div>
+          <div class="swatch" style="background:#00C8FF"></div>
+          <div class="swatch" style="background:#FF3C78"></div>
+          <div class="palette-label">Cosmic Bloom</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- H2: Calendar+Day × Aurora -->
+    <div class="design-card">
+      <div class="phone-wrapper">
+        <div class="phone">
+          <div class="h2-phone">
+            <div class="h2-inner">
+              <div class="h2-glow1"></div><div class="h2-glow2"></div>
+              <div class="h2-content">
+                <div class="h2-header">
+                  <div class="h2-header-top">
+                    <div class="h2-logo">Hear<span>ty</span> · History</div>
+                    <div class="h2-month">May 2026</div>
+                  </div>
+                  <div class="h2-cal-grid">
+                    <div class="h2-cal-head">S</div><div class="h2-cal-head">M</div><div class="h2-cal-head">T</div><div class="h2-cal-head">W</div><div class="h2-cal-head">T</div><div class="h2-cal-head">F</div><div class="h2-cal-head">S</div>
+                    <div class="h2-cal-day other">27</div><div class="h2-cal-day other">28</div><div class="h2-cal-day other">29</div><div class="h2-cal-day other">30</div><div class="h2-cal-day has-entry">1</div><div class="h2-cal-day has-entry">2</div><div class="h2-cal-day">3</div>
+                    <div class="h2-cal-day">4</div><div class="h2-cal-day has-entry">5</div><div class="h2-cal-day has-entry">6</div><div class="h2-cal-day has-entry">7</div><div class="h2-cal-day">8</div><div class="h2-cal-day has-entry">9</div><div class="h2-cal-day">10</div>
+                    <div class="h2-cal-day">11</div><div class="h2-cal-day has-entry">12</div><div class="h2-cal-day has-entry">13</div><div class="h2-cal-day has-entry">14</div><div class="h2-cal-day has-entry">15</div><div class="h2-cal-day has-entry">16</div><div class="h2-cal-day">17</div>
+                    <div class="h2-cal-day">18</div><div class="h2-cal-day has-entry">19</div><div class="h2-cal-day has-entry">20</div><div class="h2-cal-day has-entry">21</div><div class="h2-cal-day has-entry">22</div><div class="h2-cal-day has-entry">23</div><div class="h2-cal-day">24</div>
+                    <div class="h2-cal-day">25</div><div class="h2-cal-day selected">26</div><div class="h2-cal-day today">27</div>
+                  </div>
+                </div>
+                <div class="h2-day-view">
+                  <div class="h2-day-label">Monday, May 26</div>
+                  <div class="h2-tl-entry"><div class="h2-tl-time">8am</div><div class="h2-tl-spine"><div class="h2-tl-dot meal"></div><div class="h2-tl-connector"></div></div><div class="h2-tl-card meal"><div class="h2-tl-title">🥣 Oat porridge</div><div class="h2-tl-sub">Banana, honey, oat milk</div><div class="h2-chip meal">Breakfast</div></div></div>
+                  <div class="h2-tl-entry"><div class="h2-tl-time">10am</div><div class="h2-tl-spine"><div class="h2-tl-dot sym"></div><div class="h2-tl-connector"></div></div><div class="h2-tl-card sym"><div class="h2-tl-title">😣 Bloating · 3/10</div><div class="h2-tl-sub">Upper abdomen</div><div class="h2-chip sym">Symptom</div></div></div>
+                  <div class="h2-tl-entry"><div class="h2-tl-time">12pm</div><div class="h2-tl-spine"><div class="h2-tl-dot meal"></div><div class="h2-tl-connector"></div></div><div class="h2-tl-card meal"><div class="h2-tl-title">🥗 Caesar Salad</div><div class="h2-tl-sub">Romaine, croutons</div><div class="h2-chip meal">Lunch</div></div></div>
+                  <div class="h2-tl-entry"><div class="h2-tl-time">2pm</div><div class="h2-tl-spine"><div class="h2-tl-dot mood"></div></div><div class="h2-tl-card mood"><div class="h2-tl-title">✨ Great · 8/10</div><div class="h2-tl-sub">Energised, clear-headed</div><div class="h2-chip mood">Mood</div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-info">
+        <div class="card-screen">HISTORY · B</div>
+        <div class="card-name">Calendar+Day × Aurora</div>
+        <div class="card-desc">Deep navy, emerald & violet glow. Emerald dots mark diary days; timeline uses glowing green, red, and violet.</div>
+        <div class="palette">
+          <div class="swatch" style="background:#112240"></div>
+          <div class="swatch" style="background:#34D399"></div>
+          <div class="swatch" style="background:#8B5CF6"></div>
+          <div class="swatch" style="background:#F87171"></div>
+          <div class="palette-label">Aurora</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- H3: Calendar+Day × Warm & Grounded -->
+    <div class="design-card">
+      <div class="phone-wrapper">
+        <div class="phone">
+          <div class="h3-phone">
+            <div class="h3-inner">
+              <div class="h3-header">
+                <div class="h3-header-top">
+                  <div class="h3-logo">Hear<span>ty</span> · History</div>
+                  <div class="h3-month">May 2026</div>
+                </div>
+                <div class="h3-cal-grid">
+                  <div class="h3-cal-head">S</div><div class="h3-cal-head">M</div><div class="h3-cal-head">T</div><div class="h3-cal-head">W</div><div class="h3-cal-head">T</div><div class="h3-cal-head">F</div><div class="h3-cal-head">S</div>
+                  <div class="h3-cal-day other">27</div><div class="h3-cal-day other">28</div><div class="h3-cal-day other">29</div><div class="h3-cal-day other">30</div><div class="h3-cal-day has-entry">1</div><div class="h3-cal-day has-entry">2</div><div class="h3-cal-day">3</div>
+                  <div class="h3-cal-day">4</div><div class="h3-cal-day has-entry">5</div><div class="h3-cal-day has-entry">6</div><div class="h3-cal-day has-entry">7</div><div class="h3-cal-day">8</div><div class="h3-cal-day has-entry">9</div><div class="h3-cal-day">10</div>
+                  <div class="h3-cal-day">11</div><div class="h3-cal-day has-entry">12</div><div class="h3-cal-day has-entry">13</div><div class="h3-cal-day has-entry">14</div><div class="h3-cal-day has-entry">15</div><div class="h3-cal-day has-entry">16</div><div class="h3-cal-day">17</div>
+                  <div class="h3-cal-day">18</div><div class="h3-cal-day has-entry">19</div><div class="h3-cal-day has-entry">20</div><div class="h3-cal-day has-entry">21</div><div class="h3-cal-day has-entry">22</div><div class="h3-cal-day has-entry">23</div><div class="h3-cal-day">24</div>
+                  <div class="h3-cal-day">25</div><div class="h3-cal-day selected">26</div><div class="h3-cal-day today">27</div>
+                </div>
+              </div>
+              <div class="h3-day-view">
+                <div class="h3-day-label">Monday, May 26</div>
+                <div class="h3-tl-entry"><div class="h3-tl-time">8am</div><div class="h3-tl-spine"><div class="h3-tl-dot meal"></div><div class="h3-tl-connector"></div></div><div class="h3-tl-card"><div class="h3-tl-title">🥣 Oat porridge</div><div class="h3-tl-sub">Banana, honey, oat milk</div><div class="h3-chip meal">Breakfast</div></div></div>
+                <div class="h3-tl-entry"><div class="h3-tl-time">10am</div><div class="h3-tl-spine"><div class="h3-tl-dot sym"></div><div class="h3-tl-connector"></div></div><div class="h3-tl-card sym"><div class="h3-tl-title">😣 Bloating · 3/10</div><div class="h3-tl-sub">Upper abdomen</div><div class="h3-chip sym">Symptom</div></div></div>
+                <div class="h3-tl-entry"><div class="h3-tl-time">12pm</div><div class="h3-tl-spine"><div class="h3-tl-dot meal"></div><div class="h3-tl-connector"></div></div><div class="h3-tl-card"><div class="h3-tl-title">🥗 Caesar Salad</div><div class="h3-tl-sub">Romaine, croutons</div><div class="h3-chip meal">Lunch</div></div></div>
+                <div class="h3-tl-entry"><div class="h3-tl-time">2pm</div><div class="h3-tl-spine"><div class="h3-tl-dot mood"></div></div><div class="h3-tl-card"><div class="h3-tl-title">✨ Great · 8/10</div><div class="h3-tl-sub">Energised, clear-headed</div><div class="h3-chip mood">Mood</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-info">
+        <div class="card-screen">HISTORY · C</div>
+        <div class="card-name">Calendar+Day × Warm & Grounded</div>
+        <div class="card-desc">Dark charcoal header, warm cream body. Red dots mark diary days; symptom cards get a bold red left border.</div>
+        <div class="palette">
+          <div class="swatch" style="background:#1A1209"></div>
+          <div class="swatch" style="background:#C0392B"></div>
+          <div class="swatch" style="background:#9B8C78"></div>
+          <div class="swatch" style="background:#FDFBF7;border-color:#555"></div>
+          <div class="palette-label">Warm & Grounded</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /section-grid -->
+</div><!-- /section -->
+
+<div class="section">
+  <p class="section-label">Screen 3 of 4</p>
+  <h2 class="section-title">Settings Screen — hearty.ltd Skew-Gradient Cards</h2>
+  <div class="section-grid">
+
+    <!-- L2 · WARM & GROUNDED -->
+    <div class="design-card">
+      <div class="phone-wrapper"><div class="phone">
+        <div class="set-scr set-warm">
+          <div class="set-hdr"><div class="set-title">Settings</div><div class="set-logo f"><span style="color:#1A1209">Heart</span><span style="color:#C0392B">y</span></div></div>
+          <div class="set-body">
+            <div class="set-row" style="--gf:#C99E67;--gt:#8C5A3C"><div class="set-chip">👤</div><div><div class="set-t">Account</div><div class="set-s">infiniteinsight@gmail.com</div></div><span class="set-chev">›</span></div>
+            <div class="set-row" style="--gf:#F0A848;--gt:#C0392B"><div class="set-chip">🔔</div><div><div class="set-t">Notifications</div><div class="set-s">Nudges, digest, alerts</div></div><span class="set-chev">›</span></div>
+            <div class="set-row" style="--gf:#E8A87C;--gt:#D4745A"><div class="set-chip">🎙️</div><div><div class="set-t">Voice</div><div class="set-s">Wake word &amp; dictation</div></div><span class="set-chev">›</span></div>
+            <div class="set-row" style="--gf:#D98C6A;--gt:#A23E5C"><div class="set-chip">💬</div><div><div class="set-t">Conversation style</div><div class="set-s">Tone &amp; personality</div></div><span class="set-chev">›</span></div>
+            <div class="set-row" style="--gf:#C2A85A;--gt:#7E8B46"><div class="set-chip">🩺</div><div><div class="set-t">Health Profile</div><div class="set-s">Conditions &amp; triggers</div></div><span class="set-chev">›</span></div>
+            <div class="set-row" style="--gf:#B8A99A;--gt:#7A6B5A"><div class="set-chip">ℹ️</div><div><div class="set-t">About</div><div class="set-s">Hearty v1.0.0</div></div><span class="set-chev">›</span></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="card-info">
+        <div class="card-screen">SETTINGS · L2</div>
+        <div class="card-name">Glass Rows × Warm & Grounded</div>
+        <div class="card-desc">Cream rows with linen borders; only the icon chip carries a warm gradient. Calm and premium for a daily-use screen.</div>
+        <div class="palette">
+          <div class="swatch" style="background:#FDFBF7;border-color:#555"></div>
+          <div class="swatch" style="background:#C0392B"></div>
+          <div class="swatch" style="background:#9B8C78"></div>
+          <div class="swatch" style="background:#1A1209"></div>
+          <div class="palette-label">Warm & Grounded</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- L2 · COSMIC BLOOM -->
+    <div class="design-card">
+      <div class="phone-wrapper"><div class="phone">
+        <div class="set-scr set-cosmic">
+          <div class="set-glow" style="width:150px;height:150px;background:radial-gradient(circle,rgba(183,0,255,0.22),transparent 70%);top:-40px;right:-30px;"></div>
+          <div class="set-glow" style="width:140px;height:140px;background:radial-gradient(circle,rgba(0,200,255,0.18),transparent 70%);bottom:50px;left:-40px;"></div>
+          <div class="set-glow" style="width:120px;height:120px;background:radial-gradient(circle,rgba(255,60,120,0.15),transparent 70%);top:190px;right:-40px;"></div>
+          <div class="set-hdr"><div class="set-title">Settings</div><div class="set-logo" style="font-family:'Syne',sans-serif;font-weight:800;background:linear-gradient(135deg,#B700FF,#00C8FF,#FF3C78);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Hearty</div></div>
+          <div class="set-body">
+            <div class="set-row" style="--gf:#B700FF;--gt:#00C8FF"><div class="set-chip">👤</div><div><div class="set-t">Account</div><div class="set-s">infiniteinsight@gmail.com</div></div><span class="set-chev">›</span></div>
+            <div class="set-row" style="--gf:#FF3C78;--gt:#FFC800"><div class="set-chip">🔔</div><div><div class="set-t">Notifications</div><div class="set-s">Nudges, digest, alerts</div></div><span class="set-chev">›</span></div>
+            <div class="set-row" style="--gf:#00C8FF;--gt:#B700FF"><div class="set-chip">🎙️</div><div><div class="set-t">Voice</div><div class="set-s">Wake word &amp; dictation</div></div><span class="set-chev">›</span></div>
+            <div class="set-row" style="--gf:#FF3C78;--gt:#B700FF"><div class="set-chip">💬</div><div><div class="set-t">Conversation style</div><div class="set-s">Tone &amp; personality</div></div><span class="set-chev">›</span></div>
+            <div class="set-row" style="--gf:#00C8FF;--gt:#4dff03"><div class="set-chip">🩺</div><div><div class="set-t">Health Profile</div><div class="set-s">Conditions &amp; triggers</div></div><span class="set-chev">›</span></div>
+            <div class="set-row" style="--gf:#8A6AD0;--gt:#3A2A6C"><div class="set-chip">ℹ️</div><div><div class="set-t">About</div><div class="set-s">Hearty v1.0.0</div></div><span class="set-chev">›</span></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="card-info">
+        <div class="card-screen">SETTINGS · L2</div>
+        <div class="card-name">Glass Rows × Cosmic Bloom</div>
+        <div class="card-desc">Frosted dark rows over a nebula starfield; chips glow in cosmic magenta/cyan gradients. Scannable but vivid.</div>
+        <div class="palette">
+          <div class="swatch" style="background:#07021A;border-color:#555"></div>
+          <div class="swatch" style="background:#B700FF"></div>
+          <div class="swatch" style="background:#00C8FF"></div>
+          <div class="swatch" style="background:#FF3C78"></div>
+          <div class="palette-label">Cosmic Bloom</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- L1 · AURORA (reference) -->
+    <div class="design-card">
+      <div class="phone-wrapper"><div class="phone">
+        <div class="set-scr set-aurora">
+          <div class="set-glow" style="width:150px;height:150px;background:radial-gradient(circle,rgba(52,211,153,0.1),transparent 70%);top:-45px;right:-35px;"></div>
+          <div class="set-glow" style="width:130px;height:130px;background:radial-gradient(circle,rgba(139,92,246,0.1),transparent 70%);bottom:70px;left:-40px;"></div>
+          <div class="set-hdr"><div class="set-title">Settings</div><div class="set-logo"><span style="color:#fff">Heart</span><span style="color:#34D399">y</span></div></div>
+          <div class="set-body">
+            <div class="set-card" style="--gf:#8B5CF6;--gt:#6366F1"><span class="set-panel blur"></span><span class="set-panel"></span><div class="set-face"><span class="set-fico">👤</span><div><div class="set-t">Account</div><div class="set-s">infiniteinsight@gmail.com</div></div><span class="set-chev">›</span></div></div>
+            <div class="set-card" style="--gf:#ffbc00;--gt:#ff0058"><span class="set-panel blur"></span><span class="set-panel"></span><div class="set-face"><span class="set-fico">🔔</span><div><div class="set-t">Notifications</div><div class="set-s">Nudges, digest, alerts</div></div><span class="set-chev">›</span></div></div>
+            <div class="set-card" style="--gf:#34D399;--gt:#00d0ff"><span class="set-panel blur"></span><span class="set-panel"></span><div class="set-face"><span class="set-fico">🎙️</span><div><div class="set-t">Voice</div><div class="set-s">Wake word, dictation</div></div><span class="set-chev">›</span></div></div>
+            <div class="set-card" style="--gf:#03a9f4;--gt:#ff0058"><span class="set-panel blur"></span><span class="set-panel"></span><div class="set-face"><span class="set-fico">💬</span><div><div class="set-t">Conversation style</div><div class="set-s">Tone &amp; personality</div></div><span class="set-chev">›</span></div></div>
+            <div class="set-card" style="--gf:#4dff03;--gt:#00d0ff"><span class="set-panel blur"></span><span class="set-panel"></span><div class="set-face"><span class="set-fico">🩺</span><div><div class="set-t">Health Profile</div><div class="set-s">Conditions &amp; triggers</div></div><span class="set-chev">›</span></div></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="card-info">
+        <div class="card-screen">SETTINGS · L1</div>
+        <div class="card-name">Skew Gradient Cards × Aurora</div>
+        <div class="card-desc">The bold reference: full skewed gradient panel + soft glow behind each frosted glass row. Marketing-grade drama.</div>
+        <div class="palette">
+          <div class="swatch" style="background:#112240"></div>
+          <div class="swatch" style="background:#34D399"></div>
+          <div class="swatch" style="background:#8B5CF6"></div>
+          <div class="swatch" style="background:#F87171"></div>
+          <div class="palette-label">Aurora</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- L2 · AURORA (reference) -->
+    <div class="design-card">
+      <div class="phone-wrapper"><div class="phone">
+        <div class="set-scr set-aurora">
+          <div class="set-glow" style="width:150px;height:150px;background:radial-gradient(circle,rgba(52,211,153,0.1),transparent 70%);top:-45px;right:-35px;"></div>
+          <div class="set-glow" style="width:130px;height:130px;background:radial-gradient(circle,rgba(139,92,246,0.1),transparent 70%);bottom:70px;left:-40px;"></div>
+          <div class="set-hdr"><div class="set-title">Settings</div><div class="set-logo"><span style="color:#fff">Heart</span><span style="color:#34D399">y</span></div></div>
+          <div class="set-body">
+            <div class="set-row" style="--gf:#8B5CF6;--gt:#6366F1"><div class="set-chip">👤</div><div><div class="set-t">Account</div><div class="set-s">infiniteinsight@gmail.com</div></div><span class="set-chev">›</span></div>
+            <div class="set-row" style="--gf:#ffbc00;--gt:#ff0058"><div class="set-chip">🔔</div><div><div class="set-t">Notifications</div><div class="set-s">Nudges, digest, alerts</div></div><span class="set-chev">›</span></div>
+            <div class="set-row" style="--gf:#34D399;--gt:#00d0ff"><div class="set-chip">🎙️</div><div><div class="set-t">Voice</div><div class="set-s">Wake word &amp; dictation</div></div><span class="set-chev">›</span></div>
+            <div class="set-row" style="--gf:#03a9f4;--gt:#ff0058"><div class="set-chip">💬</div><div><div class="set-t">Conversation style</div><div class="set-s">Tone &amp; personality</div></div><span class="set-chev">›</span></div>
+            <div class="set-row" style="--gf:#4dff03;--gt:#00d0ff"><div class="set-chip">🩺</div><div><div class="set-t">Health Profile</div><div class="set-s">Conditions &amp; triggers</div></div><span class="set-chev">›</span></div>
+            <div class="set-row" style="--gf:#64748b;--gt:#334155"><div class="set-chip">ℹ️</div><div><div class="set-t">About</div><div class="set-s">Hearty v1.0.0</div></div><span class="set-chev">›</span></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="card-info">
+        <div class="card-screen">SETTINGS · L2</div>
+        <div class="card-name">Glass Rows × Aurora</div>
+        <div class="card-desc">Frosted navy rows with vivid gradient icon chips. The calmer counterpart to L1 in the same palette.</div>
+        <div class="palette">
+          <div class="swatch" style="background:#112240"></div>
+          <div class="swatch" style="background:#34D399"></div>
+          <div class="swatch" style="background:#8B5CF6"></div>
+          <div class="swatch" style="background:#F87171"></div>
+          <div class="palette-label">Aurora</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /section-grid -->
+</div><!-- /section -->
+
+<div class="section">
+  <p class="section-label">Screen 4 of 4</p>
+  <h2 class="section-title">Settings Detail Screens — themed component set</h2>
+  <div class="section-grid">
+
+    <!-- ───── NOTIFICATIONS ───── -->
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-warm">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Notifications</span></div>
+      <div class="dt-body"><div class="dt-seclabel">Reminders</div><div class="dt-card">
+        <div class="dt-srow"><div class="dt-ico2">🍽️</div><div><div class="dt-st">Post-meal nudge</div><div class="dt-ss">Check in after you eat</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+        <div class="dt-slide"><div class="dt-slide-top"><span class="dt-slide-lab">Nudge delay</span><span class="dt-slide-val">45 min</span></div><div class="dt-track"><div class="dt-fill" style="width:55%"></div><div class="dt-knob2" style="left:55%"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">📰</div><div><div class="dt-st">Weekly digest</div><div class="dt-ss">Sunday summary</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">⚠️</div><div><div class="dt-st">Sync error alerts</div><div class="dt-ss">If logs fail to upload</div></div><div class="dt-toggle off"><div class="dt-knob"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">🎙️</div><div><div class="dt-st">Wake word</div><div class="dt-ss">“Hey Hearty”</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+      </div><div class="dt-save">Save</div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">NOTIFICATIONS</div><div class="card-name">Notifications × Warm & Grounded</div><div class="palette"><div class="swatch" style="background:#FDFBF7;border-color:#555"></div><div class="swatch" style="background:#C0392B"></div><div class="swatch" style="background:#9B8C78"></div><div class="swatch" style="background:#1A1209"></div><div class="palette-label">Warm & Grounded</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-aurora">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Notifications</span></div>
+      <div class="dt-body"><div class="dt-seclabel">Reminders</div><div class="dt-card">
+        <div class="dt-srow"><div class="dt-ico2">🍽️</div><div><div class="dt-st">Post-meal nudge</div><div class="dt-ss">Check in after you eat</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+        <div class="dt-slide"><div class="dt-slide-top"><span class="dt-slide-lab">Nudge delay</span><span class="dt-slide-val">45 min</span></div><div class="dt-track"><div class="dt-fill" style="width:55%"></div><div class="dt-knob2" style="left:55%"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">📰</div><div><div class="dt-st">Weekly digest</div><div class="dt-ss">Sunday summary</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">⚠️</div><div><div class="dt-st">Sync error alerts</div><div class="dt-ss">If logs fail to upload</div></div><div class="dt-toggle off"><div class="dt-knob"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">🎙️</div><div><div class="dt-st">Wake word</div><div class="dt-ss">“Hey Hearty”</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+      </div><div class="dt-save">Save</div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">NOTIFICATIONS</div><div class="card-name">Notifications × Aurora</div><div class="palette"><div class="swatch" style="background:#112240"></div><div class="swatch" style="background:#34D399"></div><div class="swatch" style="background:#8B5CF6"></div><div class="swatch" style="background:#F87171"></div><div class="palette-label">Aurora</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-cosmic">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Notifications</span></div>
+      <div class="dt-body"><div class="dt-seclabel">Reminders</div><div class="dt-card">
+        <div class="dt-srow"><div class="dt-ico2">🍽️</div><div><div class="dt-st">Post-meal nudge</div><div class="dt-ss">Check in after you eat</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+        <div class="dt-slide"><div class="dt-slide-top"><span class="dt-slide-lab">Nudge delay</span><span class="dt-slide-val">45 min</span></div><div class="dt-track"><div class="dt-fill" style="width:55%"></div><div class="dt-knob2" style="left:55%"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">📰</div><div><div class="dt-st">Weekly digest</div><div class="dt-ss">Sunday summary</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">⚠️</div><div><div class="dt-st">Sync error alerts</div><div class="dt-ss">If logs fail to upload</div></div><div class="dt-toggle off"><div class="dt-knob"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">🎙️</div><div><div class="dt-st">Wake word</div><div class="dt-ss">“Hey Hearty”</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+      </div><div class="dt-save">Save</div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">NOTIFICATIONS</div><div class="card-name">Notifications × Cosmic Bloom</div><div class="palette"><div class="swatch" style="background:#07021A;border-color:#555"></div><div class="swatch" style="background:#B700FF"></div><div class="swatch" style="background:#00C8FF"></div><div class="swatch" style="background:#FF3C78"></div><div class="palette-label">Cosmic Bloom</div></div></div></div>
+
+    <!-- ───── VOICE ───── -->
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-warm">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Voice</span><span class="dt-reset">Reset</span></div>
+      <div class="dt-body"><div class="dt-intro">Choose the voice Hearty uses to speak responses aloud.</div><div class="dt-card">
+        <div class="dt-vrow sel"><div class="dt-vcheck">✓</div><div><div class="dt-vt">Hearty Neutral</div><div class="dt-vs">Custom · gender-neutral</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (US)</div><div class="dt-vs">en-US · warm</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (UK)</div><div class="dt-vs">en-GB · crisp</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (AU)</div><div class="dt-vs">en-AU · bright</div></div><div class="dt-play">▶</div></div>
+      </div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">VOICE</div><div class="card-name">Voice × Warm & Grounded</div><div class="palette"><div class="swatch" style="background:#FDFBF7;border-color:#555"></div><div class="swatch" style="background:#C0392B"></div><div class="swatch" style="background:#9B8C78"></div><div class="swatch" style="background:#1A1209"></div><div class="palette-label">Warm & Grounded</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-aurora">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Voice</span><span class="dt-reset">Reset</span></div>
+      <div class="dt-body"><div class="dt-intro">Choose the voice Hearty uses to speak responses aloud.</div><div class="dt-card">
+        <div class="dt-vrow sel"><div class="dt-vcheck">✓</div><div><div class="dt-vt">Hearty Neutral</div><div class="dt-vs">Custom · gender-neutral</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (US)</div><div class="dt-vs">en-US · warm</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (UK)</div><div class="dt-vs">en-GB · crisp</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (AU)</div><div class="dt-vs">en-AU · bright</div></div><div class="dt-play">▶</div></div>
+      </div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">VOICE</div><div class="card-name">Voice × Aurora</div><div class="palette"><div class="swatch" style="background:#112240"></div><div class="swatch" style="background:#34D399"></div><div class="swatch" style="background:#8B5CF6"></div><div class="swatch" style="background:#F87171"></div><div class="palette-label">Aurora</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-cosmic">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Voice</span><span class="dt-reset">Reset</span></div>
+      <div class="dt-body"><div class="dt-intro">Choose the voice Hearty uses to speak responses aloud.</div><div class="dt-card">
+        <div class="dt-vrow sel"><div class="dt-vcheck">✓</div><div><div class="dt-vt">Hearty Neutral</div><div class="dt-vs">Custom · gender-neutral</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (US)</div><div class="dt-vs">en-US · warm</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (UK)</div><div class="dt-vs">en-GB · crisp</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (AU)</div><div class="dt-vs">en-AU · bright</div></div><div class="dt-play">▶</div></div>
+      </div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">VOICE</div><div class="card-name">Voice × Cosmic Bloom</div><div class="palette"><div class="swatch" style="background:#07021A;border-color:#555"></div><div class="swatch" style="background:#B700FF"></div><div class="swatch" style="background:#00C8FF"></div><div class="swatch" style="background:#FF3C78"></div><div class="palette-label">Cosmic Bloom</div></div></div></div>
+
+    <!-- ───── CONVERSATION STYLE ───── -->
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-warm">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Conversation Style</span></div>
+      <div class="dt-body"><div class="dt-intro">Choose how Hearty talks to you during logging and check-ins.</div>
+        <div class="dt-opt sel"><div class="dt-opt-h"><div class="dt-radio"></div><div class="dt-opt-t">Warm &amp; Empathetic</div></div><div class="dt-opt-s">Adds warmth and context. Great if you want to feel supported.</div><div class="dt-bubs"><div class="dt-bub dt-bub-u">Big bowl of pasta for dinner</div><div class="dt-bub dt-bub-ai">Comfort food evening! 🍝 Homemade or restaurant?</div></div></div>
+        <div class="dt-opt"><div class="dt-opt-h"><div class="dt-radio"></div><div class="dt-opt-t">Concise &amp; Quick</div></div><div class="dt-opt-s">Just the facts. Logs and confirms without commentary.</div><div class="dt-bubs"><div class="dt-bub dt-bub-u">Big bowl of pasta for dinner</div><div class="dt-bub dt-bub-ai">Logged. Homemade or restaurant?</div></div></div>
+        <div class="dt-save">Save</div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">CONVERSATION</div><div class="card-name">Conversation × Warm & Grounded</div><div class="palette"><div class="swatch" style="background:#FDFBF7;border-color:#555"></div><div class="swatch" style="background:#C0392B"></div><div class="swatch" style="background:#9B8C78"></div><div class="swatch" style="background:#1A1209"></div><div class="palette-label">Warm & Grounded</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-aurora">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Conversation Style</span></div>
+      <div class="dt-body"><div class="dt-intro">Choose how Hearty talks to you during logging and check-ins.</div>
+        <div class="dt-opt sel"><div class="dt-opt-h"><div class="dt-radio"></div><div class="dt-opt-t">Warm &amp; Empathetic</div></div><div class="dt-opt-s">Adds warmth and context. Great if you want to feel supported.</div><div class="dt-bubs"><div class="dt-bub dt-bub-u">Big bowl of pasta for dinner</div><div class="dt-bub dt-bub-ai">Comfort food evening! 🍝 Homemade or restaurant?</div></div></div>
+        <div class="dt-opt"><div class="dt-opt-h"><div class="dt-radio"></div><div class="dt-opt-t">Concise &amp; Quick</div></div><div class="dt-opt-s">Just the facts. Logs and confirms without commentary.</div><div class="dt-bubs"><div class="dt-bub dt-bub-u">Big bowl of pasta for dinner</div><div class="dt-bub dt-bub-ai">Logged. Homemade or restaurant?</div></div></div>
+        <div class="dt-save">Save</div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">CONVERSATION</div><div class="card-name">Conversation × Aurora</div><div class="palette"><div class="swatch" style="background:#112240"></div><div class="swatch" style="background:#34D399"></div><div class="swatch" style="background:#8B5CF6"></div><div class="swatch" style="background:#F87171"></div><div class="palette-label">Aurora</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-cosmic">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Conversation Style</span></div>
+      <div class="dt-body"><div class="dt-intro">Choose how Hearty talks to you during logging and check-ins.</div>
+        <div class="dt-opt sel"><div class="dt-opt-h"><div class="dt-radio"></div><div class="dt-opt-t">Warm &amp; Empathetic</div></div><div class="dt-opt-s">Adds warmth and context. Great if you want to feel supported.</div><div class="dt-bubs"><div class="dt-bub dt-bub-u">Big bowl of pasta for dinner</div><div class="dt-bub dt-bub-ai">Comfort food evening! 🍝 Homemade or restaurant?</div></div></div>
+        <div class="dt-opt"><div class="dt-opt-h"><div class="dt-radio"></div><div class="dt-opt-t">Concise &amp; Quick</div></div><div class="dt-opt-s">Just the facts. Logs and confirms without commentary.</div><div class="dt-bubs"><div class="dt-bub dt-bub-u">Big bowl of pasta for dinner</div><div class="dt-bub dt-bub-ai">Logged. Homemade or restaurant?</div></div></div>
+        <div class="dt-save">Save</div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">CONVERSATION</div><div class="card-name">Conversation × Cosmic Bloom</div><div class="palette"><div class="swatch" style="background:#07021A;border-color:#555"></div><div class="swatch" style="background:#B700FF"></div><div class="swatch" style="background:#00C8FF"></div><div class="swatch" style="background:#FF3C78"></div><div class="palette-label">Cosmic Bloom</div></div></div></div>
+
+    <!-- ───── HEALTH PROFILE ───── -->
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-warm">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Health Profile</span></div>
+      <div class="dt-body">
+        <div class="dt-seclabel">Allergens</div><div class="dt-chips"><span class="dt-chip2">Peanuts</span><span class="dt-chip2">Shellfish</span><span class="dt-chip-add">+ Add</span></div>
+        <div class="dt-seclabel">Dietary Protocols</div><div class="dt-chips"><span class="dt-chip2">Low-FODMAP</span><span class="dt-chip-add">+ Add</span></div>
+        <div class="dt-seclabel">Conditions</div><div class="dt-chips"><span class="dt-chip2">IBS</span><span class="dt-chip2">GERD</span><span class="dt-chip-add">+ Add</span></div>
+        <div class="dt-seclabel">Medications &amp; Supplements</div><div class="dt-chips"><span class="dt-chip2">Omeprazole</span><span class="dt-chip2">Vit D</span><span class="dt-chip-add">+ Add</span></div>
+        <div class="dt-save">Save</div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">HEALTH PROFILE</div><div class="card-name">Health Profile × Warm & Grounded</div><div class="palette"><div class="swatch" style="background:#FDFBF7;border-color:#555"></div><div class="swatch" style="background:#C0392B"></div><div class="swatch" style="background:#9B8C78"></div><div class="swatch" style="background:#1A1209"></div><div class="palette-label">Warm & Grounded</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-aurora">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Health Profile</span></div>
+      <div class="dt-body">
+        <div class="dt-seclabel">Allergens</div><div class="dt-chips"><span class="dt-chip2">Peanuts</span><span class="dt-chip2">Shellfish</span><span class="dt-chip-add">+ Add</span></div>
+        <div class="dt-seclabel">Dietary Protocols</div><div class="dt-chips"><span class="dt-chip2">Low-FODMAP</span><span class="dt-chip-add">+ Add</span></div>
+        <div class="dt-seclabel">Conditions</div><div class="dt-chips"><span class="dt-chip2">IBS</span><span class="dt-chip2">GERD</span><span class="dt-chip-add">+ Add</span></div>
+        <div class="dt-seclabel">Medications &amp; Supplements</div><div class="dt-chips"><span class="dt-chip2">Omeprazole</span><span class="dt-chip2">Vit D</span><span class="dt-chip-add">+ Add</span></div>
+        <div class="dt-save">Save</div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">HEALTH PROFILE</div><div class="card-name">Health Profile × Aurora</div><div class="palette"><div class="swatch" style="background:#112240"></div><div class="swatch" style="background:#34D399"></div><div class="swatch" style="background:#8B5CF6"></div><div class="swatch" style="background:#F87171"></div><div class="palette-label">Aurora</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-cosmic">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Health Profile</span></div>
+      <div class="dt-body">
+        <div class="dt-seclabel">Allergens</div><div class="dt-chips"><span class="dt-chip2">Peanuts</span><span class="dt-chip2">Shellfish</span><span class="dt-chip-add">+ Add</span></div>
+        <div class="dt-seclabel">Dietary Protocols</div><div class="dt-chips"><span class="dt-chip2">Low-FODMAP</span><span class="dt-chip-add">+ Add</span></div>
+        <div class="dt-seclabel">Conditions</div><div class="dt-chips"><span class="dt-chip2">IBS</span><span class="dt-chip2">GERD</span><span class="dt-chip-add">+ Add</span></div>
+        <div class="dt-seclabel">Medications &amp; Supplements</div><div class="dt-chips"><span class="dt-chip2">Omeprazole</span><span class="dt-chip2">Vit D</span><span class="dt-chip-add">+ Add</span></div>
+        <div class="dt-save">Save</div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">HEALTH PROFILE</div><div class="card-name">Health Profile × Cosmic Bloom</div><div class="palette"><div class="swatch" style="background:#07021A;border-color:#555"></div><div class="swatch" style="background:#B700FF"></div><div class="swatch" style="background:#00C8FF"></div><div class="swatch" style="background:#FF3C78"></div><div class="palette-label">Cosmic Bloom</div></div></div></div>
+
+  </div><!-- /section-grid -->
+</div><!-- /section -->
+
+<p class="footer">Hearty · <span>hearty.ltd</span> · Design shortlist for cohort review</p>
+
+</body>
+</html>

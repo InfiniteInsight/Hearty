@@ -3,7 +3,7 @@
 Companion spec to the [UI Design Guide](2026-05-28-hearty-ui-design-guide.md).  
 Covers three additions: the AM/PM zone split, arc text labels on orbit dots, and the tap-to-detail interaction.
 
-Reference mockup: `designs9.html`
+Reference mockup: `docs/superpowers/mockups/designs9.html` (AM/PM zones in `designs8.html`)
 
 ---
 

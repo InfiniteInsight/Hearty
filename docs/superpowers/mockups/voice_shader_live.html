@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Hearty — Live Shader Waveform</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400&display=swap');
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  html,body { width:100%; height:100%; background:#000; overflow:hidden; font-family:'Plus Jakarta Sans',sans-serif; }
+  canvas { position:fixed; inset:0; width:100%; height:100%; display:block; }
+
+  .ui {
+    position:fixed; inset:0; display:flex; flex-direction:column;
+    padding:env(safe-area-inset-top,48px) 22px env(safe-area-inset-bottom,20px);
+    pointer-events:none;
+    background:linear-gradient(to bottom,
+      rgba(0,0,0,0.42) 0%, transparent 18%,
+      transparent 44%, rgba(0,0,6,0.78) 60%,
+      rgba(0,0,6,0.97) 74%);
+  }
+  .topbar { display:flex; justify-content:space-between; align-items:center; pointer-events:auto; }
+  .logo { font-family:'Fraunces',serif; font-size:22px; font-weight:700; letter-spacing:-0.02em; }
+  .close-btn { width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,0.08); border:none; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.4); font-size:14px; cursor:pointer; }
+  .spacer { flex:1; }
+  .status-row { display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:14px; }
+  .status-dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.15); transition:background .3s,box-shadow .3s; }
+  .status-dot.on { background:#fff; box-shadow:0 0 10px rgba(255,255,255,.85); }
+  .status-txt { font-size:11px; letter-spacing:0.14em; text-transform:uppercase; font-family:'JetBrains Mono',monospace; color:rgba(255,255,255,.3); transition:color .3s; }
+  .status-txt.on { color:rgba(255,255,255,.75); }
+  .transcript-box { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); border-radius:16px; padding:14px 16px; margin-bottom:14px; }
+  .transcript-txt { font-size:15px; color:rgba(255,255,255,.9); line-height:1.65; font-weight:500; min-height:24px; }
+  .transcript-txt.dim { color:rgba(255,255,255,.25); font-size:13px; }
+  .actions { display:flex; gap:10px; margin-bottom:12px; pointer-events:auto; }
+  .btn-submit { flex:1; padding:13px; background:linear-gradient(135deg,#34D399,#059669); color:#fff; border:none; border-radius:13px; font-size:14px; font-weight:700; cursor:pointer; }
+  .btn-retry { padding:13px 18px; background:rgba(255,255,255,.08); color:rgba(255,255,255,.45); border:none; border-radius:13px; font-size:14px; cursor:pointer; }
+  .type-field { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.09); border-radius:24px; padding:12px 18px; display:flex; align-items:center; justify-content:space-between; pointer-events:auto; }
+  .type-hint { font-size:13px; color:rgba(255,255,255,.2); }
+  .send-icon { color:rgba(52,211,153,.5); font-size:18px; }
+  .mic-cta { position:fixed; bottom:calc(env(safe-area-inset-bottom,0px) + 92px); left:50%; transform:translateX(-50%); background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.22); color:rgba(255,255,255,.7); padding:9px 20px; border-radius:20px; font-size:12px; font-weight:600; letter-spacing:0.04em; cursor:pointer; pointer-events:auto; transition:opacity .4s; white-space:nowrap; }
+  .mic-cta.hidden { opacity:0; pointer-events:none; }
+</style>
+</head>
+<body>
+<canvas id="wv"></canvas>
+<div class="ui">
+  <div class="topbar">
+    <div class="logo"><span style="color:#fff">Heart</span><span style="color:#34D399">y</span></div>
+    <button class="close-btn">✕</button>
+  </div>
+  <div class="spacer"></div>
+  <div class="status-row">
+    <div class="status-dot" id="sdot"></div>
+    <div class="status-txt" id="stxt">Listening…</div>
+  </div>
+  <div class="transcript-box">
+    <div class="transcript-txt dim">Speak — the waveform reacts to your voice</div>
+  </div>
+  <div class="actions">
+    <button class="btn-submit">Submit</button>
+    <button class="btn-retry">Re-record</button>
+  </div>
+  <div class="type-field">
+    <span class="type-hint">Or type here...</span>
+    <span class="send-icon">↑</span>
+  </div>
+</div>
+<button class="mic-cta" id="micBtn">🎤 Use my mic instead</button>
+
+<script>
+// ─── Canvas ───────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('wv');
+const DPR = window.devicePixelRatio || 1;
+function resize() {
+  canvas.width  = window.innerWidth  * DPR;
+  canvas.height = window.innerHeight * DPR;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ─── Shader ───────────────────────────────────────────────────────────────────
+// Ported from the original WebGL fragment shader — three sine waves, one per
+// RGB channel, diverging via chromatic x-offset.
+//
+// Key change from the original shader:
+//   Original:  rx = p.x * (1 + d)  → multiplicative, split grows at EDGES
+//   Here:      rx = nx + spread*d  → additive with centre-peaked weight
+//              spread = sin(px/W * π) → 0 at both edges, 1 at centre
+//
+// Result: edges always overlap (all channels same → screen-blend = white),
+//         prism split lives only in the middle of the screen.
+//
+// Wave animation grows with voice:
+//   yScale   → amplitude  (silence: flat calm line, loud: tall dramatic wave)
+//   timeInc  → wave speed (silence: slow drift, loud: energetic flow)
+//   norm²    → harmonic   (silence: pure sine, loud: richer multi-frequency shape)
+
+const GLOW = [
+  { wf: 0.120, a: 0.016 },
+  { wf: 0.050, a: 0.040 },
+  { wf: 0.018, a: 0.110 },
+  { wf: 0.006, a: 0.360 },
+  { wf: 0.0025,a: 0.780 },
+  { wf: 0.001, a: 1.000 },
+];
+
+const CHANNELS = [
+  { sign: +1, color: 'rgb(255,28,28)' },
+  { sign:  0, color: 'rgb(28,255,28)' },
+  { sign: -1, color: 'rgb(28,28,255)' },
+];
+
+// Spatial frequency — how many wave humps fit across the screen.
+// The original shader used xScale=1, which on a portrait screen drew less than
+// one full cycle (→ a single arc/bend). ~13 gives roughly 4 snaky humps.
+const WAVE_FREQ = 13;
+// Chromatic phase separation between R/G/B, decoupled from WAVE_FREQ so the
+// prism fringe stays clean instead of scaling with the wave frequency.
+const CHROMA = 2.6;
+
+function drawShader(time, xScale, yScale, distortion, norm) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const minDim = Math.min(W, H);
+  const CY = H / 2;
+
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  const paths = CHANNELS.map(({ sign }) => {
+    const path = new Path2D();
+    for (let px = 0; px <= W; px++) {
+      const nx = (px * 2 - W) / minDim;
+
+      // Centre-weighted spread: sin²(πx/W) is 0 at both edges, 1 at centre —
+      // so channels overlap (→ white) at the sides and the prism splits only
+      // toward the middle.
+      const sp = Math.sin((px / W) * Math.PI);
+      const spread = sp * sp;
+
+      // Base wave phase: spatial frequency × position + horizontal scroll.
+      // The chromatic offset is added as a separate phase term (gated by
+      // spread) so R/G/B diverge only in the middle, without scaling with
+      // WAVE_FREQ.
+      const phase = nx * WAVE_FREQ + time + sign * spread * distortion * CHROMA;
+
+      // Primary sine + a higher harmonic that emerges with loudness, giving
+      // a richer, snakier shape when speaking and a clean wave when quiet.
+      const wave =
+        Math.sin(phase)              * yScale +
+        Math.sin(phase * 2.1 + 1.3)  * yScale * 0.38 * (norm * norm);
+
+      const py = CY + wave * (minDim / 2);
+      px === 0 ? path.moveTo(px, py) : path.lineTo(px, py);
+    }
+    return path;
+  });
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.lineCap  = 'round';
+  ctx.lineJoin = 'round';
+
+  CHANNELS.forEach(({ color }, i) => {
+    ctx.strokeStyle = color;
+    GLOW.forEach(({ wf, a }) => {
+      ctx.lineWidth   = wf * W;
+      ctx.globalAlpha = a;
+      ctx.stroke(paths[i]);
+    });
+  });
+
+  ctx.restore();
+}
+
+// ─── Audio ────────────────────────────────────────────────────────────────────
+let analyser = null, micData = null, usingMic = false;
+
+async function startMic() {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const actx   = new AudioContext();
+  analyser = actx.createAnalyser();
+  analyser.fftSize = 512;
+  analyser.smoothingTimeConstant = 0.0;
+  actx.createMediaStreamSource(stream).connect(analyser);
+  micData  = new Uint8Array(analyser.fftSize);
+  usingMic = true;
+  document.getElementById('micBtn').classList.add('hidden');
+}
+document.getElementById('micBtn').addEventListener('click', () =>
+  startMic().catch(e => alert('Mic denied: ' + e.message)));
+
+// ─── Loop ─────────────────────────────────────────────────────────────────────
+let t          = 0;
+let smoothRms  = 0;
+let noiseFloor = 0.02;   // adaptive — tracks the quietest recent level
+// Visually smoothed shader params — prevents snapping
+let visDistort = 0;
+let visYScale  = 0.05;
+let visNorm    = 0;
+
+// Responsiveness: higher = snappier. These are deliberately fast now —
+// the previous values felt lethargic.
+const DIST_LERP  = 0.35;
+const SCALE_LERP = 0.30;
+const NORM_LERP  = 0.30;
+
+// Absolute signal mapping (NOT relative auto-gain — that caused prism at silence).
+// gate    = noiseFloor + this margin → must be exceeded before ANY prism appears
+// speechSpan = RMS range above the gate that maps to full prism
+const GATE_MARGIN = 0.012;
+const SPEECH_SPAN = 0.16;
+
+const sdot = document.getElementById('sdot');
+const stxt = document.getElementById('stxt');
+
+function loop() {
+  // ── Audio ──
+  let raw = 0;
+  if (usingMic && analyser) {
+    analyser.getByteTimeDomainData(micData);
+    let s = 0;
+    for (let i = 0; i < micData.length; i++) { const v=(micData[i]-128)/128; s+=v*v; }
+    raw = Math.sqrt(s / micData.length);
+  } else {
+    // No mic yet: hold at true silence so the idle single-beam shows correctly.
+    raw = 0;
+  }
+
+  // Stage 1 — smooth the raw RMS. Fast attack so speech registers instantly,
+  // slower release so the wave doesn't collapse between syllables.
+  const alpha = raw > smoothRms ? 0.45 : 0.12;
+  smoothRms = smoothRms * (1 - alpha) + raw * alpha;
+
+  // Adaptive noise floor: drops instantly to any new quiet minimum, rises
+  // only very slowly. This learns the device's mic hiss without ever letting
+  // that hiss register as "speech".
+  if (smoothRms < noiseFloor) noiseFloor = smoothRms;
+  else noiseFloor += (smoothRms - noiseFloor) * 0.002;
+  noiseFloor = Math.max(0.002, Math.min(noiseFloor, 0.06));
+
+  // Gate: only RMS above (floor + margin) produces signal. Below → exactly 0,
+  // so silence shows the calm single beam with NO prism.
+  const gate  = noiseFloor + GATE_MARGIN;
+  const above = smoothRms - gate;
+  const norm  = above <= 0 ? 0
+              : Math.min(Math.pow(above / SPEECH_SPAN, 0.75), 1.0);
+
+  // Stage 2 — visual lerp on shader params
+  const targetDistort = norm * 0.36;
+  const targetYScale  = 0.05 + norm * 0.50;
+
+  visDistort += (targetDistort - visDistort) * DIST_LERP;
+  visYScale  += (targetYScale  - visYScale)  * SCALE_LERP;
+  visNorm    += (norm          - visNorm)    * NORM_LERP;
+
+  // Wave speed (now direct radians/frame since time is no longer ×xScale):
+  // slow calm drift at silence, lively flow when loud.
+  t += 0.01 + visNorm * 0.10;
+
+  drawShader(t, 1.0, visYScale, visDistort, visNorm);
+
+  // ── UI ──
+  const speaking = visNorm > 0.08;
+  sdot.classList.toggle('on', speaking);
+  stxt.classList.toggle('on', speaking);
+  stxt.textContent = speaking ? '● Listening' : 'Listening…';
+
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>

@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hearty — Radial Clock Expanded</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,700;1,300;1,700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Sans:ital,wght@0,400;0,500;0,700&family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #07070f;
+    font-family: 'Space Grotesk', sans-serif;
+    padding: 56px 64px 72px;
+    width: 1920px;
+  }
+
+  .page-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 48px; padding-bottom: 22px;
+    border-bottom: 1px solid #18182a;
+  }
+  .page-logo {
+    font-family: 'Fraunces', serif;
+    font-size: 40px; font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .page-meta { text-align: right; }
+  .page-meta-title { font-size: 18px; font-weight: 600; color: #fff; margin-bottom: 3px; }
+  .page-meta-sub { font-size: 12px; color: #383848; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; }
+
+  .section-title {
+    font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 28px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .section-title::after { content:''; flex:1; height:1px; background:#18182a; }
+  .section-sub { font-size: 12px; color: #333348; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; }
+
+  .card-row { display: flex; gap: 36px; }
+  .design-card {
+    flex: 1;
+    background: #0e0e18;
+    border-radius: 22px;
+    overflow: hidden;
+    border: 1px solid #1a1a28;
+    display: flex; flex-direction: column;
+  }
+  .phone-wrapper {
+    padding: 32px 32px 0;
+    display: flex; justify-content: center;
+    background: #09090f;
+    flex: 1;
+  }
+  .phone {
+    width: 290px; height: 580px;
+    border-radius: 44px; overflow: hidden;
+    border: 6px solid #20202e; position: relative; flex-shrink: 0;
+    box-shadow: 0 16px 60px rgba(0,0,0,0.75);
+  }
+  .phone::before {
+    content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:72px; height:22px; background:#20202e;
+    border-radius:0 0 14px 14px; z-index:100;
+  }
+  .card-info {
+    padding: 20px 26px 24px;
+    border-top: 1px solid #1a1a28;
+  }
+  .card-screen { font-size:10px; color:#333348; font-family:'JetBrains Mono',monospace; letter-spacing:0.14em; margin-bottom:4px; }
+  .card-name { font-size:18px; font-weight:700; color:#fff; margin-bottom:5px; }
+  .card-desc { font-size:13px; color:#545468; line-height:1.55; margin-bottom:14px; }
+  .palette { display:flex; gap:7px; align-items:center; }
+  .swatch { width:20px; height:20px; border-radius:50%; border:2px solid rgba(255,255,255,0.07); }
+  .palette-label { font-size:10px; color:#303044; margin-left:7px; font-family:'JetBrains Mono',monospace; }
+
+  /* ════════════════════════════════════════════════════
+     SHARED CLOCK HELPERS
+  ════════════════════════════════════════════════════ */
+  .clock-num {
+    position: absolute;
+    top: 50%; left: 50%;
+    font-size: 9px; font-weight: 700;
+    width: 18px; height: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1;
+  }
+
+  /* ════════════════════════════════════════════════════
+     C1: RADIAL CLOCK × WARM & GROUNDED
+  ════════════════════════════════════════════════════ */
+  .c1-phone { background: #FDFBF7; }
+  .c1-inner { width:100%; height:100%; position:relative; overflow:hidden; }
+
+  .c1-topbar {
+    background: #FDFBF7; border-bottom: 1px solid #EDE8DF;
+    padding: 32px 18px 10px;
+    display: flex; justify-content: space-between; align-items: center;
+    position: relative; z-index:2;
+  }
+  .c1-logo {
+    font-family: 'Fraunces', serif;
+    font-size: 19px; font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .c1-logo .heart { color: #1A1209; }
+  .c1-logo .wy { color: #C0392B; }
+  .c1-date { font-size: 10px; color: #9B8C78; font-family: 'DM Sans', sans-serif; }
+
+  /* Clock zone — AM tint inside inner ring, PM tint outside outer ring */
+  .c1-clock-zone {
+    position: relative; width: 100%; height: 278px;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(circle 45px at 50% 50%, rgba(185,210,235,0.22) 0%, rgba(185,210,235,0.22) 100%),
+      radial-gradient(circle 140px at 50% 50%, transparent 77%, rgba(222,170,110,0.09) 82%, rgba(222,170,110,0.09) 92%, transparent 97%),
+      #FDFBF7;
+  }
+
+  /* Rings — inner ring reads as AM (cool), outer ring as PM (warm-neutral) */
+  .c1-ring-outer {
+    position: absolute; width: 216px; height: 216px; border-radius: 50%;
+    border: 1.5px solid #C8B89A;
+    top:50%; left:50%; transform: translate(-50%,-50%);
+  }
+  .c1-ring-mid {
+    position: absolute; width: 160px; height: 160px; border-radius: 50%;
+    border: 1px solid #EDE8DF;
+    top:50%; left:50%; transform: translate(-50%,-50%);
+  }
+  .c1-ring-inner {
+    position: absolute; width: 90px; height: 90px; border-radius: 50%;
+    border: 1.5px solid rgba(155,190,220,0.6);
+    top:50%; left:50%; transform: translate(-50%,-50%);
+    background: rgba(185,210,235,0.14);
+  }
+
+  .c1-clock-center {
+    position: absolute; top:50%; left:50%;
+    transform: translate(-50%,-50%);
+    text-align: center; z-index: 5;
+  }
+  .c1-time { font-size: 22px; font-weight: 800; color: #1A1209; font-family: 'Fraunces', serif; line-height: 1; }
+  .c1-ampm { font-size: 8px; color: #9B8C78; font-family: 'DM Sans', sans-serif; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+
+  /* Clock numbers — between mid and outer ring, R=88 */
+  .c1-clock-zone .clock-num { color: #9B8C78; font-size: 8.5px; }
+  .c1-clock-zone .clock-num.major { color: #5A4E42; font-size: 9.5px; }
+
+  /* Tick marks at R=103 */
+  .c1-tick {
+    position: absolute; top:50%; left:50%;
+    width: 2px; height: 7px;
+    background: #D9D0C4;
+    border-radius: 1px;
+    transform-origin: center bottom;
+  }
+  .c1-tick.major { width: 2.5px; height: 10px; background: #B5A99A; }
+
+  /* Clock hands */
+  .c1-hand-hour {
+    position: absolute; left: 50%; bottom: 0;
+    transform-origin: 50% 100%;
+    width: 3px; height: 38px;
+    background: #3D2B1F;
+    border-radius: 3px 3px 0 0;
+    margin-left: -1.5px;
+  }
+  .c1-hand-minute {
+    position: absolute; left: 50%; bottom: 0;
+    transform-origin: 50% 100%;
+    width: 2px; height: 56px;
+    background: #C0392B;
+    border-radius: 2px 2px 0 0;
+    margin-left: -1px;
+  }
+  .c1-hand-center-dot {
+    position: absolute; top:50%; left:50%;
+    transform: translate(-50%,-50%);
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #C0392B;
+    box-shadow: 0 0 0 2px #FDFBF7;
+    z-index: 10;
+  }
+
+  /* AM orbit entry dots — small, cool-toned, R=60, between inner and mid ring */
+  .c1-am-dot {
+    position: absolute; top:50%; left:50%;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(185,210,235,0.35);
+    border: 2px solid rgba(140,185,220,0.55);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; z-index: 4;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.07);
+  }
+  .c1-am-dot.symptom {
+    background: rgba(235,205,200,0.4);
+    border-color: rgba(200,120,110,0.45);
+  }
+
+  /* PM orbit entry dots — full size, warm-toned, R=118, outside outer ring */
+  .c1-pm-dot {
+    position: absolute; top:50%; left:50%;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: #fff; border: 2px solid #EDE8DF;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.09);
+    z-index: 4;
+  }
+  .c1-pm-dot.symptom { border-color: #F5D0CB; background: #FDF5F4; }
+  .c1-pm-dot.active {
+    border-color: #C0392B;
+    box-shadow: 0 0 0 3px rgba(192,57,43,0.12), 0 2px 10px rgba(0,0,0,0.09);
+  }
+  .c1-pm-label {
+    position: absolute; top:50%; left:50%;
+    font-size: 7.5px; font-weight: 600; color: #9B8C78;
+    font-family: 'DM Sans', sans-serif;
+    white-space: nowrap; z-index: 4;
+  }
+  .c1-pm-label.sym { color: #C0392B; }
+
+  /* Zone legend strip */
+  .c1-zone-legend {
+    display: flex; justify-content: center; gap: 20px;
+    padding: 5px 0; background: #FDFBF7;
+    border-bottom: 1px solid #EDE8DF;
+  }
+  .c1-zone-tag {
+    font-size: 7px; font-weight: 700; letter-spacing: 0.07em;
+    font-family: 'DM Sans', sans-serif;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .c1-zone-tag.am { color: rgba(120,170,210,0.9); }
+  .c1-zone-tag.pm { color: #C0392B; }
+  .c1-zone-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Timeline list */
+  .c1-list { padding: 0 14px 8px; background: #FDFBF7; }
+  .c1-list-label { font-size: 8px; font-weight: 700; color: #C0392B; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; font-family: 'DM Sans', sans-serif; }
+  .c1-list-entry {
+    background: #fff; border: 1px solid #EDE8DF; border-radius: 11px;
+    padding: 7px 11px; margin-bottom: 5px;
+    display: flex; gap: 8px; align-items: center;
+  }
+  .c1-list-icon { font-size: 13px; }
+  .c1-list-title { font-size: 11px; font-weight: 600; color: #1A1209; font-family: 'DM Sans', sans-serif; }
+  .c1-list-time { margin-left: auto; font-size: 9px; color: #9B8C78; font-family: 'JetBrains Mono', monospace; }
+
+  .c1-fab {
+    position: absolute; bottom: 52px; right: 16px;
+    width: 44px; height: 44px; background: #C0392B; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 24px; z-index: 10;
+    box-shadow: 0 4px 16px rgba(192,57,43,0.45);
+  }
+  .c1-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: #FDFBF7; border-top: 1px solid #EDE8DF;
+    padding: 9px 0 6px; display: flex; justify-content: space-around; z-index: 5;
+  }
+  .c1-nav-item { font-size: 18px; opacity: 0.2; }
+  .c1-nav-item.active { opacity: 1; }
+
+  /* ════════════════════════════════════════════════════
+     C2: RADIAL CLOCK × AURORA
+  ════════════════════════════════════════════════════ */
+  .c2-phone { background: linear-gradient(160deg, #0D1B2A 0%, #0F2040 100%); }
+  .c2-inner { width:100%; height:100%; position:relative; overflow:hidden; }
+
+  .c2-glow1 {
+    position: absolute; width: 260px; height: 260px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(52,211,153,0.13) 0%, transparent 70%);
+    top: -80px; right: -80px;
+  }
+  .c2-glow2 {
+    position: absolute; width: 200px; height: 200px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(139,92,246,0.11) 0%, transparent 70%);
+    bottom: 120px; left: -60px;
+  }
+  .c2-content { position: relative; z-index: 2; height: 100%; }
+
+  .c2-topbar {
+    padding: 32px 18px 10px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .c2-logo {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 18px; font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .c2-logo .heart { color: #fff; }
+  .c2-logo .wy { color: #34D399; }
+  .c2-date { font-size: 10px; color: rgba(255,255,255,0.3); font-family: 'JetBrains Mono', monospace; }
+
+  /* Clock zone — violet AM tint inside inner ring, emerald PM tint outside outer ring */
+  .c2-clock-zone {
+    position: relative; width: 100%; height: 278px;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(circle 45px at 50% 50%, rgba(139,92,246,0.14) 0%, rgba(139,92,246,0.14) 100%),
+      radial-gradient(circle 140px at 50% 50%, transparent 77%, rgba(52,211,153,0.07) 82%, rgba(52,211,153,0.07) 92%, transparent 97%);
+  }
+
+  /* Rings — inner ring reads as AM (violet), outer ring as PM (emerald) */
+  .c2-ring-outer {
+    position: absolute; width: 216px; height: 216px; border-radius: 50%;
+    border: 1px solid rgba(52,211,153,0.22);
+    top:50%; left:50%; transform: translate(-50%,-50%);
+  }
+  .c2-ring-mid {
+    position: absolute; width: 160px; height: 160px; border-radius: 50%;
+    border: 1px solid rgba(52,211,153,0.07);
+    top:50%; left:50%; transform: translate(-50%,-50%);
+  }
+  .c2-ring-inner {
+    position: absolute; width: 90px; height: 90px; border-radius: 50%;
+    border: 1.5px solid rgba(139,92,246,0.35);
+    top:50%; left:50%; transform: translate(-50%,-50%);
+    background: rgba(139,92,246,0.1);
+  }
+
+  .c2-clock-center {
+    position: absolute; top:50%; left:50%;
+    transform: translate(-50%,-50%);
+    text-align: center; z-index: 5;
+  }
+  .c2-time { font-size: 22px; font-weight: 800; color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1; }
+  .c2-ampm { font-size: 8px; color: rgba(52,211,153,0.6); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+
+  .c2-clock-zone .clock-num { color: rgba(255,255,255,0.2); font-size: 8.5px; }
+  .c2-clock-zone .clock-num.major { color: rgba(52,211,153,0.5); font-size: 9.5px; }
+
+  /* Ticks */
+  .c2-tick {
+    position: absolute; top:50%; left:50%;
+    width: 1.5px; height: 6px;
+    background: rgba(52,211,153,0.12);
+    border-radius: 1px; transform-origin: center bottom;
+  }
+  .c2-tick.major { width: 2px; height: 9px; background: rgba(52,211,153,0.3); }
+
+  /* Clock hands */
+  .c2-hand-hour {
+    position: absolute; left:50%; bottom:0;
+    transform-origin: 50% 100%;
+    width: 3px; height: 38px;
+    background: rgba(255,255,255,0.8);
+    border-radius: 3px 3px 0 0;
+    margin-left: -1.5px;
+  }
+  .c2-hand-minute {
+    position: absolute; left:50%; bottom:0;
+    transform-origin: 50% 100%;
+    width: 2px; height: 56px;
+    background: #34D399;
+    border-radius: 2px 2px 0 0;
+    margin-left: -1px;
+    box-shadow: 0 0 8px rgba(52,211,153,0.6);
+  }
+  .c2-hand-center-dot {
+    position: absolute; top:50%; left:50%;
+    transform: translate(-50%,-50%);
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #34D399;
+    box-shadow: 0 0 0 2px #0D1B2A, 0 0 10px rgba(52,211,153,0.7);
+    z-index: 10;
+  }
+
+  /* AM orbit entry dots — violet-toned, R=60, between inner and mid ring */
+  .c2-am-dot {
+    position: absolute; top:50%; left:50%;
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; z-index: 4;
+  }
+  .c2-am-dot.meal {
+    background: rgba(139,92,246,0.14);
+    border: 1.5px solid rgba(139,92,246,0.38);
+  }
+  .c2-am-dot.symptom {
+    background: rgba(248,113,113,0.12);
+    border: 1.5px solid rgba(248,113,113,0.35);
+  }
+
+  /* PM orbit entry dots — full size, R=118, outside outer ring */
+  .c2-pm-dot {
+    position: absolute; top:50%; left:50%;
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; z-index: 4;
+  }
+  .c2-pm-dot.meal { border: 1.5px solid rgba(52,211,153,0.3); background: rgba(52,211,153,0.08); }
+  .c2-pm-dot.symptom { border: 1.5px solid rgba(248,113,113,0.3); background: rgba(248,113,113,0.08); }
+  .c2-pm-dot.mood { border: 1.5px solid rgba(167,139,250,0.3); background: rgba(167,139,250,0.08); }
+  .c2-pm-dot.active { box-shadow: 0 0 0 3px rgba(52,211,153,0.2), 0 0 14px rgba(52,211,153,0.25); }
+  .c2-pm-label {
+    position: absolute; top:50%; left:50%;
+    font-size: 7px; font-weight: 600;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    white-space: nowrap; z-index: 4;
+  }
+  .c2-pm-label.meal { color: rgba(52,211,153,0.7); }
+  .c2-pm-label.sym  { color: rgba(248,113,113,0.7); }
+  .c2-pm-label.mood { color: rgba(167,139,250,0.7); }
+
+  /* Zone legend strip */
+  .c2-zone-legend {
+    display: flex; justify-content: center; gap: 20px;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .c2-zone-tag {
+    font-size: 7px; font-weight: 700; letter-spacing: 0.07em;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .c2-zone-tag.am { color: rgba(167,139,250,0.85); }
+  .c2-zone-tag.pm { color: rgba(52,211,153,0.75); }
+
+  /* Timeline list */
+  .c2-list { padding: 0 14px 8px; }
+  .c2-list-label { font-size: 7.5px; font-weight: 700; color: rgba(52,211,153,0.6); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; font-family: 'Plus Jakarta Sans', sans-serif; }
+  .c2-list-entry {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px; padding: 7px 11px; margin-bottom: 4px;
+    display: flex; gap: 8px; align-items: center;
+  }
+  .c2-list-entry.meal-e  { border-color: rgba(52,211,153,0.15); }
+  .c2-list-entry.sym-e   { border-color: rgba(248,113,113,0.15); }
+  .c2-list-icon { font-size: 13px; }
+  .c2-list-title { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.85); font-family: 'Plus Jakarta Sans', sans-serif; }
+  .c2-list-dot { margin-left: auto; width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .c2-list-dot.g { background: #34D399; box-shadow: 0 0 4px #34D399; }
+  .c2-list-dot.r { background: #F87171; box-shadow: 0 0 4px #F87171; }
+  .c2-list-time { font-size: 9px; color: rgba(255,255,255,0.2); font-family: 'JetBrains Mono', monospace; }
+
+  .c2-fab {
+    position: absolute; bottom: 52px; right: 16px;
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, #34D399, #059669);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 24px; z-index: 10;
+    box-shadow: 0 4px 18px rgba(52,211,153,0.45);
+  }
+  .c2-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(10,20,40,0.85);
+    border-top: 1px solid rgba(255,255,255,0.07);
+    padding: 9px 0 6px; display: flex; justify-content: space-around;
+    backdrop-filter: blur(20px); z-index: 5;
+  }
+  .c2-nav-item { font-size: 18px; opacity: 0.2; }
+  .c2-nav-item.active { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-logo">
+    <span style="color:#fff">Heart</span><span style="color:#C0392B">y</span>
+  </div>
+  <div class="page-meta">
+    <div class="page-meta-title">Radial Clock — AM / PM Zones</div>
+    <div class="page-meta-sub">Inner ring = AM · Outer ring = PM · Hands + time in the middle</div>
+  </div>
+</div>
+
+<div class="section-title">Radial Clock Layout &nbsp;<span class="section-sub">AM inner orbit · PM outer orbit</span></div>
+
+<div class="card-row">
+
+  <!-- ══════════════════════════════════
+       C1: WARM & GROUNDED
+  ══════════════════════════════════ -->
+  <div class="design-card">
+    <div class="phone-wrapper">
+      <div class="phone">
+        <div class="c1-phone"><div class="c1-inner">
+
+          <!-- Topbar -->
+          <div class="c1-topbar">
+            <div class="c1-logo"><span class="heart">Heart</span><span class="wy">y</span></div>
+            <div class="c1-date">Tue, May 26</div>
+          </div>
+
+          <!-- Clock zone -->
+          <div class="c1-clock-zone">
+
+            <!-- Rings -->
+            <div class="c1-ring-outer"></div>
+            <div class="c1-ring-mid"></div>
+            <div class="c1-ring-inner"></div>
+
+            <!-- Tick marks at R=103 -->
+            <div style="position:absolute;top:50%;left:50%;width:2px;height:10px;background:#B5A99A;border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(0deg)"></div>
+            <div style="position:absolute;top:50%;left:50%;width:1.5px;height:7px;background:#D9D0C4;border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(30deg)"></div>
+            <div style="position:absolute;top:50%;left:50%;width:1.5px;height:7px;background:#D9D0C4;border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(60deg)"></div>
+            <div style="position:absolute;top:50%;left:50%;width:2px;height:10px;background:#B5A99A;border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(90deg)"></div>
+            <div style="position:absolute;top:50%;left:50%;width:1.5px;height:7px;background:#D9D0C4;border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(120deg)"></div>
+            <div style="position:absolute;top:50%;left:50%;width:1.5px;height:7px;background:#D9D0C4;border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(150deg)"></div>
+            <div style="position:absolute;top:50%;left:50%;width:2px;height:10px;background:#B5A99A;border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(180deg)"></div>
+            <div style="position:absolute;top:50%;left:50%;width:1.5px;height:7px;background:#D9D0C4;border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(210deg)"></div>
+            <div style="position:absolute;top:50%;left:50%;width:1.5px;height:7px;background:#D9D0C4;border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(240deg)"></div>
+            <div style="position:absolute;top:50%;left:50%;width:2px;height:10px;background:#B5A99A;border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(270deg)"></div>
+            <div style="position:absolute;top:50%;left:50%;width:1.5px;height:7px;background:#D9D0C4;border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(300deg)"></div>
+            <div style="position:absolute;top:50%;left:50%;width:1.5px;height:7px;background:#D9D0C4;border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(330deg)"></div>
+
+            <!-- Clock numbers at R=88 (between mid and outer ring) -->
+            <div class="clock-num major" style="transform:translate(calc(-50% + 0px),   calc(-50% - 88px))">12</div>
+            <div class="clock-num"       style="transform:translate(calc(-50% + 44px),  calc(-50% - 76.2px))">1</div>
+            <div class="clock-num"       style="transform:translate(calc(-50% + 76.2px),calc(-50% - 44px))">2</div>
+            <div class="clock-num major" style="transform:translate(calc(-50% + 88px),  calc(-50% + 0px))">3</div>
+            <div class="clock-num"       style="transform:translate(calc(-50% + 76.2px),calc(-50% + 44px))">4</div>
+            <div class="clock-num"       style="transform:translate(calc(-50% + 44px),  calc(-50% + 76.2px))">5</div>
+            <div class="clock-num major" style="transform:translate(calc(-50% + 0px),   calc(-50% + 88px))">6</div>
+            <div class="clock-num"       style="transform:translate(calc(-50% - 44px),  calc(-50% + 76.2px))">7</div>
+            <div class="clock-num"       style="transform:translate(calc(-50% - 76.2px),calc(-50% + 44px))">8</div>
+            <div class="clock-num major" style="transform:translate(calc(-50% - 88px),  calc(-50% + 0px))">9</div>
+            <div class="clock-num"       style="transform:translate(calc(-50% - 76.2px),calc(-50% - 44px))">10</div>
+            <div class="clock-num"       style="transform:translate(calc(-50% - 44px),  calc(-50% - 76.2px))">11</div>
+
+            <!-- ── AM orbit (R=60) — inside inner ring zone ──
+                 Breakfast 8:00  → 240° → x=60·sin240°=−52,  y=−60·cos240°=+30
+                 Bloating  10:30 → 315° → x=60·sin315°=−42,  y=−60·cos315°=−42
+            -->
+            <div class="c1-am-dot"          style="transform:translate(calc(-50% - 52px), calc(-50% + 30px))">🥣</div>
+            <div class="c1-am-dot symptom"  style="transform:translate(calc(-50% - 42px), calc(-50% - 42px))">😣</div>
+
+            <!-- ── PM orbit (R=118) — outside outer ring zone ──
+                 Lunch   12:30 → 15°  → x=+31,  y=−114
+                 Snack    2:00 → 60°  → x=+102, y=−59
+                 Dinner   7:00 → 210° → x=−59,  y=+102
+            -->
+            <div class="c1-pm-dot active"  style="transform:translate(calc(-50% + 31px),  calc(-50% - 114px))">🥗</div>
+            <div class="c1-pm-label"       style="transform:translate(calc(-50% + 52px),  calc(-50% - 132px))">Lunch</div>
+
+            <div class="c1-pm-dot"         style="transform:translate(calc(-50% + 102px), calc(-50% - 59px))">🍎</div>
+            <div class="c1-pm-label"       style="transform:translate(calc(-50% + 124px), calc(-50% - 40px))">2pm</div>
+
+            <div class="c1-pm-dot"         style="transform:translate(calc(-50% - 59px),  calc(-50% + 102px))">🍝</div>
+            <div class="c1-pm-label"       style="transform:translate(calc(-50% - 88px),  calc(-50% + 120px))">7pm</div>
+
+            <!-- Clock hands (pivot at center) — 2:34 → hour 77°, minute 204° -->
+            <div style="position:absolute;top:50%;left:50%;width:0;height:0;">
+              <div class="c1-hand-hour"   style="transform:translateX(-50%) rotate(77deg)"></div>
+              <div class="c1-hand-minute" style="transform:translateX(-50%) rotate(204deg)"></div>
+            </div>
+            <div class="c1-hand-center-dot"></div>
+
+            <!-- Center time display -->
+            <div class="c1-clock-center">
+              <div class="c1-time">2:34</div>
+              <div class="c1-ampm">PM · Tue</div>
+            </div>
+
+          </div><!-- /clock-zone -->
+
+          <!-- Zone legend -->
+          <div class="c1-zone-legend">
+            <span class="c1-zone-tag am">
+              <span class="c1-zone-dot" style="background:rgba(140,185,220,0.75)"></span>
+              AM · inner orbit
+            </span>
+            <span class="c1-zone-tag pm">
+              <span class="c1-zone-dot" style="background:#C0392B"></span>
+              PM · outer orbit
+            </span>
+          </div>
+
+          <!-- Log list -->
+          <div class="c1-list">
+            <div class="c1-list-label">Today's Log</div>
+            <div class="c1-list-entry">
+              <span class="c1-list-icon">🥣</span>
+              <span class="c1-list-title">Oat porridge</span>
+              <span class="c1-list-time">8:00</span>
+            </div>
+            <div class="c1-list-entry" style="border-color:#F5D0CB">
+              <span class="c1-list-icon">😣</span>
+              <span class="c1-list-title">Bloating · 3/10</span>
+              <span class="c1-list-time">10:30</span>
+            </div>
+            <div class="c1-list-entry" style="border-color:#C0392B">
+              <span class="c1-list-icon">🥗</span>
+              <span class="c1-list-title">Caesar Salad</span>
+              <span class="c1-list-time">12:30</span>
+            </div>
+          </div>
+
+          <div class="c1-fab">+</div>
+          <div class="c1-nav">
+            <div class="c1-nav-item active">⊙</div>
+            <div class="c1-nav-item">📋</div>
+            <div class="c1-nav-item">📈</div>
+            <div class="c1-nav-item">⚙️</div>
+          </div>
+
+        </div></div>
+      </div>
+    </div>
+    <div class="card-info">
+      <div class="card-screen">RADIAL CLOCK · AM/PM ZONES</div>
+      <div class="card-name"><span style="color:#b8a898">Heart</span><span style="color:#C0392B">y</span> — Warm & Grounded</div>
+      <div class="card-desc">Inner ring is the AM zone (cool blue tint) — morning entries orbit close to center. Outer ring is PM — afternoon entries orbit outside the dial. Hands and digital time stay in the middle. At a glance you see both what happened and when in the day.</div>
+      <div class="palette">
+        <div class="swatch" style="background:#FDFBF7;border-color:#555"></div>
+        <div class="swatch" style="background:#C0392B"></div>
+        <div class="swatch" style="background:#9B8C78"></div>
+        <div class="swatch" style="background:#1A1209"></div>
+        <div class="palette-label">Warm & Grounded</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       C2: AURORA
+  ══════════════════════════════════ -->
+  <div class="design-card">
+    <div class="phone-wrapper">
+      <div class="phone">
+        <div class="c2-phone"><div class="c2-inner">
+          <div class="c2-glow1"></div>
+          <div class="c2-glow2"></div>
+          <div class="c2-content">
+
+            <div class="c2-topbar">
+              <div class="c2-logo"><span class="heart">Heart</span><span class="wy">y</span></div>
+              <div class="c2-date">TUE 26</div>
+            </div>
+
+            <div class="c2-clock-zone">
+
+              <!-- Rings -->
+              <div class="c2-ring-outer"></div>
+              <div class="c2-ring-mid"></div>
+              <div class="c2-ring-inner"></div>
+
+              <!-- Tick marks at R=103 -->
+              <div style="position:absolute;top:50%;left:50%;width:2px;height:9px;background:rgba(52,211,153,0.3);border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(0deg)"></div>
+              <div style="position:absolute;top:50%;left:50%;width:1.5px;height:6px;background:rgba(52,211,153,0.12);border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(30deg)"></div>
+              <div style="position:absolute;top:50%;left:50%;width:1.5px;height:6px;background:rgba(52,211,153,0.12);border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(60deg)"></div>
+              <div style="position:absolute;top:50%;left:50%;width:2px;height:9px;background:rgba(52,211,153,0.3);border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(90deg)"></div>
+              <div style="position:absolute;top:50%;left:50%;width:1.5px;height:6px;background:rgba(52,211,153,0.12);border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(120deg)"></div>
+              <div style="position:absolute;top:50%;left:50%;width:1.5px;height:6px;background:rgba(52,211,153,0.12);border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(150deg)"></div>
+              <div style="position:absolute;top:50%;left:50%;width:2px;height:9px;background:rgba(52,211,153,0.3);border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(180deg)"></div>
+              <div style="position:absolute;top:50%;left:50%;width:1.5px;height:6px;background:rgba(52,211,153,0.12);border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(210deg)"></div>
+              <div style="position:absolute;top:50%;left:50%;width:1.5px;height:6px;background:rgba(52,211,153,0.12);border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(240deg)"></div>
+              <div style="position:absolute;top:50%;left:50%;width:2px;height:9px;background:rgba(52,211,153,0.3);border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(270deg)"></div>
+              <div style="position:absolute;top:50%;left:50%;width:1.5px;height:6px;background:rgba(52,211,153,0.12);border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(300deg)"></div>
+              <div style="position:absolute;top:50%;left:50%;width:1.5px;height:6px;background:rgba(52,211,153,0.12);border-radius:1px;transform-origin:50% calc(100% + 103px);transform:translate(-50%,-100%) translateY(-103px) rotate(330deg)"></div>
+
+              <!-- Clock numbers at R=88 -->
+              <div class="clock-num major" style="transform:translate(calc(-50% + 0px),   calc(-50% - 88px))">12</div>
+              <div class="clock-num"       style="transform:translate(calc(-50% + 44px),  calc(-50% - 76.2px))">1</div>
+              <div class="clock-num"       style="transform:translate(calc(-50% + 76.2px),calc(-50% - 44px))">2</div>
+              <div class="clock-num major" style="transform:translate(calc(-50% + 88px),  calc(-50% + 0px))">3</div>
+              <div class="clock-num"       style="transform:translate(calc(-50% + 76.2px),calc(-50% + 44px))">4</div>
+              <div class="clock-num"       style="transform:translate(calc(-50% + 44px),  calc(-50% + 76.2px))">5</div>
+              <div class="clock-num major" style="transform:translate(calc(-50% + 0px),   calc(-50% + 88px))">6</div>
+              <div class="clock-num"       style="transform:translate(calc(-50% - 44px),  calc(-50% + 76.2px))">7</div>
+              <div class="clock-num"       style="transform:translate(calc(-50% - 76.2px),calc(-50% + 44px))">8</div>
+              <div class="clock-num major" style="transform:translate(calc(-50% - 88px),  calc(-50% + 0px))">9</div>
+              <div class="clock-num"       style="transform:translate(calc(-50% - 76.2px),calc(-50% - 44px))">10</div>
+              <div class="clock-num"       style="transform:translate(calc(-50% - 44px),  calc(-50% - 76.2px))">11</div>
+
+              <!-- ── AM orbit (R=60) — inside inner ring zone ──
+                   Breakfast 8:00  → 240° → (−52, +30)
+                   Coffee    9:00  → 270° → (−60,   0)
+                   Bloating  10:30 → 315° → (−42, −42)
+              -->
+              <div class="c2-am-dot meal"    style="transform:translate(calc(-50% - 52px), calc(-50% + 30px))">🥣</div>
+              <div class="c2-am-dot meal"    style="transform:translate(calc(-50% - 60px), calc(-50% + 0px))">☕</div>
+              <div class="c2-am-dot symptom" style="transform:translate(calc(-50% - 42px), calc(-50% - 42px))">😣</div>
+
+              <!-- ── PM orbit (R=118) — outside outer ring zone ──
+                   Lunch   12:30 → 15°  → (+31, −114)
+                   Snack    2:00 → 60°  → (+102, −59)
+                   Mood     4:00 → 120° → (+102, +59)
+                   Dinner   7:00 → 210° → (−59, +102)
+              -->
+              <div class="c2-pm-dot meal active" style="transform:translate(calc(-50% + 31px),  calc(-50% - 114px))">🥗</div>
+              <div class="c2-pm-label meal"      style="transform:translate(calc(-50% + 52px),  calc(-50% - 132px))">Lunch</div>
+
+              <div class="c2-pm-dot meal"        style="transform:translate(calc(-50% + 102px), calc(-50% - 59px))">🍎</div>
+              <div class="c2-pm-label meal"      style="transform:translate(calc(-50% + 124px), calc(-50% - 40px))">2pm</div>
+
+              <div class="c2-pm-dot mood"        style="transform:translate(calc(-50% + 102px), calc(-50% + 59px))">😊</div>
+              <div class="c2-pm-label mood"      style="transform:translate(calc(-50% + 124px), calc(-50% + 76px))">4pm</div>
+
+              <div class="c2-pm-dot meal"        style="transform:translate(calc(-50% - 59px),  calc(-50% + 102px))">🍝</div>
+              <div class="c2-pm-label meal"      style="transform:translate(calc(-50% - 88px),  calc(-50% + 120px))">7pm</div>
+
+              <!-- Clock hands — 2:34 → hour 77°, minute 204° -->
+              <div style="position:absolute;top:50%;left:50%;width:0;height:0;">
+                <div class="c2-hand-hour"   style="transform:translateX(-50%) rotate(77deg)"></div>
+                <div class="c2-hand-minute" style="transform:translateX(-50%) rotate(204deg)"></div>
+              </div>
+              <div class="c2-hand-center-dot"></div>
+
+              <!-- Center display -->
+              <div class="c2-clock-center">
+                <div class="c2-time">2:34</div>
+                <div class="c2-ampm">PM · TUE</div>
+              </div>
+
+            </div><!-- /clock-zone -->
+
+            <!-- Zone legend -->
+            <div class="c2-zone-legend">
+              <span class="c2-zone-tag am">
+                <span style="width:7px;height:7px;border-radius:50%;background:rgba(139,92,246,0.6);display:inline-block;flex-shrink:0"></span>
+                AM · inner orbit
+              </span>
+              <span class="c2-zone-tag pm">
+                <span style="width:7px;height:7px;border-radius:50%;background:#34D399;display:inline-block;flex-shrink:0"></span>
+                PM · outer orbit
+              </span>
+            </div>
+
+            <!-- Log list -->
+            <div class="c2-list">
+              <div class="c2-list-label">Today's Log</div>
+              <div class="c2-list-entry meal-e">
+                <span class="c2-list-icon">🥣</span>
+                <span class="c2-list-title">Oat porridge</span>
+                <div class="c2-list-dot g"></div>
+                <span class="c2-list-time">8:00</span>
+              </div>
+              <div class="c2-list-entry sym-e">
+                <span class="c2-list-icon">😣</span>
+                <span class="c2-list-title">Bloating · 3/10</span>
+                <div class="c2-list-dot r"></div>
+                <span class="c2-list-time">10:30</span>
+              </div>
+              <div class="c2-list-entry meal-e">
+                <span class="c2-list-icon">🥗</span>
+                <span class="c2-list-title">Caesar Salad</span>
+                <div class="c2-list-dot g"></div>
+                <span class="c2-list-time">12:30</span>
+              </div>
+            </div>
+
+            <div class="c2-fab">+</div>
+            <div class="c2-nav">
+              <div class="c2-nav-item active">⊙</div>
+              <div class="c2-nav-item">📋</div>
+              <div class="c2-nav-item">📈</div>
+              <div class="c2-nav-item">⚙️</div>
+            </div>
+
+          </div>
+        </div></div>
+      </div>
+    </div>
+    <div class="card-info">
+      <div class="card-screen">RADIAL CLOCK · AM/PM ZONES</div>
+      <div class="card-name"><span style="color:#e8e8f0">Heart</span><span style="color:#34D399">y</span> — Aurora</div>
+      <div class="card-desc">Inner ring glows violet — morning entries orbit the center. Outer ring glows emerald — afternoon entries orbit the outside. Three AM entries (breakfast, coffee, symptom) cluster toward the 8–11 position; four PM entries spread around the outer arc. Clock hands and time read unobstructed in the middle.</div>
+      <div class="palette">
+        <div class="swatch" style="background:#112240"></div>
+        <div class="swatch" style="background:#34D399"></div>
+        <div class="swatch" style="background:#8B5CF6"></div>
+        <div class="swatch" style="background:#F87171"></div>
+        <div class="palette-label">Aurora</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /card-row -->
+</body>
+</html>

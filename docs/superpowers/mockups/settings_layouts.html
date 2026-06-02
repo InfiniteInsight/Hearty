@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hearty — Settings · 10 Layouts</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@0,400;0,500;0,700&family=JetBrains+Mono:wght@400;500&display=swap');
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:#06060e; font-family:'Plus Jakarta Sans',sans-serif; padding:28px 20px 60px; width:780px; }
+
+  .page-header { margin-bottom:26px; padding-bottom:16px; border-bottom:1px solid #16162a; }
+  .page-logo { font-family:'Fraunces',serif; font-size:26px; font-weight:700; letter-spacing:-0.02em; margin-bottom:4px; }
+  .page-meta-title { font-size:14px; font-weight:600; color:#fff; margin-bottom:2px; }
+  .page-meta-sub { font-size:10px; color:#383852; font-family:'JetBrains Mono',monospace; letter-spacing:0.05em; }
+
+  .row-label { font-size:10px; font-weight:700; color:#3a3a58; font-family:'JetBrains Mono',monospace; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:14px; display:flex; align-items:center; gap:10px; }
+  .row-label::after { content:''; flex:1; height:1px; background:#16162a; }
+  .card-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:30px; }
+
+  .layout-card { display:flex; flex-direction:column; }
+  .phone-wrap { display:flex; justify-content:center; padding-bottom:10px; }
+  .phone { width:360px; height:700px; border-radius:46px; overflow:hidden; border:6px solid #18182c; position:relative; flex-shrink:0; box-shadow:0 18px 64px rgba(0,0,0,0.85); }
+  .phone::before { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:78px; height:22px; background:#18182c; border-radius:0 0 14px 14px; z-index:300; }
+
+  .lname { text-align:center; }
+  .lnum { font-size:8px; color:#33334e; font-family:'JetBrains Mono',monospace; letter-spacing:0.14em; }
+  .ltitle { font-size:14px; font-weight:700; color:#fff; margin:2px 0 3px; }
+  .ldesc { font-size:11px; color:#494968; line-height:1.5; }
+
+  /* ── shared dark app shell ── */
+  .scr { width:100%; height:100%; position:relative; overflow:hidden; }
+  .scr-aurora { background:linear-gradient(165deg,#0c1626 0%,#0e1d38 60%,#0c1730 100%); }
+  .scr-deep   { background:#070710; }
+  .glow { position:absolute; border-radius:50%; pointer-events:none; }
+
+  .hdr { padding:34px 22px 14px; display:flex; align-items:center; justify-content:space-between; position:relative; z-index:5; }
+  .hdr-title { font-family:'Fraunces',serif; font-size:22px; font-weight:700; color:#fff; }
+  .hdr-logo { font-family:'Fraunces',serif; font-size:16px; font-weight:700; }
+  .hdr-logo .y { color:#34D399; }
+  .gear { width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.07); display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.4); font-size:14px; }
+
+  .body { padding:4px 18px 18px; position:relative; z-index:5; }
+
+  /* gradient palette helpers */
+  .g-violet { --gf:#8B5CF6; --gt:#6366F1; }
+  .g-amber  { --gf:#ffbc00; --gt:#ff0058; }
+  .g-emer   { --gf:#34D399; --gt:#00d0ff; }
+  .g-blue   { --gf:#03a9f4; --gt:#ff0058; }
+  .g-lime   { --gf:#4dff03; --gt:#00d0ff; }
+  .g-grey   { --gf:#64748b; --gt:#334155; }
+
+  /* ════════ L1 — SKEW GRADIENT CARDS (literal translation) ════════ */
+  .l1-card { position:relative; height:78px; margin-bottom:30px; }
+  .l1-panel { position:absolute; top:0; left:34px; width:60%; height:100%; border-radius:13px; transform:skewX(12deg); background:linear-gradient(315deg,var(--gf),var(--gt)); }
+  .l1-panel.blur { filter:blur(20px); opacity:0.6; }
+  .l1-face { position:absolute; inset:0; left:0; padding:0 22px; background:rgba(255,255,255,0.06); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.1); border-radius:13px; display:flex; align-items:center; gap:14px; z-index:2; }
+  .l1-ico { font-size:22px; }
+  .l1-txt { color:#fff; }
+  .l1-t { font-size:14px; font-weight:700; }
+  .l1-s { font-size:10px; color:rgba(255,255,255,0.5); margin-top:1px; }
+  .l1-chev { margin-left:auto; color:rgba(255,255,255,0.4); font-size:16px; }
+
+  /* ════════ L2 — GLASS ROWS over aurora ════════ */
+  .l2-row { display:flex; align-items:center; gap:13px; padding:13px 14px; margin-bottom:10px; border-radius:15px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); backdrop-filter:blur(10px); }
+  .l2-chip { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; background:linear-gradient(315deg,var(--gf),var(--gt)); box-shadow:0 4px 14px -2px var(--gf); }
+  .l2-t { font-size:14px; font-weight:600; color:#fff; }
+  .l2-s { font-size:10px; color:rgba(255,255,255,0.45); margin-top:1px; }
+  .l2-chev { margin-left:auto; color:rgba(255,255,255,0.3); font-size:15px; }
+
+  /* ════════ L3 — GRADIENT ICON TILES (2-col) ════════ */
+  .l3-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .l3-tile { position:relative; height:108px; border-radius:16px; overflow:hidden; }
+  .l3-tile .skew { position:absolute; top:-10%; left:30%; width:70%; height:120%; transform:skewX(14deg); background:linear-gradient(315deg,var(--gf),var(--gt)); filter:blur(2px); opacity:0.85; }
+  .l3-tile .face { position:absolute; inset:0; padding:13px; background:rgba(16,20,32,0.55); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column; justify-content:space-between; }
+  .l3-ico { font-size:22px; }
+  .l3-t { font-size:13px; font-weight:700; color:#fff; }
+  .l3-wide { grid-column:1 / -1; height:64px; }
+  .l3-wide .face { flex-direction:row; align-items:center; gap:12px; justify-content:flex-start; }
+
+  /* ════════ L4 — HERO ACCOUNT + GLASS LIST ════════ */
+  .l4-hero { position:relative; height:120px; border-radius:20px; overflow:hidden; margin-bottom:16px; }
+  .l4-hero .grad { position:absolute; inset:0; background:linear-gradient(315deg,#8B5CF6,#00d0ff); }
+  .l4-hero .grad.blur { filter:blur(26px); opacity:0.7; transform:scale(1.1); }
+  .l4-hero .face { position:absolute; inset:0; padding:18px 20px; display:flex; align-items:center; gap:14px; }
+  .l4-avatar { width:54px; height:54px; border-radius:50%; background:rgba(255,255,255,0.2); border:2px solid rgba(255,255,255,0.4); display:flex; align-items:center; justify-content:center; font-size:26px; }
+  .l4-name { font-size:17px; font-weight:800; color:#fff; }
+  .l4-email { font-size:11px; color:rgba(255,255,255,0.75); margin-top:2px; }
+  .l4-row { display:flex; align-items:center; gap:12px; padding:12px 14px; margin-bottom:8px; border-radius:13px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); }
+  .l4-ico { width:34px; height:34px; border-radius:9px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .l4-t { font-size:13px; font-weight:600; color:#fff; }
+  .l4-chev { margin-left:auto; color:rgba(255,255,255,0.3); font-size:14px; }
+
+  /* ════════ L5 — NEON EDGE CARDS ════════ */
+  .l5-card { position:relative; padding:14px 16px; margin-bottom:13px; border-radius:15px; background:#0c0c18; display:flex; align-items:center; gap:13px; }
+  .l5-card::before { content:''; position:absolute; inset:-1px; border-radius:16px; padding:1.5px; background:linear-gradient(315deg,var(--gf),var(--gt)); -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude; }
+  .l5-card::after { content:''; position:absolute; inset:0; border-radius:15px; background:linear-gradient(315deg,var(--gf),var(--gt)); filter:blur(16px); opacity:0.28; z-index:-1; }
+  .l5-ico { font-size:19px; }
+  .l5-t { font-size:14px; font-weight:600; color:#fff; }
+  .l5-s { font-size:10px; color:rgba(255,255,255,0.4); margin-top:1px; }
+  .l5-chev { margin-left:auto; color:rgba(255,255,255,0.35); font-size:15px; }
+
+  /* ════════ L6 — SPLIT SKEW PANELS ════════ */
+  .l6-row { position:relative; height:66px; margin-bottom:12px; border-radius:14px; overflow:hidden; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); }
+  .l6-skew { position:absolute; top:-20%; left:-12%; width:38%; height:140%; transform:skewX(13deg); background:linear-gradient(315deg,var(--gf),var(--gt)); }
+  .l6-skew.blur { filter:blur(14px); opacity:0.7; }
+  .l6-ico { position:absolute; left:20px; top:50%; transform:translateY(-50%); font-size:20px; z-index:3; }
+  .l6-txt { position:absolute; left:90px; top:50%; transform:translateY(-50%); z-index:3; }
+  .l6-t { font-size:14px; font-weight:600; color:#fff; }
+  .l6-s { font-size:10px; color:rgba(255,255,255,0.45); margin-top:1px; }
+  .l6-chev { position:absolute; right:16px; top:50%; transform:translateY(-50%); color:rgba(255,255,255,0.3); font-size:15px; z-index:3; }
+
+  /* ════════ L7 — FLOATING BLOB CARDS ════════ */
+  .l7-card { position:relative; height:84px; margin-bottom:14px; border-radius:16px; overflow:hidden; }
+  .l7-card .grad { position:absolute; inset:0; background:linear-gradient(315deg,var(--gf),var(--gt)); opacity:0.9; }
+  .l7-blob1 { position:absolute; top:-30px; left:40px; width:80px; height:80px; border-radius:50%; background:rgba(255,255,255,0.18); backdrop-filter:blur(8px); }
+  .l7-blob2 { position:absolute; bottom:-26px; right:50px; width:64px; height:64px; border-radius:50%; background:rgba(255,255,255,0.12); }
+  .l7-face { position:absolute; inset:0; padding:0 20px; display:flex; align-items:center; gap:14px; z-index:3; }
+  .l7-ico { font-size:22px; }
+  .l7-t { font-size:15px; font-weight:700; color:#fff; }
+  .l7-s { font-size:10px; color:rgba(255,255,255,0.7); margin-top:1px; }
+
+  /* ════════ L8 — GRADIENT UNDERGLOW LIST ════════ */
+  .l8-row { position:relative; display:flex; align-items:center; gap:13px; padding:14px 16px; margin-bottom:16px; border-radius:14px; background:#0d0d1a; border:1px solid rgba(255,255,255,0.06); }
+  .l8-row::after { content:''; position:absolute; left:10%; right:10%; bottom:-9px; height:18px; border-radius:50%; background:linear-gradient(90deg,var(--gf),var(--gt)); filter:blur(16px); opacity:0.55; z-index:-1; }
+  .l8-ico { font-size:19px; color:#fff; }
+  .l8-t { font-size:14px; font-weight:600; color:#fff; }
+  .l8-s { font-size:10px; color:rgba(255,255,255,0.4); margin-top:1px; }
+  .l8-chev { margin-left:auto; color:rgba(255,255,255,0.3); font-size:15px; }
+
+  /* ════════ L9 — STACKED SKEW DECK ════════ */
+  .l9-deck { position:relative; padding-top:8px; }
+  .l9-card { position:relative; height:70px; margin-bottom:-14px; border-radius:16px; overflow:hidden; box-shadow:0 -6px 20px rgba(0,0,0,0.4); transform:skewX(-6deg); }
+  .l9-card:last-child { margin-bottom:0; }
+  .l9-card .grad { position:absolute; inset:0; background:linear-gradient(315deg,var(--gf),var(--gt)); opacity:0.92; }
+  .l9-face { position:absolute; inset:0; padding:0 22px; display:flex; align-items:center; gap:13px; transform:skewX(6deg); }
+  .l9-ico { font-size:19px; }
+  .l9-t { font-size:14px; font-weight:700; color:#fff; }
+  .l9-chev { margin-left:auto; color:rgba(255,255,255,0.6); font-size:15px; }
+
+  /* ════════ L10 — GLASS + ACCENT SPINE ════════ */
+  .l10-sec { margin-bottom:16px; }
+  .l10-seclabel { font-size:8px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.35); font-family:'JetBrains Mono',monospace; margin:0 0 8px 4px; }
+  .l10-group { position:relative; border-radius:15px; overflow:hidden; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); }
+  .l10-spine { position:absolute; left:0; top:0; bottom:0; width:4px; background:linear-gradient(180deg,var(--gf),var(--gt)); }
+  .l10-row { display:flex; align-items:center; gap:12px; padding:12px 14px 12px 18px; border-bottom:1px solid rgba(255,255,255,0.06); }
+  .l10-row:last-child { border-bottom:none; }
+  .l10-ico { font-size:16px; }
+  .l10-t { font-size:13px; font-weight:600; color:#fff; }
+  .l10-chev { margin-left:auto; color:rgba(255,255,255,0.3); font-size:14px; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-logo"><span style="color:#fff">Heart</span><span style="color:#34D399">y</span></div>
+  <div class="page-meta-title">Settings Screen — 10 Layout Options</div>
+  <div class="page-meta-sub">Skewed-gradient glass-card aesthetic from hearty.ltd, adapted to a settings list</div>
+</div>
+
+<!-- ─────────── ROW 1 ─────────── -->
+<div class="row-label">L1 &amp; L2 — Skew Gradient Cards · Glass Rows</div>
+<div class="card-row">
+
+  <!-- L1 -->
+  <div class="layout-card"><div class="phone-wrap"><div class="phone">
+    <div class="scr scr-deep">
+      <div class="hdr"><div class="hdr-title">Settings</div><div class="hdr-logo"><span style="color:#fff">Heart</span><span class="y">y</span></div></div>
+      <div class="body">
+        <div class="l1-card g-violet"><span class="l1-panel blur"></span><span class="l1-panel"></span>
+          <div class="l1-face"><span class="l1-ico">👤</span><div class="l1-txt"><div class="l1-t">Account</div><div class="l1-s">infiniteinsight@gmail.com</div></div><span class="l1-chev">›</span></div></div>
+        <div class="l1-card g-amber"><span class="l1-panel blur"></span><span class="l1-panel"></span>
+          <div class="l1-face"><span class="l1-ico">🔔</span><div class="l1-txt"><div class="l1-t">Notifications</div><div class="l1-s">Nudges, digest, alerts</div></div><span class="l1-chev">›</span></div></div>
+        <div class="l1-card g-emer"><span class="l1-panel blur"></span><span class="l1-panel"></span>
+          <div class="l1-face"><span class="l1-ico">🎙️</span><div class="l1-txt"><div class="l1-t">Voice</div><div class="l1-s">Wake word, dictation</div></div><span class="l1-chev">›</span></div></div>
+        <div class="l1-card g-blue"><span class="l1-panel blur"></span><span class="l1-panel"></span>
+          <div class="l1-face"><span class="l1-ico">💬</span><div class="l1-txt"><div class="l1-t">Conversation style</div><div class="l1-s">How Hearty talks to you</div></div><span class="l1-chev">›</span></div></div>
+        <div class="l1-card g-lime"><span class="l1-panel blur"></span><span class="l1-panel"></span>
+          <div class="l1-face"><span class="l1-ico">🩺</span><div class="l1-txt"><div class="l1-t">Health Profile</div><div class="l1-s">Conditions &amp; triggers</div></div><span class="l1-chev">›</span></div></div>
+      </div>
+    </div>
+  </div></div>
+  <div class="lname"><div class="lnum">L1 · AURORA</div><div class="ltitle">Skew Gradient Cards</div><div class="ldesc">Direct translation: each category is a full skew-gradient panel behind a glass face. Bold, marketing-like.</div></div></div>
+
+  <!-- L2 -->
+  <div class="layout-card"><div class="phone-wrap"><div class="phone">
+    <div class="scr scr-aurora">
+      <div class="glow" style="width:240px;height:240px;background:radial-gradient(circle,rgba(52,211,153,0.1),transparent 70%);top:-70px;right:-60px;"></div>
+      <div class="glow" style="width:200px;height:200px;background:radial-gradient(circle,rgba(139,92,246,0.1),transparent 70%);bottom:120px;left:-60px;"></div>
+      <div class="hdr"><div class="hdr-title">Settings</div><div class="gear">⚙</div></div>
+      <div class="body">
+        <div class="l2-row g-violet"><div class="l2-chip">👤</div><div><div class="l2-t">Account</div><div class="l2-s">infiniteinsight@gmail.com</div></div><span class="l2-chev">›</span></div>
+        <div class="l2-row g-amber"><div class="l2-chip">🔔</div><div><div class="l2-t">Notifications</div><div class="l2-s">Nudges, digest, sync alerts</div></div><span class="l2-chev">›</span></div>
+        <div class="l2-row g-emer"><div class="l2-chip">🎙️</div><div><div class="l2-t">Voice</div><div class="l2-s">Wake word &amp; dictation</div></div><span class="l2-chev">›</span></div>
+        <div class="l2-row g-blue"><div class="l2-chip">💬</div><div><div class="l2-t">Conversation style</div><div class="l2-s">Tone &amp; personality</div></div><span class="l2-chev">›</span></div>
+        <div class="l2-row g-lime"><div class="l2-chip">🩺</div><div><div class="l2-t">Health Profile</div><div class="l2-s">Conditions &amp; triggers</div></div><span class="l2-chev">›</span></div>
+        <div class="l2-row g-grey"><div class="l2-chip">ℹ️</div><div><div class="l2-t">About</div><div class="l2-s">Hearty v1.0.0</div></div><span class="l2-chev">›</span></div>
+      </div>
+    </div>
+  </div></div>
+  <div class="lname"><div class="lnum">L2 · AURORA</div><div class="ltitle">Glass Rows + Gradient Chips</div><div class="ldesc">Calm glass rows over aurora glows; only the icon chip carries the gradient. Scannable, restrained.</div></div></div>
+
+</div>
+
+<!-- ─────────── ROW 2 ─────────── -->
+<div class="row-label">L3 &amp; L4 — Gradient Tiles · Hero Account</div>
+<div class="card-row">
+
+  <!-- L3 -->
+  <div class="layout-card"><div class="phone-wrap"><div class="phone">
+    <div class="scr scr-deep">
+      <div class="hdr"><div class="hdr-title">Settings</div><div class="gear">⚙</div></div>
+      <div class="body">
+        <div class="l3-grid">
+          <div class="l3-tile g-violet"><span class="skew"></span><div class="face"><span class="l3-ico">👤</span><span class="l3-t">Account</span></div></div>
+          <div class="l3-tile g-amber"><span class="skew"></span><div class="face"><span class="l3-ico">🔔</span><span class="l3-t">Notifications</span></div></div>
+          <div class="l3-tile g-emer"><span class="skew"></span><div class="face"><span class="l3-ico">🎙️</span><span class="l3-t">Voice</span></div></div>
+          <div class="l3-tile g-blue"><span class="skew"></span><div class="face"><span class="l3-ico">💬</span><span class="l3-t">Conversation</span></div></div>
+          <div class="l3-tile g-lime"><span class="skew"></span><div class="face"><span class="l3-ico">🩺</span><span class="l3-t">Health Profile</span></div></div>
+          <div class="l3-tile g-grey"><span class="skew"></span><div class="face"><span class="l3-ico">ℹ️</span><span class="l3-t">About</span></div></div>
+          <div class="l3-tile l3-wide g-grey" style="--gf:#ff0058;--gt:#7a0030;"><span class="skew"></span><div class="face"><span class="l3-ico">↩</span><span class="l3-t">Sign Out</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <div class="lname"><div class="lnum">L3 · AURORA</div><div class="ltitle">Gradient Icon Tiles</div><div class="ldesc">2-column tile grid; each tile has a skewed gradient sweep behind frosted glass. Visual, app-launcher feel.</div></div></div>
+
+  <!-- L4 -->
+  <div class="layout-card"><div class="phone-wrap"><div class="phone">
+    <div class="scr scr-deep">
+      <div class="hdr"><div class="hdr-title">Settings</div><div class="gear">⚙</div></div>
+      <div class="body">
+        <div class="l4-hero"><div class="grad blur"></div><div class="grad" style="opacity:0.9"></div>
+          <div class="face"><div class="l4-avatar">👤</div><div><div class="l4-name">Evan</div><div class="l4-email">infiniteinsight@gmail.com</div></div></div></div>
+        <div class="l4-row"><div class="l4-ico">🔔</div><div class="l4-t">Notifications</div><span class="l4-chev">›</span></div>
+        <div class="l4-row"><div class="l4-ico">🎙️</div><div class="l4-t">Voice</div><span class="l4-chev">›</span></div>
+        <div class="l4-row"><div class="l4-ico">💬</div><div class="l4-t">Conversation style</div><span class="l4-chev">›</span></div>
+        <div class="l4-row"><div class="l4-ico">🩺</div><div class="l4-t">Health Profile</div><span class="l4-chev">›</span></div>
+        <div class="l4-row"><div class="l4-ico">ℹ️</div><div class="l4-t">About · v1.0.0</div><span class="l4-chev">›</span></div>
+      </div>
+    </div>
+  </div></div>
+  <div class="lname"><div class="lnum">L4 · AURORA</div><div class="ltitle">Hero Account + Glass List</div><div class="ldesc">One big gradient hero card for the account, plain glass rows below. Gradient is a focal accent, not everywhere.</div></div></div>
+
+</div>
+
+<!-- ─────────── ROW 3 ─────────── -->
+<div class="row-label">L5 &amp; L6 — Neon Edge · Split Skew</div>
+<div class="card-row">
+
+  <!-- L5 -->
+  <div class="layout-card"><div class="phone-wrap"><div class="phone">
+    <div class="scr scr-deep">
+      <div class="hdr"><div class="hdr-title">Settings</div><div class="gear">⚙</div></div>
+      <div class="body">
+        <div class="l5-card g-violet"><span class="l5-ico">👤</span><div><div class="l5-t">Account</div><div class="l5-s">infiniteinsight@gmail.com</div></div><span class="l5-chev">›</span></div>
+        <div class="l5-card g-amber"><span class="l5-ico">🔔</span><div><div class="l5-t">Notifications</div><div class="l5-s">Nudges, digest, alerts</div></div><span class="l5-chev">›</span></div>
+        <div class="l5-card g-emer"><span class="l5-ico">🎙️</span><div><div class="l5-t">Voice</div><div class="l5-s">Wake word &amp; dictation</div></div><span class="l5-chev">›</span></div>
+        <div class="l5-card g-blue"><span class="l5-ico">💬</span><div><div class="l5-t">Conversation style</div><div class="l5-s">Tone &amp; personality</div></div><span class="l5-chev">›</span></div>
+        <div class="l5-card g-lime"><span class="l5-ico">🩺</span><div><div class="l5-t">Health Profile</div><div class="l5-s">Conditions &amp; triggers</div></div><span class="l5-chev">›</span></div>
+      </div>
+    </div>
+  </div></div>
+  <div class="lname"><div class="lnum">L5 · DARK</div><div class="ltitle">Neon Edge Cards</div><div class="ldesc">Dark cards ringed by a thin gradient border with a soft colored underglow. Sleek, futuristic, low-ink.</div></div></div>
+
+  <!-- L6 -->
+  <div class="layout-card"><div class="phone-wrap"><div class="phone">
+    <div class="scr scr-aurora">
+      <div class="hdr"><div class="hdr-title">Settings</div><div class="gear">⚙</div></div>
+      <div class="body">
+        <div class="l6-row g-violet"><span class="l6-skew blur"></span><span class="l6-skew"></span><span class="l6-ico">👤</span><div class="l6-txt"><div class="l6-t">Account</div><div class="l6-s">infiniteinsight@gmail.com</div></div><span class="l6-chev">›</span></div>
+        <div class="l6-row g-amber"><span class="l6-skew blur"></span><span class="l6-skew"></span><span class="l6-ico">🔔</span><div class="l6-txt"><div class="l6-t">Notifications</div><div class="l6-s">Nudges, digest, alerts</div></div><span class="l6-chev">›</span></div>
+        <div class="l6-row g-emer"><span class="l6-skew blur"></span><span class="l6-skew"></span><span class="l6-ico">🎙️</span><div class="l6-txt"><div class="l6-t">Voice</div><div class="l6-s">Wake word &amp; dictation</div></div><span class="l6-chev">›</span></div>
+        <div class="l6-row g-blue"><span class="l6-skew blur"></span><span class="l6-skew"></span><span class="l6-ico">💬</span><div class="l6-txt"><div class="l6-t">Conversation</div><div class="l6-s">Tone &amp; personality</div></div><span class="l6-chev">›</span></div>
+        <div class="l6-row g-lime"><span class="l6-skew blur"></span><span class="l6-skew"></span><span class="l6-ico">🩺</span><div class="l6-txt"><div class="l6-t">Health Profile</div><div class="l6-s">Conditions &amp; triggers</div></div><span class="l6-chev">›</span></div>
+      </div>
+    </div>
+  </div></div>
+  <div class="lname"><div class="lnum">L6 · AURORA</div><div class="ltitle">Split Skew Panels</div><div class="ldesc">The skewed gradient lives only in the left third behind the icon; glass text on the right. Keeps the signature skew but stays readable.</div></div></div>
+
+</div>
+
+<!-- ─────────── ROW 4 ─────────── -->
+<div class="row-label">L7 &amp; L8 — Floating Blobs · Underglow</div>
+<div class="card-row">
+
+  <!-- L7 -->
+  <div class="layout-card"><div class="phone-wrap"><div class="phone">
+    <div class="scr scr-deep">
+      <div class="hdr"><div class="hdr-title">Settings</div><div class="gear">⚙</div></div>
+      <div class="body">
+        <div class="l7-card g-violet"><div class="grad"></div><span class="l7-blob1"></span><span class="l7-blob2"></span><div class="l7-face"><span class="l7-ico">👤</span><div><div class="l7-t">Account</div><div class="l7-s">infiniteinsight@gmail.com</div></div></div></div>
+        <div class="l7-card g-amber"><div class="grad"></div><span class="l7-blob1"></span><span class="l7-blob2"></span><div class="l7-face"><span class="l7-ico">🔔</span><div><div class="l7-t">Notifications</div><div class="l7-s">Nudges, digest, alerts</div></div></div></div>
+        <div class="l7-card g-emer"><div class="grad"></div><span class="l7-blob1"></span><span class="l7-blob2"></span><div class="l7-face"><span class="l7-ico">🎙️</span><div><div class="l7-t">Voice</div><div class="l7-s">Wake word &amp; dictation</div></div></div></div>
+        <div class="l7-card g-blue"><div class="grad"></div><span class="l7-blob1"></span><span class="l7-blob2"></span><div class="l7-face"><span class="l7-ico">💬</span><div><div class="l7-t">Conversation</div><div class="l7-s">Tone &amp; personality</div></div></div></div>
+      </div>
+    </div>
+  </div></div>
+  <div class="lname"><div class="lnum">L7 · VIBRANT</div><div class="ltitle">Floating Blob Cards</div><div class="ldesc">Full gradient cards with the reference's frosted floating blobs (these animate/drift live). Playful and lively.</div></div></div>
+
+  <!-- L8 -->
+  <div class="layout-card"><div class="phone-wrap"><div class="phone">
+    <div class="scr scr-deep">
+      <div class="hdr"><div class="hdr-title">Settings</div><div class="gear">⚙</div></div>
+      <div class="body" style="padding-top:10px;">
+        <div class="l8-row g-violet"><span class="l8-ico">👤</span><div><div class="l8-t">Account</div><div class="l8-s">infiniteinsight@gmail.com</div></div><span class="l8-chev">›</span></div>
+        <div class="l8-row g-amber"><span class="l8-ico">🔔</span><div><div class="l8-t">Notifications</div><div class="l8-s">Nudges, digest, alerts</div></div><span class="l8-chev">›</span></div>
+        <div class="l8-row g-emer"><span class="l8-ico">🎙️</span><div><div class="l8-t">Voice</div><div class="l8-s">Wake word &amp; dictation</div></div><span class="l8-chev">›</span></div>
+        <div class="l8-row g-blue"><span class="l8-ico">💬</span><div><div class="l8-t">Conversation style</div><div class="l8-s">Tone &amp; personality</div></div><span class="l8-chev">›</span></div>
+        <div class="l8-row g-lime"><span class="l8-ico">🩺</span><div><div class="l8-t">Health Profile</div><div class="l8-s">Conditions &amp; triggers</div></div><span class="l8-chev">›</span></div>
+      </div>
+    </div>
+  </div></div>
+  <div class="lname"><div class="lnum">L8 · DARK</div><div class="ltitle">Gradient Underglow List</div><div class="ldesc">Flat dark rows, each casting a soft colored glow beneath — the blur-30px effect only. Rows seem lit from within.</div></div></div>
+
+</div>
+
+<!-- ─────────── ROW 5 ─────────── -->
+<div class="row-label">L9 &amp; L10 — Skew Deck · Accent Spine</div>
+<div class="card-row">
+
+  <!-- L9 -->
+  <div class="layout-card"><div class="phone-wrap"><div class="phone">
+    <div class="scr scr-deep">
+      <div class="hdr"><div class="hdr-title">Settings</div><div class="gear">⚙</div></div>
+      <div class="body">
+        <div class="l9-deck">
+          <div class="l9-card g-violet"><div class="grad"></div><div class="l9-face"><span class="l9-ico">👤</span><span class="l9-t">Account</span><span class="l9-chev">›</span></div></div>
+          <div class="l9-card g-amber"><div class="grad"></div><div class="l9-face"><span class="l9-ico">🔔</span><span class="l9-t">Notifications</span><span class="l9-chev">›</span></div></div>
+          <div class="l9-card g-emer"><div class="grad"></div><div class="l9-face"><span class="l9-ico">🎙️</span><span class="l9-t">Voice</span><span class="l9-chev">›</span></div></div>
+          <div class="l9-card g-blue"><div class="grad"></div><div class="l9-face"><span class="l9-ico">💬</span><span class="l9-t">Conversation style</span><span class="l9-chev">›</span></div></div>
+          <div class="l9-card g-lime"><div class="grad"></div><div class="l9-face"><span class="l9-ico">🩺</span><span class="l9-t">Health Profile</span><span class="l9-chev">›</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <div class="lname"><div class="lnum">L9 · VIBRANT</div><div class="ltitle">Stacked Skew Deck</div><div class="ldesc">Cards overlap like a fanned deck, each skewed. Tapping one slides it out. Dramatic, distinctive — heavier on color.</div></div></div>
+
+  <!-- L10 -->
+  <div class="layout-card"><div class="phone-wrap"><div class="phone">
+    <div class="scr scr-aurora">
+      <div class="hdr"><div class="hdr-title">Settings</div><div class="gear">⚙</div></div>
+      <div class="body">
+        <div class="l10-sec">
+          <div class="l10-seclabel">Account</div>
+          <div class="l10-group g-violet"><span class="l10-spine"></span>
+            <div class="l10-row"><span class="l10-ico">👤</span><span class="l10-t">infiniteinsight@gmail.com</span><span class="l10-chev">›</span></div>
+            <div class="l10-row"><span class="l10-ico">↩</span><span class="l10-t">Sign Out</span><span class="l10-chev">›</span></div>
+          </div>
+        </div>
+        <div class="l10-sec">
+          <div class="l10-seclabel">Preferences</div>
+          <div class="l10-group g-emer"><span class="l10-spine"></span>
+            <div class="l10-row"><span class="l10-ico">🔔</span><span class="l10-t">Notifications</span><span class="l10-chev">›</span></div>
+            <div class="l10-row"><span class="l10-ico">🎙️</span><span class="l10-t">Voice</span><span class="l10-chev">›</span></div>
+            <div class="l10-row"><span class="l10-ico">💬</span><span class="l10-t">Conversation style</span><span class="l10-chev">›</span></div>
+          </div>
+        </div>
+        <div class="l10-sec">
+          <div class="l10-seclabel">Health</div>
+          <div class="l10-group g-lime"><span class="l10-spine"></span>
+            <div class="l10-row"><span class="l10-ico">🩺</span><span class="l10-t">Health Profile</span><span class="l10-chev">›</span></div>
+            <div class="l10-row"><span class="l10-ico">ℹ️</span><span class="l10-t">About · v1.0.0</span><span class="l10-chev">›</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <div class="lname"><div class="lnum">L10 · AURORA</div><div class="ltitle">Glass Groups + Accent Spine</div><div class="ldesc">iOS-style grouped sections; each group has a vertical gradient spine. Most conventional &amp; organized — gradient as a quiet accent.</div></div></div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hearty — Settings Sub-screens × Themes</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:#06060e; font-family:'Plus Jakarta Sans',sans-serif; padding:28px 22px 60px; width:980px; }
+  .ph-header { margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid #16162a; }
+  .ph-logo { font-family:'Fraunces',serif; font-size:24px; font-weight:700; margin-bottom:4px; }
+  .ph-t { font-size:14px; font-weight:600; color:#fff; }
+  .ph-s { font-size:10px; color:#383852; font-family:'JetBrains Mono',monospace; letter-spacing:0.05em; }
+
+  .row-label { font-size:10px; font-weight:700; color:#3a3a58; font-family:'JetBrains Mono',monospace; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:13px; display:flex; align-items:center; gap:10px; }
+  .row-label::after { content:''; flex:1; height:1px; background:#16162a; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:30px; }
+  .col { display:flex; flex-direction:column; align-items:center; }
+  .cap { margin-top:8px; font-size:9px; color:#4a4a68; font-family:'JetBrains Mono',monospace; letter-spacing:0.08em; }
+
+  .phone { width:262px; height:548px; border-radius:40px; overflow:hidden; border:5px solid #18182c; position:relative; flex-shrink:0; box-shadow:0 16px 50px rgba(0,0,0,0.8); }
+  .phone::before { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:64px; height:18px; background:#18182c; border-radius:0 0 12px 12px; z-index:300; }
+
+  /* ── theme palettes via CSS vars ── */
+  .dt-scr { width:100%; height:100%; position:relative; overflow:hidden; background:var(--bg); color:var(--tx); }
+  .dt-warm {
+    --bg:#FDFBF7; --card:#ffffff; --cardbd:#EDE8DF; --tx:#1A1209; --sub:#9B8C78;
+    --acc:#C0392B; --accg:linear-gradient(135deg,#E8A87C,#C0392B); --faint:rgba(26,18,9,0.06);
+  }
+  .dt-aurora {
+    --card:rgba(255,255,255,0.055); --cardbd:rgba(255,255,255,0.09); --tx:#fff; --sub:rgba(255,255,255,0.5);
+    --acc:#34D399; --accg:linear-gradient(135deg,#34D399,#059669); --faint:rgba(255,255,255,0.08);
+    background:
+      radial-gradient(220px 220px at 112% -4%, rgba(52,211,153,0.13), transparent 70%),
+      radial-gradient(200px 200px at -12% 82%, rgba(139,92,246,0.13), transparent 70%),
+      linear-gradient(165deg,#0c1626,#0e1d38 60%,#0c1730);
+  }
+  .dt-cosmic {
+    --card:rgba(255,255,255,0.05); --cardbd:rgba(255,255,255,0.1); --tx:#fff; --sub:rgba(255,255,255,0.5);
+    --acc:#00C8FF; --accg:linear-gradient(135deg,#B700FF,#00C8FF); --faint:rgba(255,255,255,0.07);
+    background:
+      radial-gradient(200px 200px at 112% 0%, rgba(183,0,255,0.24), transparent 70%),
+      radial-gradient(180px 180px at -12% 72%, rgba(0,200,255,0.2), transparent 70%),
+      radial-gradient(160px 160px at 112% 46%, rgba(255,60,120,0.16), transparent 70%),
+      #07021A;
+  }
+  .dt-cosmic::after { content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      radial-gradient(1px 1px at 30px 60px,rgba(255,255,255,0.5),transparent),
+      radial-gradient(1px 1px at 110px 140px,rgba(255,255,255,0.4),transparent),
+      radial-gradient(1px 1px at 200px 90px,rgba(255,255,255,0.5),transparent),
+      radial-gradient(1px 1px at 230px 230px,rgba(255,255,255,0.35),transparent),
+      radial-gradient(1px 1px at 70px 320px,rgba(255,255,255,0.45),transparent),
+      radial-gradient(1px 1px at 180px 420px,rgba(255,255,255,0.4),transparent); }
+
+  /* ── shared components ── */
+  .dt-appbar { display:flex; align-items:center; gap:10px; padding:22px 14px 10px; position:relative; z-index:5; }
+  .dt-back { font-size:19px; opacity:0.65; }
+  .dt-abtitle { font-family:'Fraunces',serif; font-size:16px; font-weight:700; }
+  .dt-reset { margin-left:auto; font-size:10px; color:var(--acc); font-weight:700; }
+  .dt-body { padding:2px 13px 14px; position:relative; z-index:5; }
+  .dt-intro { font-size:9.5px; color:var(--sub); line-height:1.55; margin-bottom:12px; }
+  .dt-seclabel { font-size:7.5px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--sub); margin:13px 4px 7px; font-family:'JetBrains Mono',monospace; }
+  .dt-card { background:var(--card); border:1px solid var(--cardbd); border-radius:13px; overflow:hidden; backdrop-filter:blur(8px); }
+
+  .dt-srow { display:flex; align-items:center; gap:10px; padding:11px 12px; border-bottom:1px solid var(--faint); }
+  .dt-srow:last-child { border-bottom:none; }
+  .dt-ico2 { width:30px; height:30px; border-radius:9px; background:var(--accg); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; box-shadow:0 3px 9px -3px var(--acc); }
+  .dt-st { font-size:11px; font-weight:600; color:var(--tx); }
+  .dt-ss { font-size:8px; color:var(--sub); margin-top:1px; }
+  .dt-toggle { margin-left:auto; width:34px; height:20px; border-radius:11px; position:relative; flex-shrink:0; }
+  .dt-toggle.on  { background:var(--accg); }
+  .dt-toggle.off { background:var(--faint); }
+  .dt-knob { position:absolute; top:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.35); }
+  .dt-toggle.on  .dt-knob { right:2px; }
+  .dt-toggle.off .dt-knob { left:2px; }
+
+  .dt-slide { padding:11px 12px; border-bottom:1px solid var(--faint); }
+  .dt-slide-top { display:flex; justify-content:space-between; font-size:9px; margin-bottom:9px; }
+  .dt-slide-lab { color:var(--sub); }
+  .dt-slide-val { color:var(--acc); font-weight:700; }
+  .dt-track { height:4px; border-radius:2px; background:var(--faint); position:relative; }
+  .dt-fill { position:absolute; left:0; top:0; bottom:0; border-radius:2px; background:var(--accg); }
+  .dt-knob2 { position:absolute; top:50%; transform:translate(-50%,-50%); width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.45); }
+
+  .dt-save { margin-top:16px; width:100%; padding:11px; border-radius:12px; background:var(--accg); color:#fff; font-size:12px; font-weight:700; text-align:center; box-shadow:0 6px 16px -6px var(--acc); }
+
+  .dt-opt { background:var(--card); border:1px solid var(--cardbd); border-radius:13px; padding:11px 12px; margin-bottom:10px; backdrop-filter:blur(8px); }
+  .dt-opt.sel { border-color:transparent; box-shadow:0 0 0 2px var(--acc); }
+  .dt-opt-h { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+  .dt-radio { width:15px; height:15px; border-radius:50%; border:2px solid var(--sub); flex-shrink:0; }
+  .dt-opt.sel .dt-radio { border-color:var(--acc); background:radial-gradient(circle, var(--acc) 42%, transparent 46%); }
+  .dt-opt-t { font-size:11px; font-weight:700; }
+  .dt-opt-s { font-size:8.5px; color:var(--sub); line-height:1.45; margin-bottom:8px; }
+  .dt-bubs { display:flex; flex-direction:column; gap:4px; }
+  .dt-bub { font-size:8px; border-radius:8px; padding:5px 8px; line-height:1.4; max-width:85%; }
+  .dt-bub-u { background:var(--faint); color:var(--tx); align-self:flex-end; }
+  .dt-bub-ai { background:var(--accg); color:#fff; align-self:flex-start; }
+
+  .dt-vrow { display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px solid var(--faint); }
+  .dt-vrow:last-child { border-bottom:none; }
+  .dt-vcheck { width:16px; height:16px; border-radius:50%; border:2px solid var(--sub); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:9px; color:#fff; }
+  .dt-vrow.sel .dt-vcheck { background:var(--accg); border-color:transparent; }
+  .dt-vt { font-size:10.5px; font-weight:600; }
+  .dt-vs { font-size:7.5px; color:var(--sub); margin-top:1px; }
+  .dt-play { margin-left:auto; width:26px; height:26px; border-radius:50%; background:var(--faint); display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--acc); flex-shrink:0; }
+
+  .dt-chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .dt-chip2 { font-size:9px; font-weight:600; padding:5px 11px; border-radius:20px; background:var(--accg); color:#fff; }
+  .dt-chip-add { font-size:9px; font-weight:600; padding:5px 11px; border-radius:20px; border:1px dashed var(--sub); color:var(--sub); }
+</style>
+</head>
+<body>
+
+<div class="ph-header">
+  <div class="ph-logo"><span style="color:#fff">Heart</span><span style="color:#34D399">y</span></div>
+  <div class="ph-t">Settings Sub-screens — across all three themes</div>
+  <div class="ph-s">Notifications · Voice · Conversation Style · Health Profile  ×  Warm &amp; Grounded · Aurora · Cosmic Bloom</div>
+</div>
+
+<!-- ═══════════════ NOTIFICATIONS ═══════════════ -->
+<div class="row-label">Notifications</div>
+<div class="grid3">
+  <!-- duplicated per theme: warm / aurora / cosmic -->
+  <div class="col"><div class="phone"><div class="dt-scr dt-warm">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Notifications</span></div>
+    <div class="dt-body">
+      <div class="dt-seclabel">Reminders</div>
+      <div class="dt-card">
+        <div class="dt-srow"><div class="dt-ico2">🍽️</div><div><div class="dt-st">Post-meal nudge</div><div class="dt-ss">Check in after you eat</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+        <div class="dt-slide"><div class="dt-slide-top"><span class="dt-slide-lab">Nudge delay</span><span class="dt-slide-val">45 min</span></div><div class="dt-track"><div class="dt-fill" style="width:55%"></div><div class="dt-knob2" style="left:55%"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">📰</div><div><div class="dt-st">Weekly digest</div><div class="dt-ss">Sunday summary</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">⚠️</div><div><div class="dt-st">Sync error alerts</div><div class="dt-ss">If logs fail to upload</div></div><div class="dt-toggle off"><div class="dt-knob"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">🎙️</div><div><div class="dt-st">Wake word</div><div class="dt-ss">“Hey Hearty”</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+      </div>
+      <div class="dt-save">Save</div>
+    </div>
+  </div></div><div class="cap">WARM &amp; GROUNDED</div></div>
+
+  <div class="col"><div class="phone"><div class="dt-scr dt-aurora">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Notifications</span></div>
+    <div class="dt-body">
+      <div class="dt-seclabel">Reminders</div>
+      <div class="dt-card">
+        <div class="dt-srow"><div class="dt-ico2">🍽️</div><div><div class="dt-st">Post-meal nudge</div><div class="dt-ss">Check in after you eat</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+        <div class="dt-slide"><div class="dt-slide-top"><span class="dt-slide-lab">Nudge delay</span><span class="dt-slide-val">45 min</span></div><div class="dt-track"><div class="dt-fill" style="width:55%"></div><div class="dt-knob2" style="left:55%"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">📰</div><div><div class="dt-st">Weekly digest</div><div class="dt-ss">Sunday summary</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">⚠️</div><div><div class="dt-st">Sync error alerts</div><div class="dt-ss">If logs fail to upload</div></div><div class="dt-toggle off"><div class="dt-knob"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">🎙️</div><div><div class="dt-st">Wake word</div><div class="dt-ss">“Hey Hearty”</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+      </div>
+      <div class="dt-save">Save</div>
+    </div>
+  </div></div><div class="cap">AURORA</div></div>
+
+  <div class="col"><div class="phone"><div class="dt-scr dt-cosmic">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Notifications</span></div>
+    <div class="dt-body">
+      <div class="dt-seclabel">Reminders</div>
+      <div class="dt-card">
+        <div class="dt-srow"><div class="dt-ico2">🍽️</div><div><div class="dt-st">Post-meal nudge</div><div class="dt-ss">Check in after you eat</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+        <div class="dt-slide"><div class="dt-slide-top"><span class="dt-slide-lab">Nudge delay</span><span class="dt-slide-val">45 min</span></div><div class="dt-track"><div class="dt-fill" style="width:55%"></div><div class="dt-knob2" style="left:55%"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">📰</div><div><div class="dt-st">Weekly digest</div><div class="dt-ss">Sunday summary</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">⚠️</div><div><div class="dt-st">Sync error alerts</div><div class="dt-ss">If logs fail to upload</div></div><div class="dt-toggle off"><div class="dt-knob"></div></div></div>
+        <div class="dt-srow"><div class="dt-ico2">🎙️</div><div><div class="dt-st">Wake word</div><div class="dt-ss">“Hey Hearty”</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
+      </div>
+      <div class="dt-save">Save</div>
+    </div>
+  </div></div><div class="cap">COSMIC BLOOM</div></div>
+</div>
+
+<!-- ═══════════════ VOICE ═══════════════ -->
+<div class="row-label">Voice</div>
+<div class="grid3">
+  <div class="col"><div class="phone"><div class="dt-scr dt-warm">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Voice</span><span class="dt-reset">Reset</span></div>
+    <div class="dt-body">
+      <div class="dt-intro">Choose the voice Hearty uses to speak responses aloud.</div>
+      <div class="dt-card">
+        <div class="dt-vrow sel"><div class="dt-vcheck">✓</div><div><div class="dt-vt">Hearty Neutral</div><div class="dt-vs">Custom · gender-neutral</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (US)</div><div class="dt-vs">en-US · warm</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (UK)</div><div class="dt-vs">en-GB · crisp</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (AU)</div><div class="dt-vs">en-AU · bright</div></div><div class="dt-play">▶</div></div>
+      </div>
+    </div>
+  </div></div><div class="cap">WARM &amp; GROUNDED</div></div>
+
+  <div class="col"><div class="phone"><div class="dt-scr dt-aurora">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Voice</span><span class="dt-reset">Reset</span></div>
+    <div class="dt-body">
+      <div class="dt-intro">Choose the voice Hearty uses to speak responses aloud.</div>
+      <div class="dt-card">
+        <div class="dt-vrow sel"><div class="dt-vcheck">✓</div><div><div class="dt-vt">Hearty Neutral</div><div class="dt-vs">Custom · gender-neutral</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (US)</div><div class="dt-vs">en-US · warm</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (UK)</div><div class="dt-vs">en-GB · crisp</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (AU)</div><div class="dt-vs">en-AU · bright</div></div><div class="dt-play">▶</div></div>
+      </div>
+    </div>
+  </div></div><div class="cap">AURORA</div></div>
+
+  <div class="col"><div class="phone"><div class="dt-scr dt-cosmic">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Voice</span><span class="dt-reset">Reset</span></div>
+    <div class="dt-body">
+      <div class="dt-intro">Choose the voice Hearty uses to speak responses aloud.</div>
+      <div class="dt-card">
+        <div class="dt-vrow sel"><div class="dt-vcheck">✓</div><div><div class="dt-vt">Hearty Neutral</div><div class="dt-vs">Custom · gender-neutral</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (US)</div><div class="dt-vs">en-US · warm</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (UK)</div><div class="dt-vs">en-GB · crisp</div></div><div class="dt-play">▶</div></div>
+        <div class="dt-vrow"><div class="dt-vcheck"></div><div><div class="dt-vt">English (AU)</div><div class="dt-vs">en-AU · bright</div></div><div class="dt-play">▶</div></div>
+      </div>
+    </div>
+  </div></div><div class="cap">COSMIC BLOOM</div></div>
+</div>
+
+<!-- ═══════════════ CONVERSATION STYLE ═══════════════ -->
+<div class="row-label">Conversation Style</div>
+<div class="grid3">
+  <div class="col"><div class="phone"><div class="dt-scr dt-warm">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Conversation Style</span></div>
+    <div class="dt-body">
+      <div class="dt-intro">Choose how Hearty talks to you during logging and check-ins.</div>
+      <div class="dt-opt sel"><div class="dt-opt-h"><div class="dt-radio"></div><div class="dt-opt-t">Warm &amp; Empathetic</div></div><div class="dt-opt-s">Adds warmth and context. Great if you want to feel supported.</div>
+        <div class="dt-bubs"><div class="dt-bub dt-bub-u">Big bowl of pasta for dinner</div><div class="dt-bub dt-bub-ai">Comfort food evening! 🍝 Homemade or restaurant?</div></div></div>
+      <div class="dt-opt"><div class="dt-opt-h"><div class="dt-radio"></div><div class="dt-opt-t">Concise &amp; Quick</div></div><div class="dt-opt-s">Just the facts. Logs and confirms without commentary.</div>
+        <div class="dt-bubs"><div class="dt-bub dt-bub-u">Big bowl of pasta for dinner</div><div class="dt-bub dt-bub-ai">Logged. Homemade or restaurant?</div></div></div>
+      <div class="dt-save">Save</div>
+    </div>
+  </div></div><div class="cap">WARM &amp; GROUNDED</div></div>
+
+  <div class="col"><div class="phone"><div class="dt-scr dt-aurora">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Conversation Style</span></div>
+    <div class="dt-body">
+      <div class="dt-intro">Choose how Hearty talks to you during logging and check-ins.</div>
+      <div class="dt-opt sel"><div class="dt-opt-h"><div class="dt-radio"></div><div class="dt-opt-t">Warm &amp; Empathetic</div></div><div class="dt-opt-s">Adds warmth and context. Great if you want to feel supported.</div>
+        <div class="dt-bubs"><div class="dt-bub dt-bub-u">Big bowl of pasta for dinner</div><div class="dt-bub dt-bub-ai">Comfort food evening! 🍝 Homemade or restaurant?</div></div></div>
+      <div class="dt-opt"><div class="dt-opt-h"><div class="dt-radio"></div><div class="dt-opt-t">Concise &amp; Quick</div></div><div class="dt-opt-s">Just the facts. Logs and confirms without commentary.</div>
+        <div class="dt-bubs"><div class="dt-bub dt-bub-u">Big bowl of pasta for dinner</div><div class="dt-bub dt-bub-ai">Logged. Homemade or restaurant?</div></div></div>
+      <div class="dt-save">Save</div>
+    </div>
+  </div></div><div class="cap">AURORA</div></div>
+
+  <div class="col"><div class="phone"><div class="dt-scr dt-cosmic">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Conversation Style</span></div>
+    <div class="dt-body">
+      <div class="dt-intro">Choose how Hearty talks to you during logging and check-ins.</div>
+      <div class="dt-opt sel"><div class="dt-opt-h"><div class="dt-radio"></div><div class="dt-opt-t">Warm &amp; Empathetic</div></div><div class="dt-opt-s">Adds warmth and context. Great if you want to feel supported.</div>
+        <div class="dt-bubs"><div class="dt-bub dt-bub-u">Big bowl of pasta for dinner</div><div class="dt-bub dt-bub-ai">Comfort food evening! 🍝 Homemade or restaurant?</div></div></div>
+      <div class="dt-opt"><div class="dt-opt-h"><div class="dt-radio"></div><div class="dt-opt-t">Concise &amp; Quick</div></div><div class="dt-opt-s">Just the facts. Logs and confirms without commentary.</div>
+        <div class="dt-bubs"><div class="dt-bub dt-bub-u">Big bowl of pasta for dinner</div><div class="dt-bub dt-bub-ai">Logged. Homemade or restaurant?</div></div></div>
+      <div class="dt-save">Save</div>
+    </div>
+  </div></div><div class="cap">COSMIC BLOOM</div></div>
+</div>
+
+<!-- ═══════════════ HEALTH PROFILE ═══════════════ -->
+<div class="row-label">Health Profile</div>
+<div class="grid3">
+  <div class="col"><div class="phone"><div class="dt-scr dt-warm">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Health Profile</span></div>
+    <div class="dt-body">
+      <div class="dt-seclabel">Allergens</div>
+      <div class="dt-chips"><span class="dt-chip2">Peanuts</span><span class="dt-chip2">Shellfish</span><span class="dt-chip-add">+ Add</span></div>
+      <div class="dt-seclabel">Dietary Protocols</div>
+      <div class="dt-chips"><span class="dt-chip2">Low-FODMAP</span><span class="dt-chip-add">+ Add</span></div>
+      <div class="dt-seclabel">Conditions</div>
+      <div class="dt-chips"><span class="dt-chip2">IBS</span><span class="dt-chip2">GERD</span><span class="dt-chip-add">+ Add</span></div>
+      <div class="dt-seclabel">Medications &amp; Supplements</div>
+      <div class="dt-chips"><span class="dt-chip2">Omeprazole</span><span class="dt-chip2">Vit D</span><span class="dt-chip-add">+ Add</span></div>
+      <div class="dt-save">Save</div>
+    </div>
+  </div></div><div class="cap">WARM &amp; GROUNDED</div></div>
+
+  <div class="col"><div class="phone"><div class="dt-scr dt-aurora">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Health Profile</span></div>
+    <div class="dt-body">
+      <div class="dt-seclabel">Allergens</div>
+      <div class="dt-chips"><span class="dt-chip2">Peanuts</span><span class="dt-chip2">Shellfish</span><span class="dt-chip-add">+ Add</span></div>
+      <div class="dt-seclabel">Dietary Protocols</div>
+      <div class="dt-chips"><span class="dt-chip2">Low-FODMAP</span><span class="dt-chip-add">+ Add</span></div>
+      <div class="dt-seclabel">Conditions</div>
+      <div class="dt-chips"><span class="dt-chip2">IBS</span><span class="dt-chip2">GERD</span><span class="dt-chip-add">+ Add</span></div>
+      <div class="dt-seclabel">Medications &amp; Supplements</div>
+      <div class="dt-chips"><span class="dt-chip2">Omeprazole</span><span class="dt-chip2">Vit D</span><span class="dt-chip-add">+ Add</span></div>
+      <div class="dt-save">Save</div>
+    </div>
+  </div></div><div class="cap">AURORA</div></div>
+
+  <div class="col"><div class="phone"><div class="dt-scr dt-cosmic">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Health Profile</span></div>
+    <div class="dt-body">
+      <div class="dt-seclabel">Allergens</div>
+      <div class="dt-chips"><span class="dt-chip2">Peanuts</span><span class="dt-chip2">Shellfish</span><span class="dt-chip-add">+ Add</span></div>
+      <div class="dt-seclabel">Dietary Protocols</div>
+      <div class="dt-chips"><span class="dt-chip2">Low-FODMAP</span><span class="dt-chip-add">+ Add</span></div>
+      <div class="dt-seclabel">Conditions</div>
+      <div class="dt-chips"><span class="dt-chip2">IBS</span><span class="dt-chip2">GERD</span><span class="dt-chip-add">+ Add</span></div>
+      <div class="dt-seclabel">Medications &amp; Supplements</div>
+      <div class="dt-chips"><span class="dt-chip2">Omeprazole</span><span class="dt-chip2">Vit D</span><span class="dt-chip-add">+ Add</span></div>
+      <div class="dt-save">Save</div>
+    </div>
+  </div></div><div class="cap">COSMIC BLOOM</div></div>
+</div>
+
+</body>
+</html>

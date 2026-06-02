@@ -3,7 +3,7 @@
 Reference for the dictation/voice-overlay waveform visual.
 Companion to the [UI Design Guide](2026-05-28-hearty-ui-design-guide.md).
 
-**Reference implementation:** `.superpowers/brainstorm/651807-1779833963/content/voice_shader_live.html`
+**Reference implementation:** `docs/superpowers/mockups/voice_shader_live.html`
 (self-contained HTML/Canvas prototype with a synthetic-idle + live-mic mode)
 
 ---
