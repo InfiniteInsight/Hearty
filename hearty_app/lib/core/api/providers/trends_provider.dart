@@ -22,7 +22,6 @@ class TrendsNotifier extends AsyncNotifier<TrendsData> {
       return const TrendsData(
         symptomFrequency: [],
         signals: [],
-        wellbeingTrend: [],
         mealTypeDistribution: {},
       );
     }

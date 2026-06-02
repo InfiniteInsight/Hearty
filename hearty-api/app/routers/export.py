@@ -17,6 +17,7 @@ from app.models.schemas import (
 )
 from app.health_profile.schemas import HealthProfileResponse
 from app.services import export_service, trend_engine
+from app.services.symptom_taxonomy import expand_symptom_list
 
 router = APIRouter()
 supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"])
@@ -67,7 +68,9 @@ def _fetch_meals_with_symptoms(user_id: str, start: Optional[datetime], end: Opt
     return [
         MealWithSymptoms(
             **m,
-            symptoms=[SymptomResponse(**s) for s in symptoms_by_meal.get(m["id"], [])],
+            symptoms=expand_symptom_list(
+                [SymptomResponse(**s) for s in symptoms_by_meal.get(m["id"], [])]
+            ),
         )
         for m in meals_data
     ]

@@ -10,7 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Copies every file under [assetDir] (e.g.
-/// `assets/tts/vits-piper-en_US-libritts_r-medium`) out of the Flutter asset
+/// `assets/tts/hearty-neutral`) out of the Flutter asset
 /// bundle into a stable location under the app documents directory, preserving
 /// subdirectory structure (including nested espeak-ng-data trees).
 ///
@@ -25,10 +25,9 @@ Future<String> copyModelAssets(String assetDir) async {
       assetDir.endsWith('/') ? assetDir.substring(0, assetDir.length - 1) : assetDir;
   final destDir = '${docsDir.path}/$cleanAssetDir';
 
-  // The model basename is derived from the directory name:
-  // e.g. "vits-piper-en_US-libritts_r-medium" ->
-  //      "en_US-libritts_r-medium.onnx"
-  // Rather than hard-coding, check whether ANY .onnx file already exists.
+  // Skip-if-present check: the caller knows the model filename
+  // (e.g. "hearty-neutral.onnx"); here we just check whether ANY .onnx file
+  // already exists in the destination to decide if the copy can be skipped.
   final destDirRef = Directory(destDir);
   if (destDirRef.existsSync()) {
     final onnxExists = destDirRef

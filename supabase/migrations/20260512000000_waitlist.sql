@@ -8,6 +8,7 @@ create table if not exists waitlist (
 alter table waitlist enable row level security;
 
 -- Allow anyone to join the waitlist, no reads
+drop policy if exists "waitlist_insert" on waitlist;
 create policy "waitlist_insert" on waitlist
   for insert to anon with check (true);
 

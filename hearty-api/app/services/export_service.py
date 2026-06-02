@@ -13,6 +13,7 @@ from supabase import create_client
 from app.health_profile.schemas import HealthProfileResponse
 from app.models.schemas import MealWithSymptoms, SymptomResponse, TriggerFood, WellbeingResponse
 from app.services import trend_engine, ai_extraction
+from app.services.symptom_taxonomy import expand_symptom_list
 
 supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"])
 
@@ -41,7 +42,9 @@ def gather_export_data(user_id: str, start_date: Optional[datetime], end_date: O
     meals = [
         MealWithSymptoms(
             **m,
-            symptoms=[SymptomResponse(**s) for s in symptoms_by_meal.get(m["id"], [])],
+            symptoms=expand_symptom_list(
+                [SymptomResponse(**s) for s in symptoms_by_meal.get(m["id"], [])]
+            ),
         )
         for m in meals_raw
     ]

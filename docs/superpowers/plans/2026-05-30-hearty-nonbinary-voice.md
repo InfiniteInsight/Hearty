@@ -815,9 +815,25 @@ pip install -U qwen-tts praat-parselmouth soundfile numpy
 - [ ] **Step 5: User audition.** Send 2–3 winning samples to the user (sftp to dev machine, then surface). Get a thumbs-up on character before locking. (This honors "androgynous but distinctive" — the human ear, not just the numbers.)
 
 **Living State — Task 2.2**
-- Status: ⬜ Not Started
-- Deviations:
-- Winning voice description (paste verbatim) + measured F0/F2:
+- Status: 🟡 In progress. Models downloaded (VoiceDesign 4.3G + tokenizer 651M at
+  /data/hearty-voice/models/). API confirmed from source: `Qwen3TTSModel.from_pretrained(dir,
+  device_map="cuda:0", dtype=torch.bfloat16, attn_implementation="sdpa")` then
+  `generate_voice_design(text=, language="English", instruct="<voice description>")` → `(wavs, sr)`.
+  flash-attn absent → using sdpa. Batch script: `/data/hearty-voice/design/voice_design_batch.py`
+  (4 candidate instructs × 2 sentences; measures F0/F2 via parselmouth; writes batch1_results.json).
+- **Batch 1 results (avg F0 median over 2 sentences; target 145–175 Hz):** c1_warm_neutral 188.2
+  (out, high), c2_breathy_soft 116.5 (out, low), c3_clear_steady 187.4 (out, high),
+  c4_bright_androgynous 212.5 (out, high). F2 consistently ~1820–2016 Hz (intermediate — good).
+  sr=24000. sox was a NON-issue (generation worked). High per-sentence variance (c1: 169→208).
+  8 wavs pulled to /tmp/hearty_voices and SENT to user for audition.
+- **Learning → Batch 2 strategy:** plain "androgynous/neutral/warm" adjectives leave the model in its
+  default ~188Hz feminine-high register. Batch 2 must (a) use FORCEFUL explicit pitch language
+  ("low-to-mid pitch", "in the tenor/alto overlap ~160Hz", "lower than a typical woman, higher than a
+  typical man", "chest-resonant but not deep") to pull F0 down into 145–175, and (b) reduce variance.
+  Also worth trying the **CustomVoice** model's `speaker=` profiles + an androgynous `instruct` as an
+  alternative path. Keep F2 intermediate (don't let pitch drop drag formants masculine).
+- Deviations: model output sr = 24000 (not the "12.5Hz" some docs implied — that's the token rate).
+- Winning voice description (paste verbatim) + measured F0/F2: TBD (pending user audition + batch 2).
 - Notes for later phases:
 
 ---

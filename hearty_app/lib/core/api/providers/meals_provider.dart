@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../notifications/notification_service.dart';
 import '../../offline/local_meal_dao.dart';
 import '../models/meal_log.dart';
+import 'preferences_provider.dart';
 
 const _uuid = Uuid();
 
@@ -22,6 +24,11 @@ class MealsNotifier extends StreamNotifier<List<MealLog>> {
       loggedAt: DateTime.now(),
     );
     ref.read(syncTriggerProvider).schedule();
+
+    final prefs = ref.read(preferencesProvider).valueOrNull;
+    if (prefs != null && prefs.postMealNudgeEnabled) {
+      await NotificationService.scheduleFollowUpNotification(prefs.nudgeDelayMinutes);
+    }
   }
 }
 

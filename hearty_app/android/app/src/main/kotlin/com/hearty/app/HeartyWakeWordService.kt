@@ -12,8 +12,11 @@ import android.content.Intent
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
+import android.provider.Settings
 import android.util.Log
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
@@ -24,6 +27,11 @@ class HeartyWakeWordService : Service() {
 
     companion object {
         const val CHANNEL_ID = "hearty_wake_word"
+        // Separate high-priority channel for the wake-word trigger notification.
+        // Unlike CHANNEL_ID (which silences the ongoing service notification),
+        // this channel uses the default alert sound so Android won't demote
+        // the fullScreenIntent to a regular heads-up on some devices.
+        const val TRIGGER_CHANNEL_ID = "hearty_wake_trigger"
         const val NOTIFICATION_ID = 1001
         const val METHOD_CHANNEL = "com.hearty.app/wake_word"
 
@@ -328,36 +336,59 @@ class HeartyWakeWordService : Service() {
                     Intent.FLAG_ACTIVITY_SINGLE_TOP or
                     Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
+
+        // If the user has granted "Display over other apps", we can call startActivity()
+        // directly from the service — this bypasses Android 10+ background-start
+        // restrictions and reliably brings the app to the foreground without any
+        // user interaction. MainActivity.onNewIntent() then fires methodChannel
+        // .invokeMethod("wakeWordDetected") which opens the Flutter voice overlay.
+        if (Settings.canDrawOverlays(this)) {
+            Handler(Looper.getMainLooper()).post {
+                startActivity(launchIntent)
+            }
+            return
+        }
+
+        // Fallback: fire a fullScreenIntent notification. On Android 12+ this typically
+        // shows as a heads-up ("Tap to speak") rather than launching the activity
+        // directly, but it's the best we can do without overlay permission.
         val pendingIntent = PendingIntent.getActivity(
             this, 0, launchIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
-        // Android 12+ blocks startActivity() from background services.
-        // fullScreenIntent is the standard workaround — the system either launches
-        // the activity directly or shows a heads-up notification the user can tap.
-        val triggerNotification = Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("Hey Hearty detected")
+        val triggerNotification = Notification.Builder(this, TRIGGER_CHANNEL_ID)
+            .setContentTitle("Hey Hearty")
+            .setContentText("Tap to start speaking")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setCategory(Notification.CATEGORY_CALL)
+            .setContentIntent(pendingIntent)
             .setFullScreenIntent(pendingIntent, true)
+            .setAutoCancel(true)
             .build()
         getSystemService(NotificationManager::class.java)
             .notify(NOTIFICATION_ID + 1, triggerNotification)
-
-        android.os.Handler(android.os.Looper.getMainLooper()).post {
-            methodChannel?.invokeMethod("wakeWordDetected", null)
-        }
     }
 
     private fun createNotificationChannel() {
-        val channel = NotificationChannel(CHANNEL_ID, "Wake Word Detection", NotificationManager.IMPORTANCE_HIGH)
-            .apply {
-                description = "Hearty wake word detection service"
-                setSound(null, null)
-                enableVibration(false)
-            }
-        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        val nm = getSystemService(NotificationManager::class.java)
+        // Silent ongoing service notification — no sound or vibration so it doesn't
+        // alert the user every time the foreground service rebuilds its notification.
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_ID, "Wake Word Detection", NotificationManager.IMPORTANCE_HIGH)
+                .apply {
+                    description = "Hearty wake word detection service"
+                    setSound(null, null)
+                    enableVibration(false)
+                }
+        )
+        // Separate alert channel for the wake-word trigger — uses default sound so
+        // Android treats fullScreenIntent as high-urgency and wakes the screen.
+        nm.createNotificationChannel(
+            NotificationChannel(TRIGGER_CHANNEL_ID, "Hey Hearty", NotificationManager.IMPORTANCE_HIGH)
+                .apply {
+                    description = "Alert when the wake word is detected"
+                }
+        )
     }
 
     private fun buildNotification(): Notification {
@@ -373,6 +404,7 @@ class HeartyWakeWordService : Service() {
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .addAction(action)
             .setOngoing(true)
+            .setGroup("hearty_wake_word_group")
             .build()
     }
 }

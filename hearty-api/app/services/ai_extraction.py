@@ -45,8 +45,8 @@ Return ONLY valid JSON with this shape:
 {
   "symptoms": [
     {
-      "symptom_type": "one of: acid_reflux|bloating|gas|nausea|urgency|loose_stool|constipation|stomach_pain|cramping|fatigue|brain_fog|headache|skin_reaction|heart_palpitations|other",
-      "severity": 1-10_or_null,
+      "symptom_type": "one of: acid_reflux|bloating|gas|nausea|urgency|loose_stool|constipation|stomach_pain|cramping|fatigue|brain_fog|headache|skin_reaction|heart_palpitations|indigestion|upset_stomach|sour_stomach|gut_rot|other",
+      "severity": 1-10_or_null,  // use the EXACT number the user states — do not round, adjust, or convert between scales
       "onset_minutes": number_or_null,
       "duration_minutes": number_or_null,
       "bathroom_urgency": 0-5_or_null,
@@ -55,6 +55,26 @@ Return ONLY valid JSON with this shape:
     }
   ]
 }
+
+Type selection guidance:
+- acid_reflux: burning, reflux, heartburn, hot sensation in stomach/chest/throat, or sour stomach where burning/acid taste is dominant
+- stomach_pain: general ache, soreness, or diffuse abdominal pain — "my stomach hurts", "stomachache", "tummy ache"
+- cramping: sharp, gripping, or wave-like abdominal pain — "stomach cramps", "cramps"
+- bloating: fullness, pressure, or distension — "too full", "feel bloated", "belly feels tight"
+- gas: flatulence, gassy, burping, belching, rumbling
+- nausea: queasy, nauseous, urge to vomit — "feeling sick", "feel like I might throw up"
+- urgency: sudden strong need to use the bathroom
+- indigestion: general post-meal digestive discomfort without dominant burning or cramping — "indigestion", "dyspepsia", "digestion is off"
+- upset_stomach: general stomach upset without a clear dominant feature — "upset stomach", "stomach is bothering me"
+- sour_stomach: sour or acidic stomach feeling — "sour stomach", "acidic feeling", "stomach feels sour"
+- gut_rot: intense post-meal digestive distress — "gut rot", "my gut is wrecked"
+
+Colloquial aliases:
+- "heartburn" → acid_reflux
+- "feeling sick to my stomach" → nausea
+- "stomach flu" / "stomach bug" → extract the symptoms described (nausea, loose_stool, cramping), do not use "other"
+- "gassy" → gas
+- "too full" / "uncomfortably full" → bloating
 
 Extract multiple symptoms if the description mentions more than one.
 Do not diagnose. Extract only what is stated.

@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/api/offline_exception.dart';
 import '../../../core/api/providers/meals_provider.dart';
+import '../../../core/api/providers/preferences_provider.dart';
 import '../../photos/models/photo_type.dart';
 import '../../photos/providers/photo_provider.dart';
 import '../../photos/screens/camera_screen.dart';
@@ -43,7 +45,9 @@ String _formatFollowUpTime(DateTime dt) {
 // ---------------------------------------------------------------------------
 
 class LogEntryScreen extends ConsumerStatefulWidget {
-  const LogEntryScreen({super.key});
+  final bool isFollowUp;
+
+  const LogEntryScreen({super.key, this.isFollowUp = false});
 
   @override
   ConsumerState<LogEntryScreen> createState() => _LogEntryScreenState();
@@ -70,6 +74,12 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.12).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    if (widget.isFollowUp) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openVoiceOverlay(followUp: true);
+      });
+    }
   }
 
   @override
@@ -83,8 +93,16 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
   // Actions
   // ---------------------------------------------------------------------------
 
-  Future<void> _openVoiceOverlay() async {
-    ref.read(voiceProvider.notifier).startListening();
+  Future<void> _openVoiceOverlay({bool followUp = false}) async {
+    if (followUp) {
+      final prefs = await SharedPreferences.getInstance();
+      final mealId = prefs.getString('hearty_last_meal_id');
+      if (!mounted) return;
+      ref.read(voiceProvider.notifier).primeForSymptomFollowUp(mealId: mealId);
+    } else {
+      ref.read(voiceProvider.notifier).startListening();
+    }
+    if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -254,7 +272,9 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
                   child: TextField(
                     controller: _textController,
                     decoration: InputDecoration(
-                      hintText: 'Or type what you ate or how you feel...',
+                      hintText: widget.isFollowUp
+                          ? 'How are you feeling? Rate any discomfort 1–10...'
+                          : 'Or type what you ate or how you feel...',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -284,7 +304,9 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
                 initialDescription: reviewText,
                 mealType: _inferMealType(),
                 followUpTime: _formatFollowUpTime(
-                  DateTime.now().add(const Duration(minutes: 45)),
+                  DateTime.now().add(Duration(
+                    minutes: ref.read(preferencesProvider).valueOrNull?.nudgeDelayMinutes ?? 45,
+                  )),
                 ),
                 onLog: _logMeal,
                 onEdit: _onEditPressed,

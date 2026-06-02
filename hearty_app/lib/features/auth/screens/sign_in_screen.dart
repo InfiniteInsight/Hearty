@@ -47,6 +47,7 @@ class _SignInScreenState extends State<SignInScreen> {
       await Supabase.instance.client.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: idToken,
+        accessToken: googleAuth.accessToken,
       );
 
       // GoRouter will automatically redirect to /onboarding or /home

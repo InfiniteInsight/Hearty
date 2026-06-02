@@ -223,10 +223,6 @@ class _TrendsBody extends StatelessWidget {
           _SymptomFrequencyChart(data: trends.symptomFrequency),
           const SizedBox(height: 16),
         ],
-        if (trends.wellbeingTrend.isNotEmpty) ...[
-          _EnergyMoodChart(data: trends.wellbeingTrend),
-          const SizedBox(height: 16),
-        ],
         if (trends.mealTypeDistribution.isNotEmpty) ...[
           _MealTypeChart(data: trends.mealTypeDistribution),
           const SizedBox(height: 16),
@@ -428,10 +424,6 @@ class _ChannelRow extends StatelessWidget {
     String metric;
     if (channel.outcomeType == 'symptom' && channel.relativeRisk != null) {
       metric = 'RR ${channel.relativeRisk!.toStringAsFixed(1)}×';
-    } else if (channel.outcomeType == 'wellbeing' &&
-        channel.scoreDelta != null) {
-      final delta = channel.scoreDelta!;
-      metric = '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(1)} pts';
     } else {
       metric = '';
     }
@@ -439,8 +431,6 @@ class _ChannelRow extends StatelessWidget {
     String contextLabel = '';
     if (channel.peakWindowMinutes != null) {
       contextLabel = _windowLabel(channel.peakWindowMinutes);
-    } else if (channel.mealSlot != null && channel.wellbeingSlot != null) {
-      contextLabel = '${channel.mealSlot} → ${channel.wellbeingSlot}';
     }
 
     return Padding(
@@ -598,127 +588,7 @@ class _SymptomFrequencyChart extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Chart 2 — Energy & Mood (dual LineChart)
-// ---------------------------------------------------------------------------
-
-class _EnergyMoodChart extends StatelessWidget {
-  const _EnergyMoodChart({required this.data});
-
-  final List<WellbeingPoint> data;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Energy & Mood',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 200,
-              child: data.isEmpty
-                  ? const Center(child: Text('No wellbeing data'))
-                  : _buildChart(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildChart() {
-    final sorted = [...data]..sort((a, b) => a.date.compareTo(b.date));
-    final earliest = sorted.first.date;
-
-    FlSpot toSpot(DateTime date, double value) =>
-        FlSpot(date.difference(earliest).inDays.toDouble(), value);
-
-    final maxXOffset =
-        sorted.last.date.difference(earliest).inDays.toDouble();
-    final xRange = math.max(1.0, maxXOffset);
-
-    final energyLine = LineChartBarData(
-      spots: sorted.map((p) => toSpot(p.date, p.energy)).toList(),
-      isCurved: sorted.length >= 2,
-      color: Colors.blue,
-      barWidth: 2,
-      dotData: const FlDotData(show: true),
-    );
-
-    final moodLine = LineChartBarData(
-      spots: sorted.map((p) => toSpot(p.date, p.mood)).toList(),
-      isCurved: sorted.length >= 2,
-      color: Colors.pinkAccent,
-      barWidth: 2,
-      dotData: const FlDotData(show: true),
-    );
-
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _LegendDot(color: Colors.blue, label: 'Energy'),
-            const SizedBox(width: 16),
-            _LegendDot(color: Colors.pinkAccent, label: 'Mood'),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: LineChart(
-            LineChartData(
-              lineBarsData: [energyLine, moodLine],
-              minX: 0,
-              maxX: xRange,
-              minY: 1,
-              maxY: 5,
-              titlesData: FlTitlesData(
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 24,
-                    interval: 1,
-                    getTitlesWidget: (value, meta) {
-                      if (value != value.floorToDouble()) return const SizedBox();
-                      return Text(value.toInt().toString(),
-                          style: const TextStyle(fontSize: 10));
-                    },
-                  ),
-                ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 24,
-                    getTitlesWidget: (value, meta) {
-                      final date =
-                          earliest.add(Duration(days: value.toInt()));
-                      return Text('${date.month}/${date.day}',
-                          style: const TextStyle(fontSize: 9));
-                    },
-                  ),
-                ),
-                rightTitles:
-                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles:
-                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              ),
-              gridData: const FlGridData(show: true),
-              borderData: FlBorderData(show: true),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Chart 3 — Meal Type Distribution (PieChart)
+// Chart 2 — Meal Type Distribution (PieChart)
 // ---------------------------------------------------------------------------
 
 class _MealTypeChart extends StatelessWidget {

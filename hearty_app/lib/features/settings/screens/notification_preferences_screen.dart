@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/api/models/user_preferences.dart';
 import '../../../core/api/providers/preferences_provider.dart';
@@ -66,16 +67,25 @@ class _PreferencesFormState extends ConsumerState<_PreferencesForm> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to save — please try again')),
       );
+    } else {
+      // Mirror to local SharedPreferences so BootReceiver and MainActivity
+      // can gate service startup without a Supabase round-trip.
+      final localPrefs = await SharedPreferences.getInstance();
+      await localPrefs.setBool('wake_word_enabled', _wakeWordEnabled);
     }
     setState(() => _saving = false);
   }
 
   void _toggleWakeWord(bool enabled) {
     setState(() => _wakeWordEnabled = enabled);
+    // Fully start/stop the foreground service so the persistent notification
+    // appears or disappears immediately. This is distinct from the notification's
+    // own Pause/Resume button, which only suspends detection without stopping
+    // the service.
     if (enabled) {
-      WakeWordChannel.startListening().catchError((_) {});
+      WakeWordChannel.startService().catchError((_) {});
     } else {
-      WakeWordChannel.stopListening().catchError((_) {});
+      WakeWordChannel.stopService().catchError((_) {});
     }
   }
 

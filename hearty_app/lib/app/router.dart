@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/auth/onboarding_provider.dart';
 import '../features/auth/screens/sign_in_screen.dart';
@@ -277,7 +278,11 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
 
   Future<void> _initWakeWord() async {
     final micGranted = await Permission.microphone.isGranted;
-    if (micGranted) WakeWordChannel.startService().catchError((_) {});
+    if (!micGranted) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('wake_word_enabled') ?? true) {
+      WakeWordChannel.startService().catchError((_) {});
+    }
   }
 
   @override
@@ -304,25 +309,30 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
         final meals = ref.read(mealsProvider).valueOrNull ?? [];
         final meal = meals.where((m) => m.id == loggedMealId).firstOrNull;
         final description = meal?.description ?? '';
-        messenger
-          ..clearSnackBars()
-          ..showSnackBar(
-            SnackBar(
-              content: const Text('Logged! Want to add more detail?'),
-              action: SnackBarAction(
-                label: 'Edit',
-                onPressed: () {
-                  if (context.mounted) {
-                    context.push(
-                      '/meals/edit',
-                      extra: {'id': loggedMealId, 'description': description},
-                    );
-                  }
-                },
-              ),
-              duration: const Duration(seconds: 6),
+        messenger.clearSnackBars();
+        const snackDuration = Duration(seconds: 6);
+        final ctrl = messenger.showSnackBar(
+          SnackBar(
+            content: const Text('Logged! Want to add more detail?'),
+            action: SnackBarAction(
+              label: 'Edit',
+              onPressed: () {
+                if (context.mounted) {
+                  context.push(
+                    '/meals/edit',
+                    extra: {'id': loggedMealId, 'description': description},
+                  );
+                }
+              },
             ),
-          );
+            duration: snackDuration,
+          ),
+        );
+        // The built-in `duration` auto-dismiss did not fire on-device (the bar
+        // lingered indefinitely), so arm our own dismissal as a guarantee.
+        Future.delayed(snackDuration, () {
+          if (mounted) ctrl.close();
+        });
       }
       // Refresh timeline so newly logged entries appear immediately.
       ref.invalidate(mealsProvider);

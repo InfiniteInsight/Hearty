@@ -15,7 +15,6 @@ import '../offline/local_preferences_dao.dart';
 import '../offline/local_symptom_dao.dart';
 import '../offline/local_trends_dao.dart';
 import '../offline/local_voice_queue_dao.dart';
-import '../offline/local_wellbeing_dao.dart';
 import '../offline/offline_database.dart';
 
 const _kBaseUrl = String.fromEnvironment(
@@ -95,7 +94,6 @@ class SyncService implements SyncTrigger {
     bool pushedAny = false;
     pushedAny |= await _pushMeals();
     pushedAny |= await _pushSymptoms();
-    pushedAny |= await _pushWellbeing();
     pushedAny |= await _pushPreferences();
     pushedAny |= await _pushVoiceQueue();
     return pushedAny;
@@ -158,48 +156,6 @@ class SyncService implements SyncTrigger {
     return pushed;
   }
 
-  Future<bool> _pushWellbeing() async {
-    final dao = LocalWellbeingDao(_db);
-    final pending = await dao.getPending();
-    bool pushed = false;
-
-    for (final row in pending) {
-      try {
-        if (row.serverId == null) {
-          final response = await _dio.post<Map<String, dynamic>>(
-            '/api/wellbeing',
-            data: {
-              'energy_level': row.energy,
-              'mood': row.mood,
-              if (row.notes != null) 'notes': row.notes,
-              if (row.period != null) 'period': row.period,
-            },
-          );
-          final serverId = response.data!['id'] as String;
-          await dao.markSynced(row.id, serverId);
-        } else {
-          await _dio.patch<void>(
-            '/api/wellbeing/${row.serverId}',
-            data: {
-              'energy_level': row.energy,
-              'mood': row.mood,
-              if (row.notes != null) 'notes': row.notes,
-              if (row.period != null) 'period': row.period,
-            },
-          );
-          await dao.markSynced(row.id, row.serverId!);
-        }
-        pushed = true;
-      } on DioException catch (e) {
-        final status = e.response?.statusCode;
-        if (status != null && status >= 400 && status < 500) {
-          await dao.markFailed(row.id);
-        }
-      } catch (_) {}
-    }
-
-    return pushed;
-  }
 
   Future<bool> _pushPreferences() async {
     final dao = LocalPreferencesDao(_db);
@@ -267,12 +223,6 @@ class SyncService implements SyncTrigger {
         await symptomDao.upsertFromServer(s);
       }
 
-      final wellbeing = await client.fetchWellbeing(start: yesterday, end: now.toUtc());
-      final wellbeingDao = LocalWellbeingDao(_db);
-      for (final w in wellbeing) {
-        await wellbeingDao.upsertFromServer(w);
-      }
-
       final prefDao = LocalPreferencesDao(_db);
       if (!await prefDao.isPending()) {
         try {
@@ -295,7 +245,6 @@ class SyncService implements SyncTrigger {
   Future<void> _prune() async {
     await LocalMealDao(_db).pruneOldSynced();
     await LocalSymptomDao(_db).pruneOldSynced();
-    await LocalWellbeingDao(_db).pruneOldSynced();
   }
 
   // ── Analysis Trigger ────────────────────────────────────────────────────────
@@ -313,9 +262,6 @@ class SyncService implements SyncTrigger {
     await (_db.update(_db.localSymptoms)
           ..where((s) => s.syncStatus.equals('failed')))
         .write(const LocalSymptomsCompanion(syncStatus: Value('pending')));
-    await (_db.update(_db.localWellbeing)
-          ..where((w) => w.syncStatus.equals('failed')))
-        .write(const LocalWellbeingCompanion(syncStatus: Value('pending')));
     schedule();
   }
 
@@ -325,9 +271,6 @@ class SyncService implements SyncTrigger {
         .go();
     await (_db.delete(_db.localSymptoms)
           ..where((s) => s.syncStatus.equals('failed')))
-        .go();
-    await (_db.delete(_db.localWellbeing)
-          ..where((w) => w.syncStatus.equals('failed')))
         .go();
   }
 }
@@ -357,11 +300,9 @@ final pendingQueueCountProvider = StreamProvider<int>((ref) {
     'SELECT SUM(cnt) as total FROM ('
     '  SELECT COUNT(*) as cnt FROM local_meals WHERE sync_status = ?'
     '  UNION ALL SELECT COUNT(*) as cnt FROM local_symptoms WHERE sync_status = ?'
-    '  UNION ALL SELECT COUNT(*) as cnt FROM local_wellbeing WHERE sync_status = ?'
     '  UNION ALL SELECT COUNT(*) as cnt FROM local_preferences WHERE sync_status = ?'
     ')',
     variables: [
-      Variable<String>('pending'),
       Variable<String>('pending'),
       Variable<String>('pending'),
       Variable<String>('pending'),
@@ -369,7 +310,6 @@ final pendingQueueCountProvider = StreamProvider<int>((ref) {
     readsFrom: {
       db.localMeals,
       db.localSymptoms,
-      db.localWellbeing,
       db.localPreferences,
     },
   ).watchSingle().map((row) => row.read<int>('total'));
@@ -381,11 +321,9 @@ final hasFailedQueueEntriesProvider = StreamProvider<bool>((ref) {
     'SELECT COUNT(*) > 0 as has_failed FROM ('
     '  SELECT 1 FROM local_meals WHERE sync_status = ?'
     '  UNION ALL SELECT 1 FROM local_symptoms WHERE sync_status = ?'
-    '  UNION ALL SELECT 1 FROM local_wellbeing WHERE sync_status = ?'
     '  UNION ALL SELECT 1 FROM local_preferences WHERE sync_status = ?'
     ')',
     variables: [
-      Variable<String>('failed'),
       Variable<String>('failed'),
       Variable<String>('failed'),
       Variable<String>('failed'),
@@ -393,7 +331,6 @@ final hasFailedQueueEntriesProvider = StreamProvider<bool>((ref) {
     readsFrom: {
       db.localMeals,
       db.localSymptoms,
-      db.localWellbeing,
       db.localPreferences,
     },
   ).watchSingle().map((row) => row.read<int>('has_failed') == 1);

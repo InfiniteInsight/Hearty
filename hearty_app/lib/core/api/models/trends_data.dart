@@ -1,14 +1,12 @@
 class TrendsData {
   final List<SymptomFrequencyPoint> symptomFrequency;
   final List<FoodSignal> signals;
-  final List<WellbeingPoint> wellbeingTrend;
   final Map<String, int> mealTypeDistribution;
   final DateTime? analyzedAt;
 
   const TrendsData({
     required this.symptomFrequency,
     required this.signals,
-    required this.wellbeingTrend,
     required this.mealTypeDistribution,
     this.analyzedAt,
   });
@@ -25,7 +23,6 @@ class TrendsData {
     return TrendsData(
       symptomFrequency: [],
       signals: signals,
-      wellbeingTrend: [],
       mealTypeDistribution: {},
       analyzedAt: analyzedAt,
     );
@@ -45,7 +42,6 @@ class SignalChannel {
   final String direction;
   final int? peakWindowMinutes;
   final String? mealSlot;
-  final String? wellbeingSlot;
   final double? relativeRisk;
   final double? scoreDelta;
   final int evidenceCount;
@@ -56,7 +52,6 @@ class SignalChannel {
     required this.direction,
     this.peakWindowMinutes,
     this.mealSlot,
-    this.wellbeingSlot,
     this.relativeRisk,
     this.scoreDelta,
     required this.evidenceCount,
@@ -69,7 +64,6 @@ class SignalChannel {
       direction: json['direction'] as String,
       peakWindowMinutes: json['peak_window_minutes'] as int?,
       mealSlot: json['meal_slot'] as String?,
-      wellbeingSlot: json['wellbeing_slot'] as String?,
       relativeRisk: (json['relative_risk'] as num?)?.toDouble(),
       scoreDelta: (json['score_delta'] as num?)?.toDouble(),
       evidenceCount: (json['evidence_count'] as num).toInt(),
@@ -82,7 +76,6 @@ class SignalChannel {
         'direction': direction,
         'peak_window_minutes': peakWindowMinutes,
         'meal_slot': mealSlot,
-        'wellbeing_slot': wellbeingSlot,
         'relative_risk': relativeRisk,
         'score_delta': scoreDelta,
         'evidence_count': evidenceCount,
@@ -121,7 +114,7 @@ class FoodSignal {
       };
 }
 
-// ── Chart data models (unchanged) ────────────────────────────────────────────
+// ── Chart data models ────────────────────────────────────────────────────────
 
 class SymptomFrequencyPoint {
   final DateTime date;
@@ -146,31 +139,5 @@ class SymptomFrequencyPoint {
         'date': date.toIso8601String(),
         'symptom_type': symptomType,
         'count': count,
-      };
-}
-
-class WellbeingPoint {
-  final DateTime date;
-  final double energy;
-  final double mood;
-
-  const WellbeingPoint({
-    required this.date,
-    required this.energy,
-    required this.mood,
-  });
-
-  factory WellbeingPoint.fromJson(Map<String, dynamic> json) {
-    return WellbeingPoint(
-      date: DateTime.parse(json['date'] as String),
-      energy: ((json['energy'] as num?) ?? 0.0).toDouble(),
-      mood: ((json['mood'] as num?) ?? 0.0).toDouble(),
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-        'date': date.toIso8601String(),
-        'energy': energy,
-        'mood': mood,
       };
 }

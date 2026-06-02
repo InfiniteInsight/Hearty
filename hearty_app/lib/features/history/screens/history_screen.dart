@@ -4,10 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/models/meal_log.dart';
 import '../../../core/api/models/symptom_log.dart';
-import '../../../core/api/models/wellbeing_log.dart';
 import '../../../core/api/providers/meals_provider.dart';
 import '../../../core/api/providers/symptoms_provider.dart';
-import '../../../core/api/providers/wellbeing_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Top-level helpers
@@ -67,8 +65,7 @@ final class _MealEntry extends _HistoryEntry {
   DateTime get loggedAt => meal.loggedAt;
 
   @override
-  String _searchText() =>
-      '${meal.description} ${meal.foods.join(' ')}';
+  String _searchText() => '${meal.description} ${meal.foods.join(' ')}';
 }
 
 final class _SymptomEntry extends _HistoryEntry {
@@ -85,25 +82,11 @@ final class _SymptomEntry extends _HistoryEntry {
   String _searchText() => symptom.description;
 }
 
-final class _WellbeingEntry extends _HistoryEntry {
-  final WellbeingLog wellbeing;
-  _WellbeingEntry(this.wellbeing);
-
-  @override
-  String get id => wellbeing.id;
-
-  @override
-  DateTime get loggedAt => wellbeing.loggedAt;
-
-  @override
-  String _searchText() => wellbeing.notes ?? '';
-}
-
 // ---------------------------------------------------------------------------
 // Filter type
 // ---------------------------------------------------------------------------
 
-enum _HistoryFilter { all, meals, symptoms, wellbeing }
+enum _HistoryFilter { all, meals, symptoms }
 
 // ---------------------------------------------------------------------------
 // HistoryScreen
@@ -139,7 +122,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   Widget build(BuildContext context) {
     final mealsAsync = ref.watch(mealsProvider);
     final symptomsAsync = ref.watch(symptomsProvider);
-    final wellbeingAsync = ref.watch(wellbeingProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('History')),
@@ -151,12 +133,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             onFilterChanged: (f) => setState(() => _activeFilter = f),
           ),
           Expanded(
-            child: _buildBody(
-              context,
-              mealsAsync,
-              symptomsAsync,
-              wellbeingAsync,
-            ),
+            child: _buildBody(context, mealsAsync, symptomsAsync),
           ),
         ],
       ),
@@ -167,23 +144,17 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     BuildContext context,
     AsyncValue<List<MealLog>> mealsAsync,
     AsyncValue<List<SymptomLog>> symptomsAsync,
-    AsyncValue<List<WellbeingLog>> wellbeingAsync,
   ) {
-    if (mealsAsync.isLoading ||
-        symptomsAsync.isLoading ||
-        wellbeingAsync.isLoading) {
+    if (mealsAsync.isLoading || symptomsAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (mealsAsync.hasError ||
-        symptomsAsync.hasError ||
-        wellbeingAsync.hasError) {
+    if (mealsAsync.hasError || symptomsAsync.hasError) {
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () {
           ref.invalidate(mealsProvider);
           ref.invalidate(symptomsProvider);
-          ref.invalidate(wellbeingProvider);
         },
         child: const Center(
           child: Text('Failed to load — tap to retry'),
@@ -193,31 +164,24 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
     final meals = mealsAsync.value ?? [];
     final symptoms = symptomsAsync.value ?? [];
-    final wellbeing = wellbeingAsync.value ?? [];
 
-    // Build unified entry list.
     final List<_HistoryEntry> allEntries = [
       for (final m in meals) _MealEntry(m),
       for (final s in symptoms) _SymptomEntry(s),
-      for (final w in wellbeing) _WellbeingEntry(w),
     ];
 
-    // Apply filter chip.
     final filtered = allEntries.where((e) {
       return switch (_activeFilter) {
         _HistoryFilter.all => true,
         _HistoryFilter.meals => e is _MealEntry,
         _HistoryFilter.symptoms => e is _SymptomEntry,
-        _HistoryFilter.wellbeing => e is _WellbeingEntry,
       };
     }).toList();
 
-    // Apply search query.
     final searched = filtered
         .where((e) => e.matchesSearch(_searchQuery))
         .toList();
 
-    // Sort newest-first.
     searched.sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
 
     if (searched.isEmpty) {
@@ -233,7 +197,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       );
     }
 
-    // Build a flat list of widgets: date headers + entry rows.
     final List<Widget> items = [];
     String? lastHeader;
 
@@ -256,7 +219,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     return switch (entry) {
       _MealEntry(:final meal) => _MealRow(meal: meal),
       _SymptomEntry(:final symptom) => _SymptomRow(symptom: symptom),
-      _WellbeingEntry(:final wellbeing) => _WellbeingRow(wellbeing: wellbeing),
     };
   }
 }
@@ -323,8 +285,6 @@ class _FilterRow extends StatelessWidget {
           _chip(context, _HistoryFilter.meals, 'Meals'),
           const SizedBox(width: 8),
           _chip(context, _HistoryFilter.symptoms, 'Symptoms'),
-          const SizedBox(width: 8),
-          _chip(context, _HistoryFilter.wellbeing, 'Wellbeing'),
         ],
       ),
     );
@@ -399,8 +359,8 @@ class _SymptomRow extends StatelessWidget {
   const _SymptomRow({required this.symptom});
 
   static Color _severityColor(int severity) {
-    if (severity <= 2) return Colors.amber;
-    if (severity <= 4) return Colors.orange;
+    if (severity <= 3) return Colors.amber;
+    if (severity <= 6) return Colors.orange;
     return Colors.red;
   }
 
@@ -413,7 +373,7 @@ class _SymptomRow extends StatelessWidget {
       subtitle: Text(_formatTime(symptom.loggedAt)),
       trailing: Chip(
         label: Text(
-          '${symptom.severity}/5',
+          '${symptom.severity}/10',
           style: TextStyle(fontSize: 12, color: color),
         ),
         backgroundColor: color.withValues(alpha: 0.15),
@@ -421,26 +381,6 @@ class _SymptomRow extends StatelessWidget {
         side: BorderSide.none,
       ),
       onTap: () => context.push('/log/${symptom.id}'),
-    );
-  }
-}
-
-class _WellbeingRow extends StatelessWidget {
-  final WellbeingLog wellbeing;
-  const _WellbeingRow({required this.wellbeing});
-
-  @override
-  Widget build(BuildContext context) {
-    final subtitleParts = [_formatTime(wellbeing.loggedAt)];
-    if (wellbeing.notes != null && wellbeing.notes!.isNotEmpty) {
-      subtitleParts.add(wellbeing.notes!);
-    }
-
-    return ListTile(
-      leading: const Icon(Icons.favorite_rounded, color: Colors.pink),
-      title: Text('Energy ${wellbeing.energy}/5 · Mood ${wellbeing.mood}/5'),
-      subtitle: Text(subtitleParts.join(' · ')),
-      onTap: () => context.push('/log/${wellbeing.id}'),
     );
   }
 }

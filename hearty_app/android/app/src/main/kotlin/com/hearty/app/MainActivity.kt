@@ -1,6 +1,7 @@
 package com.hearty.app
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import io.flutter.embedding.android.FlutterActivity
@@ -41,7 +42,9 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         HeartyWakeWordService.flutterBinaryMessenger = flutterEngine.dartExecutor.binaryMessenger
 
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+        val wakePrefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        if (wakePrefs.getBoolean("flutter.wake_word_enabled", true)
+                && checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             startForegroundService(Intent(this, HeartyWakeWordService::class.java))
         }
 

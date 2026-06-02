@@ -6,9 +6,27 @@ import 'tts_engine.dart';
 import 'tts_audio_utils.dart';
 
 class NeuralTtsEngine implements TtsEngine {
-  NeuralTtsEngine(
-      {this.modelAssetDir = 'assets/tts/vits-piper-en_US-libritts_r-medium'});
+  NeuralTtsEngine({this.modelAssetDir = 'assets/tts/hearty-neutral'});
   final String modelAssetDir;
+
+  /// Runtime pronunciation overrides for words espeak-ng phonemizes correctly
+  /// but the (early-checkpoint) neural voice renders imprecisely. Keys are
+  /// matched case-insensitively on whole words and replaced before synthesis.
+  /// `caffeine` -> `caffeen`: the long /iː/ otherwise comes out short ("caffene").
+  static const Map<String, String> _pronunciationFixes = {
+    'caffeine': 'caffeen',
+  };
+
+  String _applyPronunciationFixes(String text) {
+    var out = text;
+    _pronunciationFixes.forEach((from, to) {
+      out = out.replaceAll(
+        RegExp('\\b${RegExp.escape(from)}\\b', caseSensitive: false),
+        to,
+      );
+    });
+    return out;
+  }
 
   sherpa.OfflineTts? _tts;
   final AudioPlayer _player = AudioPlayer();
@@ -22,10 +40,10 @@ class NeuralTtsEngine implements TtsEngine {
       final dir = await copyModelAssets(modelAssetDir);
       if (!Directory(dir).existsSync()) return false;
       // Confirm the model file actually exists before constructing the engine.
-      if (!File('$dir/en_US-libritts_r-medium.onnx').existsSync()) return false;
+      if (!File('$dir/hearty-neutral.onnx').existsSync()) return false;
       sherpa.initBindings();
       final vits = sherpa.OfflineTtsVitsModelConfig(
-        model: '$dir/en_US-libritts_r-medium.onnx',
+        model: '$dir/hearty-neutral.onnx',
         tokens: '$dir/tokens.txt',
         dataDir: '$dir/espeak-ng-data',
       );
@@ -50,7 +68,8 @@ class NeuralTtsEngine implements TtsEngine {
     final tts = _tts;
     if (tts == null) return;
     final speed = _style == TtsStyle.concise ? 1.1 : 0.95;
-    final audio = tts.generate(text: text, sid: 0, speed: speed);
+    final audio =
+        tts.generate(text: _applyPronunciationFixes(text), sid: 0, speed: speed);
     final wav = pcmToWav(audio.samples, audio.sampleRate);
     final tmp = File('${Directory.systemTemp.path}/hearty_tts.wav');
     await tmp.writeAsBytes(wav, flush: true);

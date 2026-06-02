@@ -5,13 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/hearty_api_client.dart';
 import '../../../core/offline/local_meal_dao.dart';
 import '../../../core/offline/local_symptom_dao.dart';
-import '../../../core/offline/local_wellbeing_dao.dart';
 import '../../../core/api/models/meal_log.dart';
 import '../../../core/api/models/symptom_log.dart';
-import '../../../core/api/models/wellbeing_log.dart';
 import '../../../core/api/providers/meals_provider.dart';
 import '../../../core/api/providers/symptoms_provider.dart';
-import '../../../core/api/providers/wellbeing_provider.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 
 class LogDetailScreen extends ConsumerStatefulWidget {
@@ -25,7 +22,7 @@ class LogDetailScreen extends ConsumerStatefulWidget {
 
 class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
   bool _isLoading = true;
-  Object? _entry; // MealLog | SymptomLog | WellbeingLog
+  Object? _entry; // MealLog | SymptomLog
   bool _notFound = false;
 
   @override
@@ -53,17 +50,6 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
       if (!mounted) return;
       setState(() {
         _entry = symptom;
-        _isLoading = false;
-      });
-      return;
-    }
-
-    final wellbeingList = ref.read(wellbeingProvider).valueOrNull ?? [];
-    final wellbeing = wellbeingList.where((w) => w.id == widget.id).firstOrNull;
-    if (wellbeing != null) {
-      if (!mounted) return;
-      setState(() {
-        _entry = wellbeing;
         _isLoading = false;
       });
       return;
@@ -121,15 +107,9 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
   }
 
   Color _severityColor(int severity) {
-    if (severity <= 2) return Colors.green;
-    if (severity == 3) return Colors.amber;
+    if (severity <= 3) return Colors.green;
+    if (severity <= 6) return Colors.amber;
     return Colors.red;
-  }
-
-  Color _wellbeingColor(int value) {
-    if (value <= 2) return Colors.red;
-    if (value == 3) return Colors.amber;
-    return Colors.green;
   }
 
   IconData _mealTypeIcon(String mealType) {
@@ -187,19 +167,16 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
       );
     }
 
-    // Watch all three providers so the UI updates reactively when the Drift
+    // Watch providers so the UI updates reactively when the Drift
     // stream emits after an edit or delete (today's entries only; historical
     // entries fall back to the locally cached _entry).
     final meals = ref.watch(mealsProvider).valueOrNull ?? [];
     final symptoms = ref.watch(symptomsProvider).valueOrNull ?? [];
-    final wellbeingList = ref.watch(wellbeingProvider).valueOrNull ?? [];
 
     final liveEntry = switch (_entry) {
       MealLog _ => meals.where((m) => m.id == widget.id).firstOrNull ?? _entry,
       SymptomLog _ =>
         symptoms.where((s) => s.id == widget.id).firstOrNull ?? _entry,
-      WellbeingLog _ =>
-        wellbeingList.where((w) => w.id == widget.id).firstOrNull ?? _entry,
       _ => _entry,
     };
 
@@ -235,14 +212,6 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                   if (mounted) _resolveEntry();
                 },
               ),
-            WellbeingLog w => IconButton(
-                icon: const Icon(Icons.edit_outlined),
-                tooltip: 'Edit',
-                onPressed: () async {
-                  await context.push('/wellbeing/log?id=${w.id}');
-                  if (mounted) _resolveEntry();
-                },
-              ),
             _ => const SizedBox.shrink(),
           },
           IconButton(
@@ -258,10 +227,6 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                   await ref.read(heartyApiClientProvider).deleteSymptom(s.id);
                   await ref.read(localSymptomDaoProvider).deleteByServerId(s.id);
                 }),
-              WellbeingLog w => confirmDelete(context, popAfter: true, onDelete: () async {
-                  await ref.read(heartyApiClientProvider).deleteWellbeing(w.id);
-                  await ref.read(localWellbeingDaoProvider).deleteByServerId(w.id);
-                }),
               _ => Future.value(),
             },
           ),
@@ -272,7 +237,6 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
         child: switch (liveEntry) {
           MealLog m => _buildMeal(m, theme, colorScheme),
           SymptomLog s => _buildSymptom(s, theme, colorScheme, meals),
-          WellbeingLog w => _buildWellbeing(w, theme),
           _ => const SizedBox.shrink(),
         },
       ),
@@ -391,7 +355,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
         // Severity
         Row(
           children: [
-            Text('Severity: ${symptom.severity}/5',
+            Text('Severity: ${symptom.severity}/10',
                 style: theme.textTheme.bodyLarge),
             const SizedBox(width: 12),
             Container(
@@ -425,96 +389,4 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
     );
   }
 
-  // ─── Wellbeing detail ────────────────────────────────────────────────────────
-
-  Widget _buildWellbeing(WellbeingLog wellbeing, ThemeData theme) {
-    final energyColor = _wellbeingColor(wellbeing.energy);
-    final moodColor = _wellbeingColor(wellbeing.mood);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Icon + title
-        Center(
-          child: Column(
-            children: [
-              const Icon(
-                Icons.favorite_rounded,
-                size: 64,
-                color: Colors.pink,
-              ),
-              const SizedBox(height: 8),
-              Text('Wellbeing Check-In',
-                  style: theme.textTheme.headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-
-        // Energy row
-        _buildWellbeingRow(
-          theme,
-          label: 'Energy',
-          value: wellbeing.energy,
-          color: energyColor,
-        ),
-        const SizedBox(height: 16),
-
-        // Mood row
-        _buildWellbeingRow(
-          theme,
-          label: 'Mood',
-          value: wellbeing.mood,
-          color: moodColor,
-        ),
-
-        // Notes
-        if (wellbeing.notes != null) ...[
-          const SizedBox(height: 24),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(wellbeing.notes!),
-            ),
-          ),
-        ],
-
-        const SizedBox(height: 16),
-
-        // Timestamp
-        Text(
-          _formatFull(wellbeing.loggedAt),
-          style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWellbeingRow(
-    ThemeData theme, {
-    required String label,
-    required int value,
-    required Color color,
-  }) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 72,
-          child: Text(label, style: theme.textTheme.bodyLarge),
-        ),
-        const SizedBox(width: 8),
-        Text('$value', style: theme.textTheme.bodyLarge),
-        const SizedBox(width: 12),
-        Expanded(
-          child: LinearProgressIndicator(
-            value: value / 5.0,
-            color: color,
-            backgroundColor: color.withValues(alpha: 0.2),
-          ),
-        ),
-      ],
-    );
-  }
 }
