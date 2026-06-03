@@ -9,6 +9,7 @@ import '../../../core/api/providers/last_logged_provider.dart';
 import '../../../core/api/providers/meals_provider.dart' show syncTriggerProvider;
 import '../../../core/api/providers/preferences_provider.dart';
 import '../../../core/notifications/notification_service.dart';
+import '../../../core/audio/audio_beep_channel.dart';
 import '../../../core/offline/local_voice_queue_dao.dart';
 import '../../../core/tts/tts_engine.dart';
 import '../../../core/tts/tts_engine_factory.dart';
@@ -26,11 +27,16 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     SpeechToText? sttForTesting,
     TtsEngine? ttsForTesting,
     Duration? followUpStartDelay,
+    AudioBeepChannel? beepChannelForTesting,
+    Duration? beepSuppressDelay,
   })  : _ref = ref,
         _stt = sttForTesting ?? SpeechToText(),
         _injectedTts = ttsForTesting,
         _followUpStartDelay =
             followUpStartDelay ?? const Duration(milliseconds: 2500),
+        _beep = beepChannelForTesting ?? AudioBeepChannel(),
+        _beepSuppressDelay =
+            beepSuppressDelay ?? const Duration(milliseconds: 800),
         super(const VoiceState()) {
     _ready = _initTts();
   }
@@ -56,6 +62,13 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   // question first. Cancelable via dismiss(); injectable for tests.
   final Duration _followUpStartDelay;
   Timer? _followUpStartTimer;
+  // Beep suppression: let the first follow-up beep play, then mute the
+  // recognizer beep streams so the restart sessions are silent. Released via
+  // _releaseBeepSuppression() on every exit path so it can never leak.
+  final AudioBeepChannel _beep;
+  final Duration _beepSuppressDelay;
+  Timer? _beepSuppressTimer;
+  bool _beepSuppressed = false;
 
   Future<void> _initTts() async {
     _tts = _injectedTts ?? await createTtsEngine();
@@ -90,6 +103,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         }
       });
     } else {
+      _releaseBeepSuppression();
       _autoSubmitIfPending();
     }
   }
@@ -129,8 +143,17 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   void _pauseFollowUpMic() {
+    _releaseBeepSuppression();
     _inFollowUpListen = false;
     if (mounted) state = state.copyWith(micPhase: MicPhase.paused);
+  }
+
+  void _releaseBeepSuppression() {
+    _beepSuppressTimer?.cancel();
+    if (_beepSuppressed) {
+      _beep.restore();
+      _beepSuppressed = false;
+    }
   }
 
   /// Re-opens one follow-up listen session — wired to the overlay's
@@ -150,6 +173,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   void startListening() {
+    // Release any lingering follow-up beep suppression when a fresh session
+    // starts, so the "released on every exit" invariant holds unconditionally.
+    _releaseBeepSuppression();
     state = const VoiceState(status: VoiceStatus.listening);
     _beginStt();
   }
@@ -201,6 +227,17 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     if (isFollowUp && mounted) {
       state = state.copyWith(micPhase: MicPhase.listening);
     }
+    if (isFollowUp && _followUpRestarts == 0) {
+      // Let this first session's beep play, then mute the candidate streams so
+      // the restart sessions' beeps are silenced. Released on any exit.
+      _beepSuppressTimer?.cancel();
+      _beepSuppressTimer = Timer(_beepSuppressDelay, () {
+        if (mounted && state.status == VoiceStatus.awaitingFollowUp) {
+          _beep.suppress();
+          _beepSuppressed = true;
+        }
+      });
+    }
     final mode = isFollowUp && _useDictation
         ? ListenMode.dictation
         : ListenMode.confirmation;
@@ -251,6 +288,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   void setThinking() {
+    _releaseBeepSuppression();
     _inFollowUpListen = false;
     _followUpRestarts = 0;
     _followUpAccumulated = '';
@@ -348,6 +386,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   void dismiss() {
+    _releaseBeepSuppression();
     _followUpStartTimer?.cancel();
     if (_stt.isListening) _stt.stop();
     _stopTts();
@@ -499,6 +538,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
   @override
   void dispose() {
+    _releaseBeepSuppression();
     _followUpStartTimer?.cancel();
     _stt.stop();
     _ready.then((_) => _tts.dispose());

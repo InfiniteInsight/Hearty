@@ -3,7 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:hearty_app/features/voice/models/voice_state.dart';
 import 'package:hearty_app/features/voice/providers/voice_provider.dart';
+import 'package:hearty_app/core/audio/audio_beep_channel.dart';
 import 'fake_tts_engine.dart';
+
+class FakeBeepChannel implements AudioBeepChannel {
+  int suppressCount = 0;
+  int restoreCount = 0;
+  @override
+  Future<void> suppress() async => suppressCount++;
+  @override
+  Future<void> restore() async => restoreCount++;
+}
 
 // Fake SpeechToText for testing
 class FakeSpeechToText extends Fake implements SpeechToText {
@@ -225,6 +235,59 @@ void main() {
       // _beginFollowUpStt opens the mic after a 350ms internal delay.
       await Future<void>.delayed(const Duration(milliseconds: 500));
       expect(fakeStt.listenCount, 1); // armed exactly once, not twice
+      notifier.dispose();
+    });
+
+    test('first follow-up suppresses beep after the delay, dismiss restores', () async {
+      final beep = FakeBeepChannel();
+      final notifier = VoiceNotifier(
+        sttForTesting: fakeStt,
+        ttsForTesting: fakeTts,
+        followUpStartDelay: Duration.zero,
+        beepChannelForTesting: beep,
+        beepSuppressDelay: Duration.zero,
+      );
+      notifier.primeForSymptomFollowUp(mealId: 'm1');
+      // Orientation timer -> _beginStt -> arms the beep-suppress timer -> fires.
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(beep.suppressCount, 1);
+      notifier.dismiss();
+      expect(beep.restoreCount, 1);
+      notifier.dispose();
+    });
+
+    test('dismiss before the suppress delay never suppresses', () async {
+      final beep = FakeBeepChannel();
+      final notifier = VoiceNotifier(
+        sttForTesting: fakeStt,
+        ttsForTesting: fakeTts,
+        followUpStartDelay: Duration.zero,
+        beepChannelForTesting: beep,
+        beepSuppressDelay: const Duration(seconds: 10),
+      );
+      notifier.primeForSymptomFollowUp(mealId: 'm1');
+      await Future<void>.delayed(const Duration(milliseconds: 30)); // beginStt arms 10s timer
+      notifier.dismiss(); // cancels it
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(beep.suppressCount, 0);
+      notifier.dispose();
+    });
+
+    test('beep restore is idempotent across multiple exits', () async {
+      final beep = FakeBeepChannel();
+      final notifier = VoiceNotifier(
+        sttForTesting: fakeStt,
+        ttsForTesting: fakeTts,
+        followUpStartDelay: Duration.zero,
+        beepChannelForTesting: beep,
+        beepSuppressDelay: Duration.zero,
+      );
+      notifier.primeForSymptomFollowUp(mealId: 'm1');
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(beep.suppressCount, 1);
+      notifier.setThinking(); // releases
+      notifier.dismiss(); // releases again -> no-op
+      expect(beep.restoreCount, 1);
       notifier.dispose();
     });
   });
