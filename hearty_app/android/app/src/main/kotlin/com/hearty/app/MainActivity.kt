@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioManager
+import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -17,6 +19,45 @@ class MainActivity : FlutterActivity() {
 
     // Set before super.onCreate() so configureFlutterEngine can read it.
     private var pendingWakeWord = false
+
+    // Beep suppression: Android's SpeechRecognizer plays start/stop beeps on a
+    // device-dependent stream. We can't query which, so we mute the candidate
+    // set during follow-up restart sessions and restore them.
+    private var beepSuppressed = false
+    private val beepStreams = intArrayOf(
+        AudioManager.STREAM_MUSIC,
+        AudioManager.STREAM_SYSTEM,
+        AudioManager.STREAM_NOTIFICATION,
+    )
+    // The streams WE muted this session, so restore un-mutes only those and
+    // never clobbers a stream the user had already muted themselves.
+    private val mutedByUs = mutableListOf<Int>()
+
+    private fun setBeepSuppressed(suppressed: Boolean) {
+        if (suppressed == beepSuppressed) return
+        val am = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        if (suppressed) {
+            mutedByUs.clear()
+            for (s in beepStreams) {
+                // Per-stream try/catch: muting SYSTEM/NOTIFICATION can throw on
+                // some OEMs (DND policy) — that stream just isn't suppressed,
+                // never a crash. Only mute (and remember) streams not already muted.
+                try {
+                    if (!am.isStreamMute(s)) {
+                        am.adjustStreamVolume(s, AudioManager.ADJUST_MUTE, 0)
+                        mutedByUs.add(s)
+                    }
+                } catch (e: Exception) { Log.w("HeartyAudio", "mute stream $s failed", e) }
+            }
+        } else {
+            for (s in mutedByUs) {
+                try { am.adjustStreamVolume(s, AudioManager.ADJUST_UNMUTE, 0) }
+                catch (e: Exception) { Log.w("HeartyAudio", "unmute stream $s failed", e) }
+            }
+            mutedByUs.clear()
+        }
+        beepSuppressed = suppressed
+    }
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         if (intent?.action == ACTION_WAKE_WORD_DETECTED) {
@@ -82,12 +123,29 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.hearty.app/audio")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "setBeepSuppressed" -> {
+                        setBeepSuppressed(call.arguments as? Boolean ?: false)
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
         // Cold-start: intent arrived before engine was ready.
         if (pendingWakeWord) {
             pendingWakeWord = false
             MethodChannel(flutterEngine.dartExecutor.binaryMessenger, HeartyWakeWordService.METHOD_CHANNEL)
                 .invokeMethod("wakeWordDetected", null)
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Never leave streams muted if the app backgrounds mid-suppression.
+        if (beepSuppressed) setBeepSuppressed(false)
     }
 
     private fun applyShowWhenLocked() {
