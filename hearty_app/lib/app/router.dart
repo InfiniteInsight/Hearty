@@ -338,7 +338,8 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
       ref.invalidate(mealsProvider);
       ref.invalidate(symptomsProvider);
       ref.read(wakeWordDetectedProvider.notifier).setDetected(false);
-      WakeWordChannel.startListening().catchError((_) {});
+      // Re-arm now happens centrally in VoiceOverlayScreen.dispose() (covers
+      // every STT entry path, not just wake word), so we no longer re-arm here.
     });
 
     return Scaffold(

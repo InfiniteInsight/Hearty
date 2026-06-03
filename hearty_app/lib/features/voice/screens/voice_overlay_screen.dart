@@ -4,6 +4,7 @@ import '../models/voice_state.dart';
 import '../providers/voice_provider.dart';
 import '../widgets/waveform_animation.dart';
 import '../widgets/thinking_animation.dart';
+import '../../wake_word/wake_word_channel.dart';
 
 class VoiceOverlayScreen extends ConsumerStatefulWidget {
   const VoiceOverlayScreen({super.key});
@@ -18,6 +19,11 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
   @override
   void dispose() {
     _textController.dispose();
+    // The voice session is over — re-arm the wake-word service mic that
+    // _beginStt handed off. This is the single session-end chokepoint covering
+    // every entry path (wake word, follow-up notification, tap-to-talk).
+    // No-ops if wake word is disabled (service not running -> channel throws).
+    WakeWordChannel.startListening().catchError((_) {});
     super.dispose();
   }
 

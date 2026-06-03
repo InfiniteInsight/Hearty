@@ -13,6 +13,7 @@ import '../../../core/audio/audio_beep_channel.dart';
 import '../../../core/offline/local_voice_queue_dao.dart';
 import '../../../core/tts/tts_engine.dart';
 import '../../../core/tts/tts_engine_factory.dart';
+import '../../wake_word/wake_word_channel.dart';
 import '../models/voice_state.dart';
 
 const _uuid = Uuid();
@@ -29,6 +30,8 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     Duration? followUpStartDelay,
     AudioBeepChannel? beepChannelForTesting,
     Duration? beepSuppressDelay,
+    Future<void> Function()? releaseWakeWordMic,
+    Duration? micHandoffDelay,
   })  : _ref = ref,
         _stt = sttForTesting ?? SpeechToText(),
         _injectedTts = ttsForTesting,
@@ -37,6 +40,10 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         _beep = beepChannelForTesting ?? AudioBeepChannel(),
         _beepSuppressDelay =
             beepSuppressDelay ?? const Duration(milliseconds: 800),
+        _releaseWakeWordMic =
+            releaseWakeWordMic ?? WakeWordChannel.stopListening,
+        _micHandoffDelay =
+            micHandoffDelay ?? const Duration(milliseconds: 250),
         super(const VoiceState()) {
     _ready = _initTts();
   }
@@ -69,6 +76,16 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   final Duration _beepSuppressDelay;
   Timer? _beepSuppressTimer;
   bool _beepSuppressed = false;
+  // The always-on wake-word foreground service holds the microphone (an
+  // AudioRecord on VOICE_RECOGNITION). On Android the existing capture client
+  // wins, so SpeechRecognizer is starved and hears nothing unless we hand the
+  // mic off first — exactly what the native onWakeWordDetected() does for the
+  // wake-word path. We mirror that for every STT session and re-arm the service
+  // when the voice overlay closes (VoiceOverlayScreen.dispose). _micHandoffDelay
+  // gives the audio HAL a beat to release the input before SpeechRecognizer
+  // grabs it. Injectable so unit tests stay synchronous and timer-free.
+  final Future<void> Function() _releaseWakeWordMic;
+  final Duration _micHandoffDelay;
 
   Future<void> _initTts() async {
     _tts = _injectedTts ?? await createTtsEngine();
@@ -241,6 +258,16 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     final mode = isFollowUp && _useDictation
         ? ListenMode.dictation
         : ListenMode.confirmation;
+    // Hand the mic off from the wake-word service before listening, or
+    // SpeechRecognizer is starved (see _releaseWakeWordMic). Swallow failures:
+    // if wake word is disabled the service isn't running and the channel throws.
+    try {
+      await _releaseWakeWordMic();
+    } catch (_) {/* wake word off / service not running */}
+    if (_micHandoffDelay > Duration.zero) {
+      await Future<void>.delayed(_micHandoffDelay);
+    }
+    if (!mounted) return;
     await _stt.listen(
       onResult: (result) {
         if (result.recognizedWords.isNotEmpty) {

@@ -63,7 +63,12 @@ void main() {
       fakeTts = FakeTtsEngine();
       container = ProviderContainer(
         overrides: [
-          voiceProvider.overrideWith((ref) => VoiceNotifier(sttForTesting: fakeStt, ttsForTesting: fakeTts)),
+          voiceProvider.overrideWith((ref) => VoiceNotifier(
+                sttForTesting: fakeStt,
+                ttsForTesting: fakeTts,
+                releaseWakeWordMic: () async {},
+                micHandoffDelay: Duration.zero,
+              )),
         ],
       );
     });
@@ -128,6 +133,8 @@ void main() {
       final notifier = VoiceNotifier(
         sttForTesting: fakeStt,
         ttsForTesting: fakeTts,
+        releaseWakeWordMic: () async {},
+        micHandoffDelay: Duration.zero,
         followUpStartDelay: Duration.zero,
       );
       notifier.primeForSymptomFollowUp(mealId: 'm1');
@@ -146,6 +153,8 @@ void main() {
       final notifier = VoiceNotifier(
         sttForTesting: fakeStt,
         ttsForTesting: fakeTts,
+        releaseWakeWordMic: () async {},
+        micHandoffDelay: Duration.zero,
         followUpStartDelay: const Duration(seconds: 10),
       );
       notifier.primeForSymptomFollowUp(mealId: 'm1');
@@ -160,6 +169,8 @@ void main() {
       final notifier = VoiceNotifier(
         sttForTesting: fakeStt,
         ttsForTesting: fakeTts,
+        releaseWakeWordMic: () async {},
+        micHandoffDelay: Duration.zero,
         followUpStartDelay: const Duration(seconds: 10),
       );
       notifier.primeForSymptomFollowUp(mealId: 'm1');
@@ -172,6 +183,8 @@ void main() {
       final notifier = VoiceNotifier(
         sttForTesting: fakeStt,
         ttsForTesting: fakeTts,
+        releaseWakeWordMic: () async {},
+        micHandoffDelay: Duration.zero,
         followUpStartDelay: Duration.zero,
       );
       notifier.primeForSymptomFollowUp(mealId: 'm1');
@@ -191,6 +204,8 @@ void main() {
       final notifier = VoiceNotifier(
         sttForTesting: fakeStt,
         ttsForTesting: fakeTts,
+        releaseWakeWordMic: () async {},
+        micHandoffDelay: Duration.zero,
         followUpStartDelay: Duration.zero,
       );
       notifier.primeForSymptomFollowUp(mealId: 'm1');
@@ -208,6 +223,8 @@ void main() {
       final notifier = VoiceNotifier(
         sttForTesting: fakeStt,
         ttsForTesting: fakeTts,
+        releaseWakeWordMic: () async {},
+        micHandoffDelay: Duration.zero,
         followUpStartDelay: Duration.zero,
       );
       notifier.primeForSymptomFollowUp(mealId: 'm1');
@@ -226,6 +243,8 @@ void main() {
       final notifier = VoiceNotifier(
         sttForTesting: fakeStt,
         ttsForTesting: fakeTts,
+        releaseWakeWordMic: () async {},
+        micHandoffDelay: Duration.zero,
       );
       // First completion arms the follow-up turn.
       notifier.setAwaitingFollowUp();
@@ -243,6 +262,8 @@ void main() {
       final notifier = VoiceNotifier(
         sttForTesting: fakeStt,
         ttsForTesting: fakeTts,
+        releaseWakeWordMic: () async {},
+        micHandoffDelay: Duration.zero,
         followUpStartDelay: Duration.zero,
         beepChannelForTesting: beep,
         beepSuppressDelay: Duration.zero,
@@ -261,6 +282,8 @@ void main() {
       final notifier = VoiceNotifier(
         sttForTesting: fakeStt,
         ttsForTesting: fakeTts,
+        releaseWakeWordMic: () async {},
+        micHandoffDelay: Duration.zero,
         followUpStartDelay: Duration.zero,
         beepChannelForTesting: beep,
         beepSuppressDelay: const Duration(seconds: 10),
@@ -278,6 +301,8 @@ void main() {
       final notifier = VoiceNotifier(
         sttForTesting: fakeStt,
         ttsForTesting: fakeTts,
+        releaseWakeWordMic: () async {},
+        micHandoffDelay: Duration.zero,
         followUpStartDelay: Duration.zero,
         beepChannelForTesting: beep,
         beepSuppressDelay: Duration.zero,
@@ -288,6 +313,25 @@ void main() {
       notifier.setThinking(); // releases
       notifier.dismiss(); // releases again -> no-op
       expect(beep.restoreCount, 1);
+      notifier.dispose();
+    });
+
+    test('hands the wake-word mic off BEFORE starting STT', () async {
+      var listenCountAtRelease = -1;
+      final notifier = VoiceNotifier(
+        sttForTesting: fakeStt,
+        ttsForTesting: fakeTts,
+        releaseWakeWordMic: () async {
+          listenCountAtRelease = fakeStt.listenCount;
+        },
+        micHandoffDelay: Duration.zero,
+      );
+      notifier.startListening();
+      await Future<void>.delayed(Duration.zero);
+      // Mic was released while STT had not yet started listening...
+      expect(listenCountAtRelease, 0);
+      // ...and STT did start afterward.
+      expect(fakeStt.listenCount, 1);
       notifier.dispose();
     });
   });
