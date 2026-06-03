@@ -79,7 +79,8 @@ class NeuralTtsEngine implements TtsEngine {
   Future<void> speak(String text) async {
     final tts = _tts;
     if (tts == null) return;
-    final speed = _style == TtsStyle.concise ? 1.1 : 0.95;
+    // +8% baseline (1.08) — user-approved ep24 tempo (2026-06-02); concise a touch snappier.
+    final speed = _style == TtsStyle.concise ? 1.18 : 1.08;
     final audio =
         tts.generate(text: _applyPronunciationFixes(text), sid: 0, speed: speed);
     final wav = pcmToWav(audio.samples, audio.sampleRate);
