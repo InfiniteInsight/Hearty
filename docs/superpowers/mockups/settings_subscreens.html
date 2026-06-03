@@ -83,6 +83,9 @@
   .dt-track { height:4px; border-radius:2px; background:var(--faint); position:relative; }
   .dt-fill { position:absolute; left:0; top:0; bottom:0; border-radius:2px; background:var(--accg); }
   .dt-knob2 { position:absolute; top:50%; transform:translate(-50%,-50%); width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.45); }
+  /* detent ticks — one per step; --steps = number of intervals (detents − 1) */
+  .dt-ticks { position:absolute; left:0; right:0; top:50%; transform:translateY(-50%); height:9px; opacity:0.5; pointer-events:none;
+    background:repeating-linear-gradient(to right, var(--sub) 0 1.5px, transparent 1.5px calc((100% - 1.5px)/var(--steps))); }
 
   .dt-save { margin-top:16px; width:100%; padding:11px; border-radius:12px; background:var(--accg); color:#fff; font-size:12px; font-weight:700; text-align:center; box-shadow:0 6px 16px -6px var(--acc); }
 
@@ -129,7 +132,7 @@
       <div class="dt-seclabel">Reminders</div>
       <div class="dt-card">
         <div class="dt-srow"><div class="dt-ico2">🍽️</div><div><div class="dt-st">Post-meal nudge</div><div class="dt-ss">Check in after you eat</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
-        <div class="dt-slide"><div class="dt-slide-top"><span class="dt-slide-lab">Nudge delay</span><span class="dt-slide-val">45 min</span></div><div class="dt-track"><div class="dt-fill" style="width:55%"></div><div class="dt-knob2" style="left:55%"></div></div></div>
+        <div class="dt-slide"><div class="dt-slide-top"><span class="dt-slide-lab">Nudge delay</span><span class="dt-slide-val">45 min</span></div><div class="dt-track"><div class="dt-fill" style="width:37.5%"></div><div class="dt-ticks" style="--steps:8"></div><div class="dt-knob2" style="left:37.5%"></div></div></div>
         <div class="dt-srow"><div class="dt-ico2">📰</div><div><div class="dt-st">Weekly digest</div><div class="dt-ss">Sunday summary</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
         <div class="dt-srow"><div class="dt-ico2">⚠️</div><div><div class="dt-st">Sync error alerts</div><div class="dt-ss">If logs fail to upload</div></div><div class="dt-toggle off"><div class="dt-knob"></div></div></div>
         <div class="dt-srow"><div class="dt-ico2">🎙️</div><div><div class="dt-st">Wake word</div><div class="dt-ss">“Hey Hearty”</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
@@ -144,7 +147,7 @@
       <div class="dt-seclabel">Reminders</div>
       <div class="dt-card">
         <div class="dt-srow"><div class="dt-ico2">🍽️</div><div><div class="dt-st">Post-meal nudge</div><div class="dt-ss">Check in after you eat</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
-        <div class="dt-slide"><div class="dt-slide-top"><span class="dt-slide-lab">Nudge delay</span><span class="dt-slide-val">45 min</span></div><div class="dt-track"><div class="dt-fill" style="width:55%"></div><div class="dt-knob2" style="left:55%"></div></div></div>
+        <div class="dt-slide"><div class="dt-slide-top"><span class="dt-slide-lab">Nudge delay</span><span class="dt-slide-val">45 min</span></div><div class="dt-track"><div class="dt-fill" style="width:37.5%"></div><div class="dt-ticks" style="--steps:8"></div><div class="dt-knob2" style="left:37.5%"></div></div></div>
         <div class="dt-srow"><div class="dt-ico2">📰</div><div><div class="dt-st">Weekly digest</div><div class="dt-ss">Sunday summary</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
         <div class="dt-srow"><div class="dt-ico2">⚠️</div><div><div class="dt-st">Sync error alerts</div><div class="dt-ss">If logs fail to upload</div></div><div class="dt-toggle off"><div class="dt-knob"></div></div></div>
         <div class="dt-srow"><div class="dt-ico2">🎙️</div><div><div class="dt-st">Wake word</div><div class="dt-ss">“Hey Hearty”</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
@@ -159,7 +162,7 @@
       <div class="dt-seclabel">Reminders</div>
       <div class="dt-card">
         <div class="dt-srow"><div class="dt-ico2">🍽️</div><div><div class="dt-st">Post-meal nudge</div><div class="dt-ss">Check in after you eat</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
-        <div class="dt-slide"><div class="dt-slide-top"><span class="dt-slide-lab">Nudge delay</span><span class="dt-slide-val">45 min</span></div><div class="dt-track"><div class="dt-fill" style="width:55%"></div><div class="dt-knob2" style="left:55%"></div></div></div>
+        <div class="dt-slide"><div class="dt-slide-top"><span class="dt-slide-lab">Nudge delay</span><span class="dt-slide-val">45 min</span></div><div class="dt-track"><div class="dt-fill" style="width:37.5%"></div><div class="dt-ticks" style="--steps:8"></div><div class="dt-knob2" style="left:37.5%"></div></div></div>
         <div class="dt-srow"><div class="dt-ico2">📰</div><div><div class="dt-st">Weekly digest</div><div class="dt-ss">Sunday summary</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>
         <div class="dt-srow"><div class="dt-ico2">⚠️</div><div><div class="dt-st">Sync error alerts</div><div class="dt-ss">If logs fail to upload</div></div><div class="dt-toggle off"><div class="dt-knob"></div></div></div>
         <div class="dt-srow"><div class="dt-ico2">🎙️</div><div><div class="dt-st">Wake word</div><div class="dt-ss">“Hey Hearty”</div></div><div class="dt-toggle on"><div class="dt-knob"></div></div></div>

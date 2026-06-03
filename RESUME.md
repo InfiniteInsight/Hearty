@@ -9,6 +9,33 @@ to the user's phone needs an awake agent.
 
 ---
 
+## 2026-06-02 session — mic-contention fix + branch consolidation
+
+**FIXED: STT heard nothing on follow-up notification (and in-app tap-to-talk).**
+Root cause (confirmed on-device via logcat): the always-on wake-word foreground
+service holds the mic (AudioRecord, VOICE_RECOGNITION). On Android the existing
+capture client wins → SpeechRecognizer starved on any STT path that didn't first
+release it. Only "hey hearty" worked (native onWakeWordDetected stops the recorder).
+Fix: `_beginStt()` calls `WakeWordChannel.stopListening()` + settle delay before
+`_stt.listen()`; `VoiceOverlayScreen.dispose()` re-arms (single session-end
+chokepoint); removed the redundant re-arm in router.dart. 20/20 voice tests pass.
+Commit `6a5cb1a` on voice-beep-mute. **Device matrix (wake word ON) PENDING:**
+tap-to-talk ✓, follow-up ✓, "hey hearty" ✓, and "hey hearty" AGAIN after a session ✓
+(re-arm regression check).
+
+**Branch consolidation onto master (in progress).** Backups: `backup/preconsolidate-*`
+for every HEAD. Settings-move work was UNCOMMITTED in the wake-word-settings worktree
+→ committed as `65c55d3` (dedicated WakeWordSettingsScreen). Plan: FF master→voice-beep-mute,
+device-test, then merge prism-waveform + wake-word-settings (both touch voice files →
+conflicts expected), then prune worktrees + gc.
+**DEFERRED: `food-editing` branch** is pre-LFS-rewrite history (223/244 divergence;
+its commits are content-dupes of master under old SHAs). Its real unique work = the
+manual-food-editing feature (~4 top commits: 4bcddf3, 4f21b54, 6f1097a, a8349ed),
+NOT in master. Do NOT merge (re-bloats repo with purged onnx blobs) — CHERRY-PICK
+those 4 onto master later as a focused task. Branch + backup preserve it.
+
+---
+
 ## What changed in v2 (why we restarted)
 The epoch-799 distilled voice read slightly feminine + had faint "ch" artifacts. A distilled student
 only copies its source, so we **re-neutralized the source first**. After 3 rounds (see memory
@@ -67,19 +94,51 @@ DONE: device run confirmed (user: "runs well on the phone") = Task 1.6 ✓.
 SHIPPED TO MAIN 2026-06-01: commit 455d97e fast-forwarded onto origin/master (GitHub). Push included
 voice + curated app/api WIP (wellbeing removal, health-profile widgets, screen refactors, symptom
 taxonomy, migrations) + android native + docs/images; EXCLUDED only tooling scratch (.claude,
-.superpowers, .playwright-mcp) and voice scratch (voice-candidates-*, voice-final 62MB dup). Secret scan
-clean. NOTE: 63MB onnx triggered GitHub LFS *warning* (under 100MB hard limit, OK); consider git-lfs if
-more models get added.
+.superpowers, .playwright-mcp) and voice scratch (voice-candidates-*, voice-final 62MB dup). Secret scan clean.
+
+GIT-LFS SET UP (2026-06-01): migrated ALL *.onnx into LFS via `git lfs migrate import --include="*.onnx"
+--include-ref=refs/heads/master --include-ref=refs/heads/voice-nonbinary-tts` (history rewrite, 241
+commits). `.gitattributes` now has `*.onnx filter=lfs ...` so FUTURE model swaps (v-next voice) auto-go to
+LFS — just commit + push normally. Force-pushed master + branch (455d97e→6d63cbc); 146MB LFS objects
+uploaded; remote onnx are now pointers. GOTCHAS hit: (1) `git lfs migrate` PROMPTS "[y/N]" on a dirty
+tree and HANGS at 0% CPU if backgrounded — run foreground with `</dev/null` on a CLEAN tree; (2)
+untracked scratch counts as "dirty" → gitignored .claude/.superpowers/.playwright-mcp/voice-candidates-*/
+voice-final/; (3) `--everything` hangs on the prism-waveform worktree branch → target refs explicitly;
+(4) after migrate, working tree holds pointers → `git lfs checkout` to re-materialize real files.
+LEFTOVER (local only, remote is clean): branches food-editing + prism-waveform still hold pre-LFS onnx
+history → local .git stays ~282MB until they're migrated/merged/deleted + gc. Not blocking.
 v-NEXT queued: less-breathy source re-clone (same neutral pitch/tone) → corpus regen → retrain with the
 buzz-avoiding recipe (low LR / early-clean checkpoint) → drop-in onnx swap (no re-integration needed).
 
-### v-NEXT IN PROGRESS — breathiness reduction (2026-06-01)
+### ✅ RESOLVED (2026-06-02) — voice-final LOCKED: ep24 @ +8% tempo, NO edge
+The "harsher/edge + faster" exploration is CLOSED. User verdict (session 96dd2086):
+- **Tempo:** +8% (sherpa `speed` 1.08) — "ep_24 at 8% faster is great". Concise style a touch snappier (1.18).
+- **Edge (output DSP):** DROPPED — "the edge doesn't sound so good and I think it makes it skew masculine".
+- **No retrain needed** — tempo is a free sherpa speed knob on the already-shipped ep24 model.
+Shipped in `neural_tts_engine.dart` speak(): `speed = concise ? 1.18 : 1.08`. No DSP filter in the engine.
+The breathiness/edge re-derive+retrain fallback below is therefore SHELVED unless new feedback reopens it.
+
+### (SHELVED) v-NEXT — breathiness reduction (2026-06-01)
 Surgical phonation-axis edit (NOT a re-roll): dir = clone(PRESSED desc) − clone(BREATHY desc) with
 pitch/gender/accent held constant in both descs → seed256 + alpha*||seed256||*unit(dir). Script
 /data/hearty-voice/breathiness_candidates.py; embeddings saved design/breathiness/breathiness_embeddings.pt
 (keys A0_seed256_orig, P0.04/0.08/0.14/0.22_pressed). F0 noisy but ~138-153 (P0.04 spiked 180=fluke,
-skipped). Sent user care-line A/B: A0(orig)/P0.08/P0.14/P0.22. AWAITING pick of least-breathy that's
-still same-voice+neutral; then lock as v-next source → regen corpus → retrain (low-LR/early-ckpt recipe).
+skipped). Rendered all 4 candidates × 4 phrases (/data/hearty-voice/design/breath_full/, local /tmp/breath_full/).
+User feedback: liked "8 with a minor speed boost — clip/tone of 4 + richer timbre of 8". So AVERAGED
+P0.04+P0.08 → `avg_0408` embedding (saved /data/hearty-voice/design/breath_avg/avg_0408_embedding.pt),
+rendered 4 phrases at natural + ~8% pitch-preserving speed boost (/tmp/breath_avg/, __x100/__x108).
+avg_0408 REJECTED by user — averaging 2 embeddings = ECHO artifact (doubled timbre). Don't average.
+User verdict: likes the ORIGINAL seed256 character (A0) and says the SHIPPED ep24 (voice-final) sounds
+BEST. Wants voice-final "a little harsher/edge + a bit faster tempo".
+KEY: voice-final is the TRAINED model — tempo is a free sherpa speed knob, but harsher phonation is baked
+in (would need source re-derive + retrain). TRYING CHEAP SHORTCUT FIRST: tempo via sherpa speed + "edge"
+via OUTPUT DSP (one-pole high-freq presence emphasis + soft-clip) on ep24's output — if good, ship as an
+app audio-output filter, NO retrain. render_voicefinal_edge.py → voice-samples/voicefinal_edge/
+(vf__phrase__sSPEED__edge: s100/108/112, noedge/lightedge/mededge). AWAITING pick of tempo% + edge level.
+If DSP edge sounds artificial → fall back: re-derive seed256 with small press nudge (NOT average; small
+single-direction like P0.04-0.08) → regen corpus → retrain (early-clean-ckpt) → drop-in onnx (auto-LFS).
+NOTE: /tmp wipes on reboot — voice audition samples now kept in gitignored repo dir voice-samples/
+(source of truth on pkix /data/hearty-voice/design/). .gitignore has voice-samples/ (works uncommitted).
 Buzz-avoiding retrain recipe reminder: train from libritts base, watch every-25, the model stays clean
 through ~ep74 then drifts buzzy — pick an early CLEAN checkpoint (ep24 was the sweet spot last time).
 

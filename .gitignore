@@ -13,3 +13,4 @@ hearty_app/.vscode/
 # Voice-design scratch (large WAV/onnx artifacts; kept off the repo)
 voice-candidates-*/
 voice-final/
+voice-samples/

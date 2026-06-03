@@ -425,7 +425,7 @@ The screens under Settings (Notifications, Voice, Conversation Style, Health Pro
 |---|---|
 | Section card | `--card` fill, `--cardbd` border, radius 13, `backdrop-filter: blur(8px)`; rows divided by `1px --faint` |
 | Switch row | gradient icon chip (`--accg`) + title/sub; toggle ON = `--accg`, OFF = `--faint`, white knob |
-| Slider | track `--faint`, fill `--accg`, white knob; value label in `--acc` |
+| Slider | track `--faint`, fill `--accg`, white knob; value label in `--acc`. **Detent ticks**: a `.dt-ticks` overlay draws one mark per step via `repeating-linear-gradient(to right, var(--sub) 0 1.5px, transparent 1.5px calc((100% - 1.5px)/--steps))`, where `--steps` = detents − 1 (e.g. severity 1–10 → `--steps:9`; 0–120 min by 15 → `--steps:8`). Knob/fill snap to a detent position. |
 | Select card (radio) | selected = `box-shadow: 0 0 0 2px --acc`; radio dot fills with `--acc` |
 | Example bubbles | user bubble `--faint`/`--tx`; AI bubble `--accg`/white |
 | Voice row | check fills `--accg` when selected; play button `--faint` bg, `--acc` glyph |
