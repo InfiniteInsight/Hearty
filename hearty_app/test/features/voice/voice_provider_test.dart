@@ -211,5 +211,21 @@ void main() {
       expect(notifier.state.micPhase, MicPhase.listening);
       notifier.dispose();
     });
+
+    test('normalizeSoundLevel maps the recognizer dB range to 0..1', () {
+      expect(VoiceNotifier.normalizeSoundLevel(-2.0), 0.0);
+      expect(VoiceNotifier.normalizeSoundLevel(10.0), 1.0);
+      expect(VoiceNotifier.normalizeSoundLevel(4.0), 0.5);
+      expect(VoiceNotifier.normalizeSoundLevel(-100.0), 0.0); // clamps low
+      expect(VoiceNotifier.normalizeSoundLevel(100.0), 1.0); // clamps high
+    });
+
+    test('soundLevel resets to 0 when listening stops (setThinking)', () {
+      final notifier = container.read(voiceProvider.notifier);
+      notifier.startListening();
+      notifier.soundLevel.value = 0.7;
+      notifier.setThinking();
+      expect(notifier.soundLevel.value, 0.0);
+    });
   });
 }

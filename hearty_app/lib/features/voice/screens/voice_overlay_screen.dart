@@ -14,23 +14,19 @@ class VoiceOverlayScreen extends ConsumerStatefulWidget {
 
 class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
   final _textController = TextEditingController();
-  // Live mic amplitude feeding the prism visualiser. TODO(amplitude-source):
-  // currently a constant 0 (calm idle beam) — wire to the real STT sound-level
-  // once the dictation amplitude source is resolved (see project memory).
-  final ValueNotifier<double> _micLevel = ValueNotifier<double>(0.0);
 
   @override
   void dispose() {
     _textController.dispose();
-    _micLevel.dispose();
     super.dispose();
   }
 
-  /// The luminous prism waveform band shown while the mic is live.
+  /// The luminous prism waveform band shown while the mic is live, driven by
+  /// the provider's live mic sound level (from the STT recognizer).
   Widget _voiceVisualizer() => SizedBox(
         width: double.infinity,
         height: 140,
-        child: PrismWaveform(level: _micLevel),
+        child: PrismWaveform(level: ref.read(voiceProvider.notifier).soundLevel),
       );
 
   @override
