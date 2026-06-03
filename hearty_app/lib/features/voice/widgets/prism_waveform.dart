@@ -112,10 +112,11 @@ class _PrismPainter extends CustomPainter {
     final cy = h / 2;
     final minDim = w < h ? w : h;
 
-    // Opaque black background — the screen blend reconstructs white only on
-    // black (spec §6). saveLayer isolates the additive blend to this canvas.
-    final bgPaint = Paint()..color = const Color(0xFF000000);
-    canvas.drawRect(Offset.zero & size, bgPaint);
+    // No opaque backdrop: the luminous lines composite directly over the
+    // (already-dark) voice overlay so the band has no boxed seam. The additive
+    // screen blend that reconstructs white where the channels overlap happens
+    // between the strokes inside the isolated saveLayer below, so it does not
+    // need a black fill behind it.
 
     // Build one path per channel from the shared phase formula.
     final paths = <Path>[];
