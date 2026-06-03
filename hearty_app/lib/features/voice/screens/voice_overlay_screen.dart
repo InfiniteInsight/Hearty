@@ -63,24 +63,37 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
       child: Scaffold(
         backgroundColor: Colors.black.withValues(alpha: 0.85),
         body: SafeArea(
+          // Vertical padding only — horizontal padding is applied per-child so
+          // the prism visualiser row can span the full screen width (edge to
+          // edge) while the other content stays inset by 24.
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            padding: const EdgeInsets.symmetric(vertical: 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Align(
-                  alignment: Alignment.topRight,
-                  child: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => ref.read(voiceProvider.notifier).dismiss(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => ref.read(voiceProvider.notifier).dismiss(),
+                    ),
                   ),
                 ),
                 const Spacer(),
+                // Full-bleed: no horizontal padding so the wave touches the edges.
                 Center(child: _buildAnimation(voiceState)),
                 const SizedBox(height: 32),
-                _buildTextDisplay(voiceState),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: _buildTextDisplay(voiceState),
+                ),
                 const Spacer(),
-                _buildTextInput(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: _buildTextInput(),
+                ),
               ],
             ),
           ),
