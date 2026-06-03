@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -86,6 +87,15 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   // grabs it. Injectable so unit tests stay synchronous and timer-free.
   final Future<void> Function() _releaseWakeWordMic;
   final Duration _micHandoffDelay;
+  // Live mic amplitude (0..1) for the prism visualiser, updated from the STT
+  // recognizer's onSoundLevelChange while listening; reset to 0 when listening
+  // stops so the beam settles. The painter's gate + smoothing shape the look.
+  final ValueNotifier<double> soundLevel = ValueNotifier<double>(0.0);
+
+  /// Maps the recognizer's rms-dB-ish sound level (~-2 silence .. ~10 loud,
+  /// per Android's onRmsChanged range) to a 0..1 amplitude for the visualiser.
+  static double normalizeSoundLevel(double raw) =>
+      ((raw + 2.0) / 12.0).clamp(0.0, 1.0);
 
   Future<void> _initTts() async {
     _tts = _injectedTts ?? await createTtsEngine();
@@ -162,6 +172,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   void _pauseFollowUpMic() {
     _releaseBeepSuppression();
     _inFollowUpListen = false;
+    soundLevel.value = 0.0;
     if (mounted) state = state.copyWith(micPhase: MicPhase.paused);
   }
 
@@ -303,6 +314,8 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
           }
         }
       },
+      onSoundLevelChange: (level) =>
+          soundLevel.value = normalizeSoundLevel(level),
       listenFor: const Duration(seconds: 60),
       pauseFor: const Duration(seconds: 8),
       localeId: 'en-US',
@@ -321,6 +334,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     _followUpAccumulated = '';
     _useDictation = true;
     if (_stt.isListening) _stt.stop();
+    soundLevel.value = 0.0;
     state = state.copyWith(status: VoiceStatus.thinking);
   }
 
@@ -375,6 +389,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   /// Stops TTS immediately (e.g., user tapped screen) and resets to idle.
   void stopSpeaking() {
     _stopTts();
+    soundLevel.value = 0.0;
     state = const VoiceState();
   }
 
@@ -417,6 +432,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     _followUpStartTimer?.cancel();
     if (_stt.isListening) _stt.stop();
     _stopTts();
+    soundLevel.value = 0.0;
     state = const VoiceState();
   }
 
@@ -567,6 +583,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   void dispose() {
     _releaseBeepSuppression();
     _followUpStartTimer?.cancel();
+    soundLevel.dispose();
     _stt.stop();
     _ready.then((_) => _tts.dispose());
     super.dispose();

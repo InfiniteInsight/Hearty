@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/voice_state.dart';
 import '../providers/voice_provider.dart';
-import '../widgets/waveform_animation.dart';
+import '../widgets/prism_waveform.dart';
 import '../widgets/thinking_animation.dart';
 import '../../wake_word/wake_word_channel.dart';
 
@@ -26,6 +26,14 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
     WakeWordChannel.startListening().catchError((_) {});
     super.dispose();
   }
+
+  /// The luminous prism waveform band shown while the mic is live, driven by
+  /// the provider's live mic sound level (from the STT recognizer).
+  Widget _voiceVisualizer() => SizedBox(
+        width: double.infinity,
+        height: 140,
+        child: PrismWaveform(level: ref.read(voiceProvider.notifier).soundLevel),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -57,24 +65,37 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
       child: Scaffold(
         backgroundColor: Colors.black.withValues(alpha: 0.85),
         body: SafeArea(
+          // Vertical padding only — horizontal padding is applied per-child so
+          // the prism visualiser row can span the full screen width (edge to
+          // edge) while the other content stays inset by 24.
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            padding: const EdgeInsets.symmetric(vertical: 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Align(
-                  alignment: Alignment.topRight,
-                  child: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => ref.read(voiceProvider.notifier).dismiss(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => ref.read(voiceProvider.notifier).dismiss(),
+                    ),
                   ),
                 ),
                 const Spacer(),
+                // Full-bleed: no horizontal padding so the wave touches the edges.
                 Center(child: _buildAnimation(voiceState)),
                 const SizedBox(height: 32),
-                _buildTextDisplay(voiceState),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: _buildTextDisplay(voiceState),
+                ),
                 const Spacer(),
-                _buildTextInput(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: _buildTextInput(),
+                ),
               ],
             ),
           ),
@@ -86,11 +107,11 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
   Widget _buildAnimation(VoiceState state) {
     switch (state.status) {
       case VoiceStatus.listening:
-        return const WaveformAnimation();
+        return _voiceVisualizer();
       case VoiceStatus.awaitingFollowUp:
         switch (state.micPhase) {
           case MicPhase.listening:
-            return const WaveformAnimation();
+            return _voiceVisualizer();
           case MicPhase.paused:
             return IconButton(
               key: const Key('tap_to_talk_button'),
