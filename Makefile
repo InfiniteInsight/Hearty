@@ -8,6 +8,7 @@ ADB := /home/evan/tools/android-sdk/platform-tools/adb
 
 tunnel:
 	pkill -9 -x adb 2>/dev/null; sleep 1; true
+	$(ADB) connect $(DEVICE_ID) 2>/dev/null || true
 	$(ADB) -s $(DEVICE_ID) reverse tcp:8080 tcp:8080
 
 run: tunnel
