@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/api/models/user_preferences.dart';
 import '../../../core/api/providers/preferences_provider.dart';
 import '../../../core/widgets/post_meal_nudge_section.dart';
-import '../../../features/wake_word/wake_word_channel.dart';
 
 class NotificationPreferencesScreen extends ConsumerWidget {
   const NotificationPreferencesScreen({super.key});
@@ -37,7 +35,6 @@ class _PreferencesFormState extends ConsumerState<_PreferencesForm> {
   late bool _postMealEnabled;
   late bool _weeklyDigestEnabled;
   late bool _syncAlertsEnabled;
-  late bool _wakeWordEnabled;
   late int _nudgeDelay;
   bool _saving = false;
 
@@ -47,7 +44,6 @@ class _PreferencesFormState extends ConsumerState<_PreferencesForm> {
     _postMealEnabled = widget.prefs.postMealNudgeEnabled;
     _weeklyDigestEnabled = widget.prefs.weeklyDigestEnabled;
     _syncAlertsEnabled = widget.prefs.syncErrorAlertsEnabled;
-    _wakeWordEnabled = widget.prefs.wakeWordEnabled;
     _nudgeDelay = widget.prefs.nudgeDelayMinutes;
   }
 
@@ -57,7 +53,6 @@ class _PreferencesFormState extends ConsumerState<_PreferencesForm> {
       postMealNudgeEnabled: _postMealEnabled,
       weeklyDigestEnabled: _weeklyDigestEnabled,
       syncErrorAlertsEnabled: _syncAlertsEnabled,
-      wakeWordEnabled: _wakeWordEnabled,
       nudgeDelayMinutes: _nudgeDelay,
     );
     await ref.read(preferencesProvider.notifier).save(updated);
@@ -67,26 +62,8 @@ class _PreferencesFormState extends ConsumerState<_PreferencesForm> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to save — please try again')),
       );
-    } else {
-      // Mirror to local SharedPreferences so BootReceiver and MainActivity
-      // can gate service startup without a Supabase round-trip.
-      final localPrefs = await SharedPreferences.getInstance();
-      await localPrefs.setBool('wake_word_enabled', _wakeWordEnabled);
     }
     setState(() => _saving = false);
-  }
-
-  void _toggleWakeWord(bool enabled) {
-    setState(() => _wakeWordEnabled = enabled);
-    // Fully start/stop the foreground service so the persistent notification
-    // appears or disappears immediately. This is distinct from the notification's
-    // own Pause/Resume button, which only suspends detection without stopping
-    // the service.
-    if (enabled) {
-      WakeWordChannel.startService().catchError((_) {});
-    } else {
-      WakeWordChannel.stopService().catchError((_) {});
-    }
   }
 
   @override
@@ -117,16 +94,6 @@ class _PreferencesFormState extends ConsumerState<_PreferencesForm> {
           subtitle: const Text('Notify if logs fail to upload'),
           value: _syncAlertsEnabled,
           onChanged: (v) => setState(() => _syncAlertsEnabled = v),
-        ),
-        const Divider(),
-
-        // ── Wake word ─────────────────────────────────────────────────────
-        SwitchListTile(
-          title: const Text('Wake word detection'),
-          subtitle: const Text(
-              "Say 'Hey Hearty' to open the voice overlay hands-free"),
-          value: _wakeWordEnabled,
-          onChanged: _toggleWakeWord,
         ),
         const Divider(),
 

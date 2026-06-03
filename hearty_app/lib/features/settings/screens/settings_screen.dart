@@ -47,6 +47,13 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.push('/settings/voice'),
           ),
           ListTile(
+            leading: const Icon(Icons.mic_none_outlined),
+            title: const Text('Wake word'),
+            subtitle: const Text("'Hey Hearty' hands-free"),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/wake-word'),
+          ),
+          ListTile(
             leading: const Icon(Icons.chat_bubble_outline),
             title: const Text('Conversation style'),
             trailing: const Icon(Icons.chevron_right),
