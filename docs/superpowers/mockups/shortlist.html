@@ -296,6 +296,34 @@
   .tr-vbar { width:100%; border-radius:3px 3px 0 0; background:var(--accg); }
   .tr-blabel { font-size:6px; color:var(--sub); white-space:nowrap; }
 
+  /* ════════════════════════════════════════════
+     LOGGING FLOW (themed components) — reuses dt-* palette vars
+  ════════════════════════════════════════════ */
+  .dt-actions { margin-left:auto; display:flex; gap:7px; }
+  .lf-mealchip { display:inline-flex; align-items:center; gap:6px; font-size:9px; font-weight:600; color:var(--tx); background:var(--faint); padding:5px 11px; border-radius:16px; }
+  .lf-prompt { font-family:'Fraunces',serif; font-size:18px; font-weight:700; color:var(--tx); margin:12px 0 9px; }
+  .lf-bigfield { background:var(--card); border:1px solid var(--cardbd); border-radius:13px; padding:11px; min-height:72px; font-size:10.5px; color:var(--sub); line-height:1.5; backdrop-filter:blur(8px); }
+  .lf-orlabel { font-size:7px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--sub); margin:13px 3px 8px; font-family:'JetBrains Mono',monospace; }
+  .lf-modes { display:flex; gap:8px; }
+  .lf-mode { flex:1; border-radius:12px; border:1px solid var(--cardbd); background:var(--card); padding:11px 4px; display:flex; flex-direction:column; align-items:center; gap:6px; backdrop-filter:blur(8px); }
+  .lf-mode-ic { width:32px; height:32px; border-radius:10px; background:var(--accg); display:flex; align-items:center; justify-content:center; font-size:15px; box-shadow:0 4px 12px -3px var(--acc); }
+  .lf-mode-l { font-size:8px; font-weight:600; color:var(--tx); }
+  .lf-logbtn { margin-top:15px; width:100%; padding:11px; border-radius:12px; background:var(--accg); color:#fff; font-size:11px; font-weight:700; text-align:center; box-shadow:0 6px 16px -6px var(--acc); }
+  .lf-field { background:var(--card); border:1px solid var(--cardbd); border-radius:11px; padding:9px 11px; font-size:10.5px; color:var(--tx); backdrop-filter:blur(8px); }
+  .lf-field .ph { color:var(--sub); }
+  .lf-fieldlabel { font-size:7px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--sub); margin:12px 3px 6px; font-family:'JetBrains Mono',monospace; }
+  .lf-photo { height:110px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:42px; background:var(--accg); position:relative; overflow:hidden; }
+  .lf-photo::after { content:''; position:absolute; inset:0; background:rgba(0,0,0,0.14); }
+  .lf-photo span { position:relative; z-index:2; }
+  .lf-entry-title { font-family:'Fraunces',serif; font-size:18px; font-weight:700; color:var(--tx); margin-top:11px; }
+  .lf-entry-meta { display:flex; align-items:center; gap:7px; margin-top:6px; }
+  .lf-tag { font-size:8px; font-weight:600; color:var(--sub); background:var(--faint); padding:4px 9px; border-radius:14px; }
+  .lf-tagrow { display:flex; flex-wrap:wrap; gap:5px; }
+  .lf-desc { font-size:10px; color:var(--tx); line-height:1.55; }
+  .lf-link { display:flex; align-items:center; gap:9px; background:var(--card); border:1px solid var(--cardbd); border-radius:12px; padding:9px 10px; font-size:9px; color:var(--tx); backdrop-filter:blur(8px); }
+  .lf-link-ic { width:25px; height:25px; border-radius:8px; background:var(--faint); display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; }
+  .lf-icon-btn { width:28px; height:28px; border-radius:50%; background:var(--faint); display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--tx); }
+
   /* footer */
   .footer {
     text-align: center;
@@ -620,7 +648,7 @@
      HOME SCREEN — 4 designs
 ════════════════════════════ -->
 <div class="section">
-  <p class="section-label">Screen 1 of 5</p>
+  <p class="section-label">Screen 1 of 6</p>
   <h2 class="section-title">Home Screen — Today's Log</h2>
   <div class="section-grid">
 
@@ -836,7 +864,7 @@
      HISTORY SCREEN — 3 designs
 ════════════════════════════ -->
 <div class="section">
-  <p class="section-label">Screen 2 of 5</p>
+  <p class="section-label">Screen 2 of 6</p>
   <h2 class="section-title">History Screen — Calendar + Day View</h2>
   <div class="section-grid">
 
@@ -986,7 +1014,7 @@
 </div><!-- /section -->
 
 <div class="section">
-  <p class="section-label">Screen 3 of 5</p>
+  <p class="section-label">Screen 3 of 6</p>
   <h2 class="section-title">Settings Screen — hearty.ltd Skew-Gradient Cards</h2>
   <div class="section-grid">
 
@@ -1116,7 +1144,7 @@
 </div><!-- /section -->
 
 <div class="section">
-  <p class="section-label">Screen 4 of 5</p>
+  <p class="section-label">Screen 4 of 6</p>
   <h2 class="section-title">Settings Detail Screens — themed component set</h2>
   <div class="section-grid">
 
@@ -1245,7 +1273,7 @@
 </div><!-- /section -->
 
 <div class="section">
-  <p class="section-label">Screen 5 of 5</p>
+  <p class="section-label">Screen 5 of 6</p>
   <h2 class="section-title">Trends Screen — Food Signals &amp; charts</h2>
   <div class="section-grid">
 
@@ -1290,6 +1318,62 @@
         <div class="tr-chart"><div class="tr-bars"><div class="tr-barcol"><div class="tr-vbar" style="height:80%"></div><div class="tr-blabel">Bloat</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:62%"></div><div class="tr-blabel">Reflux</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:48%"></div><div class="tr-blabel">Cramp</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:35%"></div><div class="tr-blabel">Fatig</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:22%"></div><div class="tr-blabel">Head</div></div><div class="tr-barcol"><div class="tr-vbar" style="height:14%"></div><div class="tr-blabel">Naus</div></div></div></div>
       </div>
     </div></div></div><div class="card-info"><div class="card-screen">TRENDS</div><div class="card-name">Trends × Cosmic Bloom</div><div class="palette"><div class="swatch" style="background:#07021A;border-color:#555"></div><div class="swatch" style="background:#B700FF"></div><div class="swatch" style="background:#00C8FF"></div><div class="swatch" style="background:#FF3C78"></div><div class="palette-label">Cosmic Bloom</div></div></div></div>
+
+  </div><!-- /section-grid -->
+</div><!-- /section -->
+
+<div class="section">
+  <p class="section-label">Screen 6 of 6</p>
+  <h2 class="section-title">Logging Flow — capture · view · edit</h2>
+  <div class="section-grid">
+
+    <!-- ═══ LOG ENTRY (capture) ═══ -->
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-warm">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Log</span></div>
+      <div class="dt-body"><span class="lf-mealchip">🍽️ Lunch · 12:34 PM</span><div class="lf-prompt">What did you have?</div><div class="lf-bigfield">e.g. Grilled chicken salad with avocado and a sparkling water…</div><div class="lf-orlabel">— or capture it —</div><div class="lf-modes"><div class="lf-mode"><div class="lf-mode-ic">🎙️</div><div class="lf-mode-l">Voice</div></div><div class="lf-mode"><div class="lf-mode-ic">📷</div><div class="lf-mode-l">Photo</div></div><div class="lf-mode"><div class="lf-mode-ic">▦</div><div class="lf-mode-l">Barcode</div></div></div><div class="lf-logbtn">Log it</div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">LOG ENTRY</div><div class="card-name">Capture × Warm & Grounded</div><div class="palette"><div class="swatch" style="background:#FDFBF7;border-color:#555"></div><div class="swatch" style="background:#C0392B"></div><div class="swatch" style="background:#9B8C78"></div><div class="swatch" style="background:#1A1209"></div><div class="palette-label">Warm & Grounded</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-aurora">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Log</span></div>
+      <div class="dt-body"><span class="lf-mealchip">🍽️ Lunch · 12:34 PM</span><div class="lf-prompt">What did you have?</div><div class="lf-bigfield">e.g. Grilled chicken salad with avocado and a sparkling water…</div><div class="lf-orlabel">— or capture it —</div><div class="lf-modes"><div class="lf-mode"><div class="lf-mode-ic">🎙️</div><div class="lf-mode-l">Voice</div></div><div class="lf-mode"><div class="lf-mode-ic">📷</div><div class="lf-mode-l">Photo</div></div><div class="lf-mode"><div class="lf-mode-ic">▦</div><div class="lf-mode-l">Barcode</div></div></div><div class="lf-logbtn">Log it</div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">LOG ENTRY</div><div class="card-name">Capture × Aurora</div><div class="palette"><div class="swatch" style="background:#112240"></div><div class="swatch" style="background:#34D399"></div><div class="swatch" style="background:#8B5CF6"></div><div class="swatch" style="background:#F87171"></div><div class="palette-label">Aurora</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-cosmic">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Log</span></div>
+      <div class="dt-body"><span class="lf-mealchip">🍽️ Lunch · 12:34 PM</span><div class="lf-prompt">What did you have?</div><div class="lf-bigfield">e.g. Grilled chicken salad with avocado and a sparkling water…</div><div class="lf-orlabel">— or capture it —</div><div class="lf-modes"><div class="lf-mode"><div class="lf-mode-ic">🎙️</div><div class="lf-mode-l">Voice</div></div><div class="lf-mode"><div class="lf-mode-ic">📷</div><div class="lf-mode-l">Photo</div></div><div class="lf-mode"><div class="lf-mode-ic">▦</div><div class="lf-mode-l">Barcode</div></div></div><div class="lf-logbtn">Log it</div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">LOG ENTRY</div><div class="card-name">Capture × Cosmic Bloom</div><div class="palette"><div class="swatch" style="background:#07021A;border-color:#555"></div><div class="swatch" style="background:#B700FF"></div><div class="swatch" style="background:#00C8FF"></div><div class="swatch" style="background:#FF3C78"></div><div class="palette-label">Cosmic Bloom</div></div></div></div>
+
+    <!-- ═══ LOG DETAIL (view) ═══ -->
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-warm">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Entry</span><span class="dt-actions"><span class="lf-icon-btn">✎</span><span class="lf-icon-btn">🗑</span></span></div>
+      <div class="dt-body"><div class="lf-photo"><span>🥗</span></div><div class="lf-entry-title">Caesar Salad</div><div class="lf-entry-meta"><span class="lf-tag">Lunch</span><span class="lf-tag">Today · 12:30 PM</span></div><div class="lf-fieldlabel">Description</div><div class="lf-desc">Romaine, parmesan, croutons, grilled chicken, creamy dressing.</div><div class="lf-fieldlabel">Detected components</div><div class="lf-tagrow"><span class="lf-tag">Gluten</span><span class="lf-tag">Dairy / Casein</span><span class="lf-tag">High Fat</span></div><div class="lf-fieldlabel">Linked</div><div class="lf-link"><div class="lf-link-ic">😣</div><div>Bloating · 3/10 logged 90 min later</div></div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">LOG DETAIL</div><div class="card-name">View × Warm & Grounded</div><div class="palette"><div class="swatch" style="background:#FDFBF7;border-color:#555"></div><div class="swatch" style="background:#C0392B"></div><div class="swatch" style="background:#9B8C78"></div><div class="swatch" style="background:#1A1209"></div><div class="palette-label">Warm & Grounded</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-aurora">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Entry</span><span class="dt-actions"><span class="lf-icon-btn">✎</span><span class="lf-icon-btn">🗑</span></span></div>
+      <div class="dt-body"><div class="lf-photo"><span>🥗</span></div><div class="lf-entry-title">Caesar Salad</div><div class="lf-entry-meta"><span class="lf-tag">Lunch</span><span class="lf-tag">Today · 12:30 PM</span></div><div class="lf-fieldlabel">Description</div><div class="lf-desc">Romaine, parmesan, croutons, grilled chicken, creamy dressing.</div><div class="lf-fieldlabel">Detected components</div><div class="lf-tagrow"><span class="lf-tag">Gluten</span><span class="lf-tag">Dairy / Casein</span><span class="lf-tag">High Fat</span></div><div class="lf-fieldlabel">Linked</div><div class="lf-link"><div class="lf-link-ic">😣</div><div>Bloating · 3/10 logged 90 min later</div></div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">LOG DETAIL</div><div class="card-name">View × Aurora</div><div class="palette"><div class="swatch" style="background:#112240"></div><div class="swatch" style="background:#34D399"></div><div class="swatch" style="background:#8B5CF6"></div><div class="swatch" style="background:#F87171"></div><div class="palette-label">Aurora</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-cosmic">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Entry</span><span class="dt-actions"><span class="lf-icon-btn">✎</span><span class="lf-icon-btn">🗑</span></span></div>
+      <div class="dt-body"><div class="lf-photo"><span>🥗</span></div><div class="lf-entry-title">Caesar Salad</div><div class="lf-entry-meta"><span class="lf-tag">Lunch</span><span class="lf-tag">Today · 12:30 PM</span></div><div class="lf-fieldlabel">Description</div><div class="lf-desc">Romaine, parmesan, croutons, grilled chicken, creamy dressing.</div><div class="lf-fieldlabel">Detected components</div><div class="lf-tagrow"><span class="lf-tag">Gluten</span><span class="lf-tag">Dairy / Casein</span><span class="lf-tag">High Fat</span></div><div class="lf-fieldlabel">Linked</div><div class="lf-link"><div class="lf-link-ic">😣</div><div>Bloating · 3/10 logged 90 min later</div></div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">LOG DETAIL</div><div class="card-name">View × Cosmic Bloom</div><div class="palette"><div class="swatch" style="background:#07021A;border-color:#555"></div><div class="swatch" style="background:#B700FF"></div><div class="swatch" style="background:#00C8FF"></div><div class="swatch" style="background:#FF3C78"></div><div class="palette-label">Cosmic Bloom</div></div></div></div>
+
+    <!-- ═══ EDIT SYMPTOM (form) ═══ -->
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-warm">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Edit Symptom</span><span class="dt-actions"><span class="dt-reset">Save</span></span></div>
+      <div class="dt-body"><div class="lf-fieldlabel">Description</div><div class="lf-field">Bloating, upper abdomen</div><div class="lf-fieldlabel">Severity</div><div class="lf-field" style="padding:10px 11px"><div class="dt-slide-top"><span class="dt-slide-lab">How intense?</span><span class="dt-slide-val">6 / 10</span></div><div class="dt-track"><div class="dt-fill" style="width:55.6%"></div><div class="dt-ticks" style="--steps:9"></div><div class="dt-knob2" style="left:55.6%"></div></div></div><div class="lf-fieldlabel">Onset after eating</div><div class="lf-field"><span>90</span> <span class="ph">min</span></div><div class="lf-logbtn">Save changes</div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">EDIT SYMPTOM</div><div class="card-name">Edit × Warm & Grounded</div><div class="palette"><div class="swatch" style="background:#FDFBF7;border-color:#555"></div><div class="swatch" style="background:#C0392B"></div><div class="swatch" style="background:#9B8C78"></div><div class="swatch" style="background:#1A1209"></div><div class="palette-label">Warm & Grounded</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-aurora">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Edit Symptom</span><span class="dt-actions"><span class="dt-reset">Save</span></span></div>
+      <div class="dt-body"><div class="lf-fieldlabel">Description</div><div class="lf-field">Bloating, upper abdomen</div><div class="lf-fieldlabel">Severity</div><div class="lf-field" style="padding:10px 11px"><div class="dt-slide-top"><span class="dt-slide-lab">How intense?</span><span class="dt-slide-val">6 / 10</span></div><div class="dt-track"><div class="dt-fill" style="width:55.6%"></div><div class="dt-ticks" style="--steps:9"></div><div class="dt-knob2" style="left:55.6%"></div></div></div><div class="lf-fieldlabel">Onset after eating</div><div class="lf-field"><span>90</span> <span class="ph">min</span></div><div class="lf-logbtn">Save changes</div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">EDIT SYMPTOM</div><div class="card-name">Edit × Aurora</div><div class="palette"><div class="swatch" style="background:#112240"></div><div class="swatch" style="background:#34D399"></div><div class="swatch" style="background:#8B5CF6"></div><div class="swatch" style="background:#F87171"></div><div class="palette-label">Aurora</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-cosmic">
+      <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Edit Symptom</span><span class="dt-actions"><span class="dt-reset">Save</span></span></div>
+      <div class="dt-body"><div class="lf-fieldlabel">Description</div><div class="lf-field">Bloating, upper abdomen</div><div class="lf-fieldlabel">Severity</div><div class="lf-field" style="padding:10px 11px"><div class="dt-slide-top"><span class="dt-slide-lab">How intense?</span><span class="dt-slide-val">6 / 10</span></div><div class="dt-track"><div class="dt-fill" style="width:55.6%"></div><div class="dt-ticks" style="--steps:9"></div><div class="dt-knob2" style="left:55.6%"></div></div></div><div class="lf-fieldlabel">Onset after eating</div><div class="lf-field"><span>90</span> <span class="ph">min</span></div><div class="lf-logbtn">Save changes</div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">EDIT SYMPTOM</div><div class="card-name">Edit × Cosmic Bloom</div><div class="palette"><div class="swatch" style="background:#07021A;border-color:#555"></div><div class="swatch" style="background:#B700FF"></div><div class="swatch" style="background:#00C8FF"></div><div class="swatch" style="background:#FF3C78"></div><div class="palette-label">Cosmic Bloom</div></div></div></div>
 
   </div><!-- /section-grid -->
 </div><!-- /section -->

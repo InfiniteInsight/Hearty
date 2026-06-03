@@ -465,6 +465,20 @@ Built on the same theme-variable component system as the settings detail screens
 
 ---
 
+## Logging Flow
+
+The capture → view → edit path for diary entries. Prototype: `docs/superpowers/mockups/logging_flow.html` (all three themes). Built on the same theme-variable component system; adds an `lf-*` set.
+
+**Log Entry (capture)** — quick-capture screen. Meal-type context chip (`🍽️ Lunch · 12:34 PM`, `--faint` bg), a Fraunces prompt ("What did you have?"), a large text field (`lf-bigfield`), an `— or capture it —` divider, then three capture-mode tiles (Voice / Photo / Barcode) each with a gradient icon chip (`--accg`), and a full-width `lf-logbtn` ("Log it"). Voice routes into the prism dictation overlay.
+
+**Log Detail (view)** — gradient photo banner (`--accg` + a 14%-black scrim, big food emoji), entry title (Fraunces) + meal/time tags (`lf-tag`, neutral `--faint`), description, **Detected components** as neutral tags (Gluten / Dairy / High Fat — same component vocabulary as Trends), and a **Linked** card (`lf-link`) surfacing the symptom that followed ("Bloating · 3/10 logged 90 min later"). Edit + delete as `lf-icon-btn` in the app-bar actions. The detected-components → linked-symptom pairing visually closes the loop with the Trends signals.
+
+**Edit Meal / Edit Symptom (form)** — `lf-field` inputs with `lf-fieldlabel` eyebrow labels; the symptom form adds the **severity slider** (with detent ticks, `--steps:9` for 1–10) and an onset-after-eating field. Save as an app-bar action plus a bottom `lf-logbtn`. Edit Meal is the same pattern minus severity/onset.
+
+Component note: `lf-tag` (neutral) is used for metadata and AI-detected components so they don't compete with the accent-gradient action elements; only icons, mode tiles, the photo banner, and primary buttons carry `--accg`.
+
+---
+
 ## Design Shortlist Index
 
 | ID | Screen | Layout | Palette |
@@ -477,6 +491,7 @@ Built on the same theme-variable component system as the settings detail screens
 | History B | History | Calendar + Day | Aurora |
 | History C | History | Calendar + Day | Warm & Grounded |
 | Trends | Trends | Signal cards + charts | All three |
+| Logging | Log Entry / Detail / Edit | Capture · view · edit forms | All three |
 | Settings (L2) | Settings | Glass Rows + Chip | Warm & Grounded · Cosmic Bloom · Aurora |
 | Settings (L1) | Settings | Skew Gradient Cards | Aurora (reference) |
 | Settings detail | Notifications / Voice / Conversation / Health Profile | Themed component set (L2 glass) | All three |

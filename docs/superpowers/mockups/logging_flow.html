@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hearty — Logging Flow × Themes</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:#06060e; font-family:'Plus Jakarta Sans',sans-serif; padding:28px 22px 60px; width:980px; }
+  .ph-header { margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid #16162a; }
+  .ph-logo { font-family:'Fraunces',serif; font-size:24px; font-weight:700; margin-bottom:4px; }
+  .ph-t { font-size:14px; font-weight:600; color:#fff; }
+  .ph-s { font-size:10px; color:#383852; font-family:'JetBrains Mono',monospace; letter-spacing:0.05em; }
+  .row-label { font-size:10px; font-weight:700; color:#3a3a58; font-family:'JetBrains Mono',monospace; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:13px; display:flex; align-items:center; gap:10px; }
+  .row-label::after { content:''; flex:1; height:1px; background:#16162a; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:30px; }
+  .col { display:flex; flex-direction:column; align-items:center; }
+  .cap { margin-top:8px; font-size:9px; color:#4a4a68; font-family:'JetBrains Mono',monospace; letter-spacing:0.08em; }
+  .phone { width:262px; height:560px; border-radius:40px; overflow:hidden; border:5px solid #18182c; position:relative; flex-shrink:0; box-shadow:0 16px 50px rgba(0,0,0,0.8); }
+  .phone::before { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:64px; height:18px; background:#18182c; border-radius:0 0 12px 12px; z-index:300; }
+
+  /* theme palettes */
+  .dt-scr { width:100%; height:100%; position:relative; overflow:hidden; background:var(--bg); color:var(--tx); }
+  .dt-warm { --bg:#FDFBF7; --card:#fff; --cardbd:#EDE8DF; --tx:#1A1209; --sub:#9B8C78; --acc:#C0392B; --accg:linear-gradient(135deg,#E8A87C,#C0392B); --faint:rgba(26,18,9,0.06); }
+  .dt-aurora { --card:rgba(255,255,255,0.055); --cardbd:rgba(255,255,255,0.09); --tx:#fff; --sub:rgba(255,255,255,0.5); --acc:#34D399; --accg:linear-gradient(135deg,#34D399,#059669); --faint:rgba(255,255,255,0.08);
+    background:radial-gradient(220px 220px at 112% -4%,rgba(52,211,153,0.13),transparent 70%),radial-gradient(200px 200px at -12% 82%,rgba(139,92,246,0.13),transparent 70%),linear-gradient(165deg,#0c1626,#0e1d38 60%,#0c1730); }
+  .dt-cosmic { --card:rgba(255,255,255,0.05); --cardbd:rgba(255,255,255,0.1); --tx:#fff; --sub:rgba(255,255,255,0.5); --acc:#00C8FF; --accg:linear-gradient(135deg,#B700FF,#00C8FF); --faint:rgba(255,255,255,0.07);
+    background:radial-gradient(200px 200px at 112% 0%,rgba(183,0,255,0.24),transparent 70%),radial-gradient(180px 180px at -12% 72%,rgba(0,200,255,0.2),transparent 70%),radial-gradient(150px 150px at 112% 48%,rgba(255,60,120,0.16),transparent 70%),#07021A; }
+  .dt-cosmic::after { content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
+    background-image:radial-gradient(1px 1px at 30px 60px,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 120px 150px,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 220px 90px,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 70px 330px,rgba(255,255,255,0.45),transparent),radial-gradient(1px 1px at 200px 470px,rgba(255,255,255,0.4),transparent); }
+
+  .dt-appbar { display:flex; align-items:center; gap:9px; padding:20px 13px 8px; position:relative; z-index:5; }
+  .dt-back { font-size:18px; opacity:0.65; }
+  .dt-abtitle { font-family:'Fraunces',serif; font-size:15px; font-weight:700; }
+  .dt-actions { margin-left:auto; display:flex; gap:7px; }
+  .dt-save { font-size:10px; color:var(--acc); font-weight:700; }
+  .dt-body { padding:4px 13px 13px; position:relative; z-index:5; }
+  .dt-seclabel { font-size:7px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--sub); margin:13px 3px 7px; font-family:'JetBrains Mono',monospace; }
+
+  /* slider (edit) */
+  .dt-slide { background:var(--card); border:1px solid var(--cardbd); border-radius:11px; padding:11px 12px; }
+  .dt-slide-top { display:flex; justify-content:space-between; font-size:9px; margin-bottom:9px; }
+  .dt-slide-lab { color:var(--sub); } .dt-slide-val { color:var(--acc); font-weight:700; }
+  .dt-track { height:4px; border-radius:2px; background:var(--faint); position:relative; }
+  .dt-fill { position:absolute; left:0; top:0; bottom:0; border-radius:2px; background:var(--accg); }
+  .dt-knob2 { position:absolute; top:50%; transform:translate(-50%,-50%); width:13px; height:13px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.45); }
+  /* detent ticks — one per step; --steps = number of intervals (detents − 1) */
+  .dt-ticks { position:absolute; left:0; right:0; top:50%; transform:translateY(-50%); height:9px; opacity:0.5; pointer-events:none;
+    background:repeating-linear-gradient(to right, var(--sub) 0 1.5px, transparent 1.5px calc((100% - 1.5px)/var(--steps))); }
+
+  /* ── logging-flow components ── */
+  .lf-mealchip { display:inline-flex; align-items:center; gap:6px; font-size:9px; font-weight:600; color:var(--tx); background:var(--faint); padding:5px 11px; border-radius:16px; }
+  .lf-prompt { font-family:'Fraunces',serif; font-size:19px; font-weight:700; color:var(--tx); margin:13px 0 9px; }
+  .lf-bigfield { background:var(--card); border:1px solid var(--cardbd); border-radius:13px; padding:12px; min-height:78px; font-size:11px; color:var(--sub); line-height:1.5; backdrop-filter:blur(8px); }
+  .lf-orlabel { font-size:7px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--sub); margin:15px 3px 9px; font-family:'JetBrains Mono',monospace; }
+  .lf-modes { display:flex; gap:9px; }
+  .lf-mode { flex:1; border-radius:13px; border:1px solid var(--cardbd); background:var(--card); padding:13px 5px; display:flex; flex-direction:column; align-items:center; gap:7px; backdrop-filter:blur(8px); }
+  .lf-mode-ic { width:36px; height:36px; border-radius:11px; background:var(--accg); display:flex; align-items:center; justify-content:center; font-size:17px; box-shadow:0 4px 12px -3px var(--acc); }
+  .lf-mode-l { font-size:8.5px; font-weight:600; color:var(--tx); }
+  .lf-logbtn { margin-top:18px; width:100%; padding:12px; border-radius:13px; background:var(--accg); color:#fff; font-size:12px; font-weight:700; text-align:center; box-shadow:0 6px 16px -6px var(--acc); }
+
+  .lf-field { background:var(--card); border:1px solid var(--cardbd); border-radius:11px; padding:10px 12px; font-size:11px; color:var(--tx); backdrop-filter:blur(8px); }
+  .lf-field .ph { color:var(--sub); }
+  .lf-fieldlabel { font-size:7px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--sub); margin:13px 3px 6px; font-family:'JetBrains Mono',monospace; }
+
+  .lf-photo { height:118px; border-radius:15px; display:flex; align-items:center; justify-content:center; font-size:46px; background:var(--accg); position:relative; overflow:hidden; }
+  .lf-photo::after { content:''; position:absolute; inset:0; background:rgba(0,0,0,0.14); }
+  .lf-photo span { position:relative; z-index:2; }
+  .lf-entry-title { font-family:'Fraunces',serif; font-size:19px; font-weight:700; color:var(--tx); margin-top:12px; }
+  .lf-entry-meta { display:flex; align-items:center; gap:7px; margin-top:6px; }
+  .lf-tag { font-size:8px; font-weight:600; color:var(--sub); background:var(--faint); padding:4px 9px; border-radius:14px; }
+  .lf-tagrow { display:flex; flex-wrap:wrap; gap:5px; }
+  .lf-desc { font-size:10.5px; color:var(--tx); line-height:1.55; }
+  .lf-link { display:flex; align-items:center; gap:9px; background:var(--card); border:1px solid var(--cardbd); border-radius:12px; padding:10px 11px; font-size:9.5px; color:var(--tx); backdrop-filter:blur(8px); }
+  .lf-link-ic { width:26px; height:26px; border-radius:8px; background:var(--faint); display:flex; align-items:center; justify-content:center; font-size:13px; }
+  .lf-icon-btn { width:30px; height:30px; border-radius:50%; background:var(--faint); display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--tx); }
+</style>
+</head>
+<body>
+
+<div class="ph-header">
+  <div class="ph-logo"><span style="color:#fff">Heart</span><span style="color:#34D399">y</span></div>
+  <div class="ph-t">Logging Flow — across all three themes</div>
+  <div class="ph-s">Log Entry (capture) · Log Detail (view) · Edit Symptom (form)  ×  Warm &amp; Grounded · Aurora · Cosmic Bloom</div>
+</div>
+
+<!-- ═══════════ LOG ENTRY (capture) ═══════════ -->
+<div class="row-label">Log Entry — capture</div>
+<div class="grid3">
+  <div class="col"><div class="phone"><div class="dt-scr dt-warm">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Log</span></div>
+    <div class="dt-body">
+      <span class="lf-mealchip">🍽️ Lunch · 12:34 PM</span>
+      <div class="lf-prompt">What did you have?</div>
+      <div class="lf-bigfield">e.g. Grilled chicken salad with avocado and a sparkling water…</div>
+      <div class="lf-orlabel">— or capture it —</div>
+      <div class="lf-modes">
+        <div class="lf-mode"><div class="lf-mode-ic">🎙️</div><div class="lf-mode-l">Voice</div></div>
+        <div class="lf-mode"><div class="lf-mode-ic">📷</div><div class="lf-mode-l">Photo</div></div>
+        <div class="lf-mode"><div class="lf-mode-ic">▦</div><div class="lf-mode-l">Barcode</div></div>
+      </div>
+      <div class="lf-logbtn">Log it</div>
+    </div>
+  </div></div><div class="cap">WARM &amp; GROUNDED</div></div>
+
+  <div class="col"><div class="phone"><div class="dt-scr dt-aurora">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Log</span></div>
+    <div class="dt-body">
+      <span class="lf-mealchip">🍽️ Lunch · 12:34 PM</span>
+      <div class="lf-prompt">What did you have?</div>
+      <div class="lf-bigfield">e.g. Grilled chicken salad with avocado and a sparkling water…</div>
+      <div class="lf-orlabel">— or capture it —</div>
+      <div class="lf-modes">
+        <div class="lf-mode"><div class="lf-mode-ic">🎙️</div><div class="lf-mode-l">Voice</div></div>
+        <div class="lf-mode"><div class="lf-mode-ic">📷</div><div class="lf-mode-l">Photo</div></div>
+        <div class="lf-mode"><div class="lf-mode-ic">▦</div><div class="lf-mode-l">Barcode</div></div>
+      </div>
+      <div class="lf-logbtn">Log it</div>
+    </div>
+  </div></div><div class="cap">AURORA</div></div>
+
+  <div class="col"><div class="phone"><div class="dt-scr dt-cosmic">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Log</span></div>
+    <div class="dt-body">
+      <span class="lf-mealchip">🍽️ Lunch · 12:34 PM</span>
+      <div class="lf-prompt">What did you have?</div>
+      <div class="lf-bigfield">e.g. Grilled chicken salad with avocado and a sparkling water…</div>
+      <div class="lf-orlabel">— or capture it —</div>
+      <div class="lf-modes">
+        <div class="lf-mode"><div class="lf-mode-ic">🎙️</div><div class="lf-mode-l">Voice</div></div>
+        <div class="lf-mode"><div class="lf-mode-ic">📷</div><div class="lf-mode-l">Photo</div></div>
+        <div class="lf-mode"><div class="lf-mode-ic">▦</div><div class="lf-mode-l">Barcode</div></div>
+      </div>
+      <div class="lf-logbtn">Log it</div>
+    </div>
+  </div></div><div class="cap">COSMIC BLOOM</div></div>
+</div>
+
+<!-- ═══════════ LOG DETAIL (view) ═══════════ -->
+<div class="row-label">Log Detail — view entry</div>
+<div class="grid3">
+  <div class="col"><div class="phone"><div class="dt-scr dt-warm">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Entry</span><span class="dt-actions"><span class="lf-icon-btn">✎</span><span class="lf-icon-btn">🗑</span></span></div>
+    <div class="dt-body">
+      <div class="lf-photo"><span>🥗</span></div>
+      <div class="lf-entry-title">Caesar Salad</div>
+      <div class="lf-entry-meta"><span class="lf-tag">Lunch</span><span class="lf-tag">Today · 12:30 PM</span></div>
+      <div class="lf-fieldlabel">Description</div>
+      <div class="lf-desc">Romaine, parmesan, croutons, grilled chicken, creamy dressing.</div>
+      <div class="lf-fieldlabel">Detected components</div>
+      <div class="lf-tagrow"><span class="lf-tag">Gluten</span><span class="lf-tag">Dairy / Casein</span><span class="lf-tag">High Fat</span></div>
+      <div class="lf-fieldlabel">Linked</div>
+      <div class="lf-link"><div class="lf-link-ic">😣</div><div>Bloating · 3/10 logged 90 min later</div></div>
+    </div>
+  </div></div><div class="cap">WARM &amp; GROUNDED</div></div>
+
+  <div class="col"><div class="phone"><div class="dt-scr dt-aurora">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Entry</span><span class="dt-actions"><span class="lf-icon-btn">✎</span><span class="lf-icon-btn">🗑</span></span></div>
+    <div class="dt-body">
+      <div class="lf-photo"><span>🥗</span></div>
+      <div class="lf-entry-title">Caesar Salad</div>
+      <div class="lf-entry-meta"><span class="lf-tag">Lunch</span><span class="lf-tag">Today · 12:30 PM</span></div>
+      <div class="lf-fieldlabel">Description</div>
+      <div class="lf-desc">Romaine, parmesan, croutons, grilled chicken, creamy dressing.</div>
+      <div class="lf-fieldlabel">Detected components</div>
+      <div class="lf-tagrow"><span class="lf-tag">Gluten</span><span class="lf-tag">Dairy / Casein</span><span class="lf-tag">High Fat</span></div>
+      <div class="lf-fieldlabel">Linked</div>
+      <div class="lf-link"><div class="lf-link-ic">😣</div><div>Bloating · 3/10 logged 90 min later</div></div>
+    </div>
+  </div></div><div class="cap">AURORA</div></div>
+
+  <div class="col"><div class="phone"><div class="dt-scr dt-cosmic">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Entry</span><span class="dt-actions"><span class="lf-icon-btn">✎</span><span class="lf-icon-btn">🗑</span></span></div>
+    <div class="dt-body">
+      <div class="lf-photo"><span>🥗</span></div>
+      <div class="lf-entry-title">Caesar Salad</div>
+      <div class="lf-entry-meta"><span class="lf-tag">Lunch</span><span class="lf-tag">Today · 12:30 PM</span></div>
+      <div class="lf-fieldlabel">Description</div>
+      <div class="lf-desc">Romaine, parmesan, croutons, grilled chicken, creamy dressing.</div>
+      <div class="lf-fieldlabel">Detected components</div>
+      <div class="lf-tagrow"><span class="lf-tag">Gluten</span><span class="lf-tag">Dairy / Casein</span><span class="lf-tag">High Fat</span></div>
+      <div class="lf-fieldlabel">Linked</div>
+      <div class="lf-link"><div class="lf-link-ic">😣</div><div>Bloating · 3/10 logged 90 min later</div></div>
+    </div>
+  </div></div><div class="cap">COSMIC BLOOM</div></div>
+</div>
+
+<!-- ═══════════ EDIT SYMPTOM (form) ═══════════ -->
+<div class="row-label">Edit Symptom — form (Edit Meal is the same, minus severity/onset)</div>
+<div class="grid3">
+  <div class="col"><div class="phone"><div class="dt-scr dt-warm">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Edit Symptom</span><span class="dt-actions"><span class="dt-save">Save</span></span></div>
+    <div class="dt-body">
+      <div class="lf-fieldlabel">Description</div>
+      <div class="lf-field">Bloating, upper abdomen</div>
+      <div class="lf-fieldlabel">Severity</div>
+      <div class="dt-slide"><div class="dt-slide-top"><span class="dt-slide-lab">How intense?</span><span class="dt-slide-val">6 / 10</span></div><div class="dt-track"><div class="dt-fill" style="width:55.6%"></div><div class="dt-ticks" style="--steps:9"></div><div class="dt-knob2" style="left:55.6%"></div></div></div>
+      <div class="lf-fieldlabel">Onset after eating</div>
+      <div class="lf-field"><span>90</span> <span class="ph">min</span></div>
+      <div class="lf-logbtn">Save changes</div>
+    </div>
+  </div></div><div class="cap">WARM &amp; GROUNDED</div></div>
+
+  <div class="col"><div class="phone"><div class="dt-scr dt-aurora">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Edit Symptom</span><span class="dt-actions"><span class="dt-save">Save</span></span></div>
+    <div class="dt-body">
+      <div class="lf-fieldlabel">Description</div>
+      <div class="lf-field">Bloating, upper abdomen</div>
+      <div class="lf-fieldlabel">Severity</div>
+      <div class="dt-slide"><div class="dt-slide-top"><span class="dt-slide-lab">How intense?</span><span class="dt-slide-val">6 / 10</span></div><div class="dt-track"><div class="dt-fill" style="width:55.6%"></div><div class="dt-ticks" style="--steps:9"></div><div class="dt-knob2" style="left:55.6%"></div></div></div>
+      <div class="lf-fieldlabel">Onset after eating</div>
+      <div class="lf-field"><span>90</span> <span class="ph">min</span></div>
+      <div class="lf-logbtn">Save changes</div>
+    </div>
+  </div></div><div class="cap">AURORA</div></div>
+
+  <div class="col"><div class="phone"><div class="dt-scr dt-cosmic">
+    <div class="dt-appbar"><span class="dt-back">‹</span><span class="dt-abtitle">Edit Symptom</span><span class="dt-actions"><span class="dt-save">Save</span></span></div>
+    <div class="dt-body">
+      <div class="lf-fieldlabel">Description</div>
+      <div class="lf-field">Bloating, upper abdomen</div>
+      <div class="lf-fieldlabel">Severity</div>
+      <div class="dt-slide"><div class="dt-slide-top"><span class="dt-slide-lab">How intense?</span><span class="dt-slide-val">6 / 10</span></div><div class="dt-track"><div class="dt-fill" style="width:55.6%"></div><div class="dt-ticks" style="--steps:9"></div><div class="dt-knob2" style="left:55.6%"></div></div></div>
+      <div class="lf-fieldlabel">Onset after eating</div>
+      <div class="lf-field"><span>90</span> <span class="ph">min</span></div>
+      <div class="lf-logbtn">Save changes</div>
+    </div>
+  </div></div><div class="cap">COSMIC BLOOM</div></div>
+</div>
+
+</body>
+</html>
