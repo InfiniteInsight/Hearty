@@ -187,6 +187,7 @@ class HeartyApiClient {
     Map<String, dynamic>? healthContext,
     DateTime? loggedAt,
     String conversationStyle = 'warm',
+    bool symptomFollowUp = false,
   }) {
     return _call(() async {
       final response = await _dio.post<Map<String, dynamic>>(
@@ -198,6 +199,7 @@ class HeartyApiClient {
           'health_context': healthContext,
           'logged_at': loggedAt?.toUtc().toIso8601String(),
           'conversation_style': conversationStyle,
+          'symptom_followup': symptomFollowUp,
         }..removeWhere((_, v) => v == null),
       );
       return ChatResult.fromJson(response.data!);

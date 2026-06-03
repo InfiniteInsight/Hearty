@@ -62,6 +62,10 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   // user has actually started speaking (see _onSttStatus), so pre-speech
   // silence does not churn through restarts (each restart plays a beep).
   bool _inFollowUpListen = false;
+  // True while in the post-meal symptom check-in (started by the nudge). Tells
+  // the backend this turn is a "how are you feeling?" response about an
+  // already-logged meal so it never edits the meal (see symptom_followup).
+  bool _symptomCheckIn = false;
   int _followUpRestarts = 0;
   String _followUpAccumulated = '';
   static const int _maxFollowUpRestarts = 3;
@@ -204,6 +208,8 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     // Release any lingering follow-up beep suppression when a fresh session
     // starts, so the "released on every exit" invariant holds unconditionally.
     _releaseBeepSuppression();
+    // A fresh manual/wake-word session is a normal meal log, not a check-in.
+    _symptomCheckIn = false;
     state = const VoiceState(status: VoiceStatus.listening);
     _beginStt();
   }
@@ -223,6 +229,8 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     _followUpRestarts = 0;
     _followUpAccumulated = '';
     _useDictation = true;
+    // This whole session is a symptom check-in on the locked meal.
+    _symptomCheckIn = true;
 
     const question =
         'How are you feeling after your last meal? Let me know about any discomfort — you can rate it 1–10, or just say you\'re feeling good.';
@@ -562,6 +570,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         mealId: state.pendingMealId,
         history: state.history.isEmpty ? null : state.history,
         conversationStyle: ref.read(preferencesProvider).valueOrNull?.conversationStyle ?? 'warm',
+        symptomFollowUp: _symptomCheckIn,
       );
       if (!mounted) return;
       final reply = result.reply.isNotEmpty ? result.reply : 'Got it, thanks!';

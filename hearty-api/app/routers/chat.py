@@ -92,6 +92,10 @@ class ChatRequest(BaseModel):
     meal_id: Optional[str] = None
     history: Optional[list[dict]] = None
     conversation_style: Literal['warm', 'concise'] = 'warm'
+    # Set by the symptom check-in flow (post-meal nudge). When true this turn is
+    # a "how are you feeling?" response about an ALREADY-logged meal — the meal
+    # is locked and must never be edited, no matter what the user says.
+    symptom_followup: bool = False
 
 
 class ChatResponse(BaseModel):
@@ -152,8 +156,26 @@ async def chat(
     # Log the message as a meal entry in the background (best-effort).
     meal_id: Optional[str] = body.meal_id
 
+    # The already-logged meal under discussion, fetched once so the reply has
+    # context (never re-ask "what did you eat?") and the check-in stays on topic.
+    existing_meal_desc: Optional[str] = None
+
     if meal_id:
         # ── Follow-up turn: symptom response OR meal clarification ────────────
+        try:
+            _m = (
+                supabase.table("meals")
+                .select("description")
+                .eq("id", meal_id)
+                .eq("user_id", user["id"])
+                .limit(1)
+                .execute()
+            )
+            if _m.data:
+                existing_meal_desc = _m.data[0].get("description")
+        except Exception as e:
+            logger.warning("Follow-up meal fetch failed: %s", e)
+
         # Extract symptoms first to determine intent before touching the meal.
         # Build a context string from the last few turns so the extractor can
         # resolve bare ratings ("about a 7") back to the symptom they refer to.
@@ -202,8 +224,16 @@ async def chat(
                 supabase.table("symptoms").insert(rows).execute()
             except Exception as e:
                 logger.error("Follow-up symptom insert failed: %s", e, exc_info=True)
+        elif body.symptom_followup:
+            # Symptom check-in on a locked meal (post-meal nudge). The user said
+            # something with no loggable symptom (e.g. "I'm okay") — acknowledge
+            # in the reply below, but NEVER edit the already-logged meal.
+            pass
         else:
-            # Meal clarification — update meal using ALL user messages for accuracy
+            # Meal clarification — update the meal using ALL user messages for
+            # accuracy, but ONLY when food was actually extracted. A no-food reply
+            # (e.g. "I'm okay") is not a clarification and must never overwrite the
+            # existing meal description (that was the "tuna -> no food described" bug).
             try:
                 user_messages = [
                     m["content"] for m in (body.history or []) if m.get("role") == "user"
@@ -221,15 +251,23 @@ async def chat(
                     inferred_meal_type = None
                     normalized_description = None
 
-                updates: dict = {"description": normalized_description or combined}
-                if foods is not None:
-                    updates["foods"] = foods
-                if inferred_meal_type:
-                    updates["meal_type"] = inferred_meal_type
-
-                supabase.table("meals").update(updates).eq("id", meal_id).eq(
-                    "user_id", user["id"]
-                ).execute()
+                if foods:
+                    updates: dict = {
+                        "description": normalized_description or combined,
+                        "foods": foods,
+                    }
+                    if inferred_meal_type:
+                        updates["meal_type"] = inferred_meal_type
+                    supabase.table("meals").update(updates).eq("id", meal_id).eq(
+                        "user_id", user["id"]
+                    ).execute()
+                else:
+                    # No food in this turn — not a meal clarification. Leave the
+                    # existing meal untouched.
+                    logger.info(
+                        "Follow-up for meal %s had no extractable food; meal left unchanged",
+                        meal_id,
+                    )
             except Exception as e:
                 logger.error("Follow-up meal update failed: %s", e, exc_info=True)
 
@@ -265,6 +303,16 @@ async def chat(
     # Build health context from top food signals.
     signal_context = _build_signal_context(user["id"])
     system_prompt = _make_system_prompt(signal_context, body.conversation_style or "warm")
+
+    # Give the model the already-logged meal so it never re-asks "what did you
+    # eat?" on a check-in — Step 1 is already satisfied; just do Step 2 and close.
+    if existing_meal_desc:
+        system_prompt += (
+            f'\n\nCONTEXT: The user already logged this meal: "{existing_meal_desc}". '
+            "It is recorded — do NOT ask what they ate or for more meal detail. "
+            "This turn is a check-in on how they feel after that meal: apply Step 2 "
+            "only (acknowledge how they're feeling and close warmly)."
+        )
 
     # Generate conversational reply.
     try:

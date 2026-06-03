@@ -300,6 +300,40 @@ def test_chat_followup_symptom_creates_symptom_not_meal(api_base, headers):
             httpx.delete(f"{api_base}/api/symptoms/{sid}", headers=headers)
 
 
+def test_chat_symptom_followup_does_not_overwrite_meal(api_base, headers):
+    # First turn: log a clearly-identified meal.
+    r1 = httpx.post(f"{api_base}/api/chat", headers=headers, json={
+        "message": "I ate tuna"
+    }, timeout=30)
+    assert r1.status_code == 200
+    meal_id = r1.json()["meal_id"]
+    assert meal_id is not None
+    original = httpx.get(f"{api_base}/api/meals/{meal_id}", headers=headers).json()
+    assert "tuna" in original["description"].lower()
+
+    # Symptom check-in (post-meal nudge): the user is fine, mentions no food.
+    # symptom_followup=true locks the meal — it must NOT be overwritten.
+    r2 = httpx.post(f"{api_base}/api/chat", headers=headers, json={
+        "message": "I'm okay",
+        "meal_id": meal_id,
+        "symptom_followup": True,
+        "history": [
+            {"role": "assistant",
+             "content": "How are you feeling after your last meal?"},
+        ],
+    }, timeout=30)
+    assert r2.status_code == 200
+    # Reply should not be asking what they ate (meal is already known).
+    assert "what did you eat" not in r2.json()["reply"].lower()
+
+    # The meal description is intact — still tuna, not "no food described".
+    after = httpx.get(f"{api_base}/api/meals/{meal_id}", headers=headers).json()
+    assert "tuna" in after["description"].lower()
+
+    # cleanup
+    httpx.delete(f"{api_base}/api/meals/{meal_id}", headers=headers)
+
+
 def test_preferences_includes_conversation_style(api_base, headers):
     r = httpx.get(f"{api_base}/api/preferences", headers=headers, timeout=30)
     assert r.status_code == 200
