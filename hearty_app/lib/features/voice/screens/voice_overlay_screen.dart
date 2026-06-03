@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/voice_state.dart';
 import '../providers/voice_provider.dart';
-import '../widgets/waveform_animation.dart';
+import '../widgets/prism_waveform.dart';
 import '../widgets/thinking_animation.dart';
 
 class VoiceOverlayScreen extends ConsumerStatefulWidget {
@@ -14,12 +14,24 @@ class VoiceOverlayScreen extends ConsumerStatefulWidget {
 
 class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
   final _textController = TextEditingController();
+  // Live mic amplitude feeding the prism visualiser. TODO(amplitude-source):
+  // currently a constant 0 (calm idle beam) — wire to the real STT sound-level
+  // once the dictation amplitude source is resolved (see project memory).
+  final ValueNotifier<double> _micLevel = ValueNotifier<double>(0.0);
 
   @override
   void dispose() {
     _textController.dispose();
+    _micLevel.dispose();
     super.dispose();
   }
+
+  /// The luminous prism waveform band shown while the mic is live.
+  Widget _voiceVisualizer() => SizedBox(
+        width: double.infinity,
+        height: 140,
+        child: PrismWaveform(level: _micLevel),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -80,11 +92,11 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
   Widget _buildAnimation(VoiceState state) {
     switch (state.status) {
       case VoiceStatus.listening:
-        return const WaveformAnimation();
+        return _voiceVisualizer();
       case VoiceStatus.awaitingFollowUp:
         switch (state.micPhase) {
           case MicPhase.listening:
-            return const WaveformAnimation();
+            return _voiceVisualizer();
           case MicPhase.paused:
             return IconButton(
               key: const Key('tap_to_talk_button'),
