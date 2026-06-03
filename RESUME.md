@@ -23,11 +23,16 @@ Commit `6a5cb1a` on voice-beep-mute. **Device matrix (wake word ON) PENDING:**
 tap-to-talk ✓, follow-up ✓, "hey hearty" ✓, and "hey hearty" AGAIN after a session ✓
 (re-arm regression check).
 
-**Branch consolidation onto master (in progress).** Backups: `backup/preconsolidate-*`
-for every HEAD. Settings-move work was UNCOMMITTED in the wake-word-settings worktree
-→ committed as `65c55d3` (dedicated WakeWordSettingsScreen). Plan: FF master→voice-beep-mute,
-device-test, then merge prism-waveform + wake-word-settings (both touch voice files →
-conflicts expected), then prune worktrees + gc.
+**Branch consolidation onto master — DONE (2026-06-03).** master = acb2ea6:
+FF'd to voice-beep-mute (mic fix + beep + tempo), cherry-picked the wake-word-settings
+page (WakeWordSettingsScreen, its own page out of Notification prefs), merged prism-waveform
+(live-STT waveform visualizer — conflicts in voice_provider.dart fields + voice_provider_test.dart
+resolved keeping BOTH mic-handoff and soundLevel). Full suite 81/81 green, analyze clean.
+Worktrees prism-waveform + wake-word-settings REMOVED; branches voice-beep-mute,
+prism-waveform, wake-word-settings DELETED. Recovery refs kept: `backup/preconsolidate-*`
+(master 5216b1a, voice-beep-mute 50a64e2, prism d4a7515, wake-word-settings 6d63cbc,
+food-editing 4bcddf3) — delete once everything's confirmed good. NOTE: phone build still
+predates the prism/settings consolidation (had mic fix only) → rebuild to see + re-verify.
 **DEFERRED: `food-editing` branch** is pre-LFS-rewrite history (223/244 divergence;
 its commits are content-dupes of master under old SHAs). Its real unique work = the
 manual-food-editing feature (~4 top commits: 4bcddf3, 4f21b54, 6f1097a, a8349ed),
