@@ -494,7 +494,20 @@ Adds one theme token beyond the shared set:
 
 Copy is verbatim from `app_setup_sheet.dart` — this is a styling pass over an existing widget, so it maps 1:1. On dark themes the sheet is a deep tinted surface; on Warm & Grounded it's a clean white sheet over the cream app. The other first-run steps (notification setup, conversation-style setup) are full screens that reuse the toggle list and selectable conversation cards already documented above, in an emoji-hero + Skip/Continue frame.
 
-> Sign In hero treatments are still being chosen (orb / prism waveform / pulse rings / mesh bloom) and are intentionally not yet locked into the shortlist.
+---
+
+## Sign In
+
+The brand moment and the app's first screen. Centered Fraunces "Hearty" wordmark (accent "y"), tagline, "Continue with Google" button, fine print. Prototype: `docs/superpowers/mockups/auth_heroes.html` (explores 5 hero treatments).
+
+**Chosen hero — Heart Orb + Prism** (combines two earlier options):
+- **Heart glow** — a blurred heart shape (`fill: var(--acc)`) sitting *above and underlapping* the wordmark, like a glow emanating from behind it. Two stacked layers: wide soft `blur(38px)` + tighter `blur(11px)` core. The heart references "Hearty"; it recolors per theme via `--acc`.
+- **Prism waveform** — the voice-visualizer line (three offset R/G/B sine strokes, `mix-blend-mode: screen`, per-channel glow) flows below the tagline, **full-bleed to both phone edges** (breaks out of the body padding via `align-self: stretch; margin: 0 -22px`). Ties the brand to the dictation feature.
+- The wordmark sits at a higher z-index so both the heart and prism read as glows *behind* the text. Tagline uses `var(--tx)` at 78% opacity (not `--sub`) for legibility over the glow.
+
+**Theme caveat:** the prism's `screen` blend reconstructs white only on a dark background, so on **Warm & Grounded** the lines switch to `mix-blend-mode: normal` (`.dt-warm .hA-wave path`) — they show as a soft RGB ribbon on cream rather than a white-core prism. Aurora and Cosmic Bloom get the full glowing effect.
+
+Other heroes explored (kept in the prototype as alternatives): Glowing Orb (original circular blur), Prism Waveform alone, Pulse Rings (concentric heartbeat rings), Mesh Bloom (soft multi-hue gradient blobs).
 
 ---
 
@@ -512,6 +525,7 @@ Copy is verbatim from `app_setup_sheet.dart` — this is a styling pass over an 
 | Trends | Trends | Signal cards + charts | All three |
 | Logging | Log Entry / Detail / Edit | Capture · view · edit forms | All three |
 | Onboarding | Permission wizard | Bottom-sheet pop-up cards | All three |
+| Sign In | Auth | Heart Orb + Prism hero | All three |
 | Settings (L2) | Settings | Glass Rows + Chip | Warm & Grounded · Cosmic Bloom · Aurora |
 | Settings (L1) | Settings | Skew Gradient Cards | Aurora (reference) |
 | Settings detail | Notifications / Voice / Conversation / Health Profile | Themed component set (L2 glass) | All three |
