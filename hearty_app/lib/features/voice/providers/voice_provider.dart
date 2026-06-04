@@ -91,6 +91,11 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   // grabs it. Injectable so unit tests stay synchronous and timer-free.
   final Future<void> Function() _releaseWakeWordMic;
   final Duration _micHandoffDelay;
+  // Once the wake-word mic is handed off for a session it stays released until
+  // the overlay closes (re-armed in VoiceOverlayScreen.dispose). So we only pay
+  // the settle delay on the first listen of a session — restarts re-acquire
+  // immediately, avoiding a dead window mid-speech. Reset at each session start.
+  bool _wakeWordMicReleased = false;
   // Live mic amplitude (0..1) for the prism visualiser, updated from the STT
   // recognizer's onSoundLevelChange while listening; reset to 0 when listening
   // stops so the beam settles. The painter's gate + smoothing shape the look.
@@ -210,6 +215,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     _releaseBeepSuppression();
     // A fresh manual/wake-word session is a normal meal log, not a check-in.
     _symptomCheckIn = false;
+    _wakeWordMicReleased = false; // new session — wake-word mic is armed again
     state = const VoiceState(status: VoiceStatus.listening);
     _beginStt();
   }
@@ -231,6 +237,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     _useDictation = true;
     // This whole session is a symptom check-in on the locked meal.
     _symptomCheckIn = true;
+    _wakeWordMicReleased = false; // new session — wake-word mic is armed again
 
     const question =
         'How are you feeling after your last meal? Let me know about any discomfort — you can rate it 1–10, or just say you\'re feeling good.';
@@ -260,9 +267,6 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     if (!await _ensureSttInitialized()) {
       return;
     }
-    if (isFollowUp && mounted) {
-      state = state.copyWith(micPhase: MicPhase.listening);
-    }
     if (isFollowUp && _followUpRestarts == 0) {
       // Let this first session's beep play, then mute the candidate streams so
       // the restart sessions' beeps are silenced. Released on any exit.
@@ -283,10 +287,20 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     try {
       await _releaseWakeWordMic();
     } catch (_) {/* wake word off / service not running */}
-    if (_micHandoffDelay > Duration.zero) {
-      await Future<void>.delayed(_micHandoffDelay);
+    // Only wait for the audio HAL to free the input on the first listen of a
+    // session; on restarts the mic is already ours, so re-acquire immediately.
+    if (!_wakeWordMicReleased) {
+      if (_micHandoffDelay > Duration.zero) {
+        await Future<void>.delayed(_micHandoffDelay);
+      }
+      _wakeWordMicReleased = true;
     }
     if (!mounted) return;
+    // Flip the UI to "listening" only now that STT is actually about to capture —
+    // showing the waveform during the handoff above loses the user's first words.
+    if (isFollowUp) {
+      state = state.copyWith(micPhase: MicPhase.listening);
+    }
     await _stt.listen(
       onResult: (result) {
         if (result.recognizedWords.isNotEmpty) {

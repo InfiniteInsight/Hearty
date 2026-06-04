@@ -335,6 +335,29 @@ void main() {
       notifier.dispose();
     });
 
+    test('follow-up stays "preparing" during handoff, "listening" only at capture', () async {
+      late final VoiceNotifier notifier;
+      MicPhase? phaseAtRelease;
+      notifier = VoiceNotifier(
+        sttForTesting: fakeStt,
+        ttsForTesting: fakeTts,
+        // The handoff runs before STT starts — capture the UI phase at that moment.
+        releaseWakeWordMic: () async {
+          phaseAtRelease = notifier.state.micPhase;
+        },
+        micHandoffDelay: Duration.zero,
+        followUpStartDelay: Duration.zero,
+      );
+      notifier.primeForSymptomFollowUp(mealId: 'm1');
+      await Future<void>.delayed(Duration.zero);
+      // During the mic handoff the UI must NOT claim to be listening yet...
+      expect(phaseAtRelease, MicPhase.preparing);
+      // ...it flips to listening only once STT is actually capturing.
+      expect(fakeStt.listenCount, 1);
+      expect(notifier.state.micPhase, MicPhase.listening);
+      notifier.dispose();
+    });
+
     test('normalizeSoundLevel maps the recognizer dB range to 0..1', () {
       expect(VoiceNotifier.normalizeSoundLevel(-2.0), 0.0);
       expect(VoiceNotifier.normalizeSoundLevel(10.0), 1.0);
