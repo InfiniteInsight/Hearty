@@ -479,6 +479,25 @@ Component note: `lf-tag` (neutral) is used for metadata and AI-detected componen
 
 ---
 
+## Onboarding Pop-up Cards
+
+The first-run permission wizard — implemented as a non-dismissible **bottom sheet** (`AppSetupSheet`), not a full screen. Prototype: `docs/superpowers/mockups/onboarding_cards.html`. Three sequential steps advance in place: 🎙️ Microphone → 📲 Appear instantly (overlay) → 🔋 Run in background (battery).
+
+Adds one theme token beyond the shared set:
+
+```
+--sheet  : sheet surface (Warm #ffffff · Aurora #10243c · Cosmic #14082e)
+--handle : drag-handle colour · --logoH : app-logo "Heart" colour behind the scrim
+```
+
+**Structure (bottom → top of sheet):** the app sits behind a `rgba(2,2,10,0.62)` + `blur(2px)` scrim; the sheet (`--sheet`, radius 22 top, `0 -12px 50px` shadow) holds: drag handle (`--handle`), **step pills** (`--accg` active — added for orientation; the live component advances internally without them), large emoji, Fraunces title, body copy in `--sub`, a full-width gradient primary button (`--accg`, label ends with `→`), and a footer row with underlined "Don't show again" (`--sub`, 70%) + "Skip for now".
+
+Copy is verbatim from `app_setup_sheet.dart` — this is a styling pass over an existing widget, so it maps 1:1. On dark themes the sheet is a deep tinted surface; on Warm & Grounded it's a clean white sheet over the cream app. The other first-run steps (notification setup, conversation-style setup) are full screens that reuse the toggle list and selectable conversation cards already documented above, in an emoji-hero + Skip/Continue frame.
+
+> Sign In hero treatments are still being chosen (orb / prism waveform / pulse rings / mesh bloom) and are intentionally not yet locked into the shortlist.
+
+---
+
 ## Design Shortlist Index
 
 | ID | Screen | Layout | Palette |
@@ -492,6 +511,7 @@ Component note: `lf-tag` (neutral) is used for metadata and AI-detected componen
 | History C | History | Calendar + Day | Warm & Grounded |
 | Trends | Trends | Signal cards + charts | All three |
 | Logging | Log Entry / Detail / Edit | Capture · view · edit forms | All three |
+| Onboarding | Permission wizard | Bottom-sheet pop-up cards | All three |
 | Settings (L2) | Settings | Glass Rows + Chip | Warm & Grounded · Cosmic Bloom · Aurora |
 | Settings (L1) | Settings | Skew Gradient Cards | Aurora (reference) |
 | Settings detail | Notifications / Voice / Conversation / Health Profile | Themed component set (L2 glass) | All three |

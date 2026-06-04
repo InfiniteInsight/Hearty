@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hearty — Onboarding Pop-up Cards × Themes</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:#06060e; font-family:'Plus Jakarta Sans',sans-serif; padding:28px 22px 50px; width:980px; }
+  .ph-header { margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid #16162a; }
+  .ph-logo { font-family:'Fraunces',serif; font-size:24px; font-weight:700; margin-bottom:4px; }
+  .ph-t { font-size:14px; font-weight:600; color:#fff; }
+  .ph-s { font-size:10px; color:#383852; font-family:'JetBrains Mono',monospace; letter-spacing:0.05em; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+  .col { display:flex; flex-direction:column; align-items:center; }
+  .cap { margin-top:8px; text-align:center; }
+  .cap-n { font-size:12px; font-weight:700; color:#fff; }
+  .cap-d { font-size:9px; color:#4a4a68; font-family:'JetBrains Mono',monospace; letter-spacing:0.06em; margin-top:2px; }
+  .phone { width:262px; height:560px; border-radius:40px; overflow:hidden; border:5px solid #18182c; position:relative; flex-shrink:0; box-shadow:0 16px 50px rgba(0,0,0,0.8); }
+  .phone::before { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:64px; height:18px; background:#18182c; border-radius:0 0 12px 12px; z-index:300; }
+
+  /* theme palettes */
+  .dt-scr { width:100%; height:100%; position:relative; overflow:hidden; }
+  .dt-warm   { --bg:#FDFBF7; --sheet:#ffffff; --tx:#1A1209; --sub:#9B8C78; --acc:#C0392B; --accg:linear-gradient(135deg,#E8A87C,#C0392B); --faint:rgba(26,18,9,0.08); --handle:rgba(26,18,9,0.18); --logoH:#1A1209; }
+  .dt-aurora { --bg:linear-gradient(165deg,#0c1626,#0e1d38 60%,#0c1730); --sheet:#10243c; --tx:#fff; --sub:rgba(255,255,255,0.6); --acc:#34D399; --accg:linear-gradient(135deg,#34D399,#059669); --faint:rgba(255,255,255,0.1); --handle:rgba(255,255,255,0.3); --logoH:#fff; }
+  .dt-cosmic { --bg:#07021A; --sheet:#14082e; --tx:#fff; --sub:rgba(255,255,255,0.6); --acc:#00C8FF; --accg:linear-gradient(135deg,#B700FF,#00C8FF); --faint:rgba(255,255,255,0.09); --handle:rgba(255,255,255,0.3); --logoH:#fff; }
+
+  /* dimmed app behind the sheet */
+  .oc-appbg { position:absolute; inset:0; background:var(--bg); }
+  .oc-appbg-top { display:flex; justify-content:space-between; align-items:center; padding:26px 16px 0; }
+  .oc-applogo { font-family:'Fraunces',serif; font-size:15px; font-weight:700; color:var(--logoH); }
+  .oc-applogo span { color:var(--acc); }
+  .oc-appdate { font-size:9px; color:var(--sub); font-family:'JetBrains Mono',monospace; }
+  .oc-appclock { width:130px; height:130px; border-radius:50%; border:1.5px solid var(--faint); margin:34px auto 0; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:24px; font-weight:800; color:var(--tx); opacity:0.5; }
+  .oc-scrim { position:absolute; inset:0; background:rgba(2,2,10,0.62); backdrop-filter:blur(2px); z-index:2; }
+
+  /* bottom-sheet card */
+  .oc-sheet { position:absolute; left:0; right:0; bottom:0; z-index:3; background:var(--sheet); border-radius:24px 24px 0 0; padding:14px 22px 26px; box-shadow:0 -12px 50px rgba(0,0,0,0.45); }
+  .oc-handle { width:40px; height:4px; border-radius:2px; background:var(--handle); margin:0 auto 6px; }
+  .oc-steps { display:flex; justify-content:center; gap:6px; margin:6px 0 14px; }
+  .oc-dot { width:6px; height:6px; border-radius:50%; background:var(--faint); }
+  .oc-dot.active { width:18px; border-radius:3px; background:var(--accg); }
+  .oc-emoji { font-size:46px; text-align:center; }
+  .oc-title { font-family:'Fraunces',serif; font-size:21px; font-weight:700; color:var(--tx); text-align:center; margin-top:13px; }
+  .oc-body { font-size:11.5px; color:var(--sub); line-height:1.6; text-align:center; margin-top:11px; }
+  .oc-primary { width:100%; padding:13px; border-radius:14px; background:var(--accg); color:#fff; font-size:12.5px; font-weight:700; text-align:center; margin-top:20px; box-shadow:0 8px 20px -8px var(--acc); }
+  .oc-foot { display:flex; align-items:center; justify-content:center; gap:22px; margin-top:15px; }
+  .oc-dontshow { font-size:10.5px; color:var(--sub); text-decoration:underline; opacity:0.7; }
+  .oc-skip { font-size:11.5px; color:var(--sub); font-weight:600; }
+</style>
+</head>
+<body>
+
+<div class="ph-header">
+  <div class="ph-logo"><span style="color:#fff">Heart</span><span style="color:#34D399">y</span></div>
+  <div class="ph-t">Onboarding Pop-up Cards — AppSetupSheet, themed</div>
+  <div class="ph-s">Non-dismissible bottom-sheet permission wizard · 3 steps shown across the 3 palettes</div>
+</div>
+
+<div class="grid3">
+
+  <!-- STEP 1 · MIC · WARM -->
+  <div class="col"><div class="phone"><div class="dt-scr dt-warm">
+    <div class="oc-appbg">
+      <div class="oc-appbg-top"><div class="oc-applogo">Heart<span>y</span></div><div class="oc-appdate">Tue, Jun 2</div></div>
+      <div class="oc-appclock">2:34</div>
+    </div>
+    <div class="oc-scrim"></div>
+    <div class="oc-sheet">
+      <div class="oc-handle"></div>
+      <div class="oc-steps"><span class="oc-dot active"></span><span class="oc-dot"></span><span class="oc-dot"></span></div>
+      <div class="oc-emoji">🎙️</div>
+      <div class="oc-title">Microphone access</div>
+      <div class="oc-body">Hearty needs to hear you say “Hey Hearty” to start listening — even when your screen is off. When Android asks, choose “While using the app”.</div>
+      <div class="oc-primary">Allow microphone →</div>
+      <div class="oc-foot"><span class="oc-dontshow">Don't show again</span><span class="oc-skip">Skip for now</span></div>
+    </div>
+  </div></div>
+  <div class="cap"><div class="cap-n">Step 1 · Microphone</div><div class="cap-d">WARM &amp; GROUNDED</div></div></div>
+
+  <!-- STEP 2 · OVERLAY · AURORA -->
+  <div class="col"><div class="phone"><div class="dt-scr dt-aurora">
+    <div class="oc-appbg">
+      <div class="oc-appbg-top"><div class="oc-applogo">Heart<span>y</span></div><div class="oc-appdate">TUE 02</div></div>
+      <div class="oc-appclock">2:34</div>
+    </div>
+    <div class="oc-scrim"></div>
+    <div class="oc-sheet">
+      <div class="oc-handle"></div>
+      <div class="oc-steps"><span class="oc-dot"></span><span class="oc-dot active"></span><span class="oc-dot"></span></div>
+      <div class="oc-emoji">📲</div>
+      <div class="oc-title">Appear instantly</div>
+      <div class="oc-body">When you say “Hey Hearty”, the app opens automatically — no matter what screen you're on. On the next screen, toggle “Allow display over other apps”, then come back.</div>
+      <div class="oc-primary">Go to Settings →</div>
+      <div class="oc-foot"><span class="oc-dontshow">Don't show again</span><span class="oc-skip">Skip for now</span></div>
+    </div>
+  </div></div>
+  <div class="cap"><div class="cap-n">Step 2 · Overlay</div><div class="cap-d">AURORA</div></div></div>
+
+  <!-- STEP 3 · BATTERY · COSMIC -->
+  <div class="col"><div class="phone"><div class="dt-scr dt-cosmic">
+    <div class="oc-appbg">
+      <div class="oc-appbg-top"><div class="oc-applogo">Heart<span>y</span></div><div class="oc-appdate">TUE 02</div></div>
+      <div class="oc-appclock">2:34</div>
+    </div>
+    <div class="oc-scrim"></div>
+    <div class="oc-sheet">
+      <div class="oc-handle"></div>
+      <div class="oc-steps"><span class="oc-dot"></span><span class="oc-dot"></span><span class="oc-dot active"></span></div>
+      <div class="oc-emoji">🔋</div>
+      <div class="oc-title">Run in the background</div>
+      <div class="oc-body">Hearty needs to keep listening even when you're not using it. This prevents Android from putting it to sleep.</div>
+      <div class="oc-primary">Allow →</div>
+      <div class="oc-foot"><span class="oc-dontshow">Don't show again</span><span class="oc-skip">Skip for now</span></div>
+    </div>
+  </div></div>
+  <div class="cap"><div class="cap-n">Step 3 · Background</div><div class="cap-d">COSMIC BLOOM</div></div></div>
+
+</div>
+</body>
+</html>
