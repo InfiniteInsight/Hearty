@@ -377,6 +377,71 @@
   /* on the light theme, screen-blend disappears — use normal blend so the lines show */
   .dt-warm .hA-wave path { mix-blend-mode:normal; }
 
+  /* ════════════════════════════════════════════
+     PHOTO / CAMERA FLOW
+  ════════════════════════════════════════════ */
+  .pf-food { background:linear-gradient(155deg,#3a2c1e,#241a10); display:flex; align-items:center; justify-content:center; }
+  .pf-cam { position:absolute; inset:0; }
+  .pf-cam-view { position:absolute; inset:0; font-size:90px; }
+  .pf-cam-grad { position:absolute; inset:0; background:linear-gradient(to bottom,rgba(0,0,0,0.45),transparent 22%,transparent 64%,rgba(0,0,0,0.6)); }
+  .pf-cam-top { position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; padding:22px 15px 0; z-index:4; }
+  .pf-cam-btn { width:32px; height:32px; border-radius:50%; background:rgba(0,0,0,0.4); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px; }
+  .pf-frame { position:absolute; top:72px; left:30px; right:30px; bottom:166px; z-index:2; }
+  .pf-corner { position:absolute; width:24px; height:24px; border:2.5px solid var(--acc); }
+  .pf-corner.tl { top:0; left:0; border-right:0; border-bottom:0; border-radius:7px 0 0 0; }
+  .pf-corner.tr { top:0; right:0; border-left:0; border-bottom:0; border-radius:0 7px 0 0; }
+  .pf-corner.bl { bottom:0; left:0; border-right:0; border-top:0; border-radius:0 0 0 7px; }
+  .pf-corner.br { bottom:0; right:0; border-left:0; border-top:0; border-radius:0 0 7px 0; }
+  .pf-mode { position:absolute; bottom:118px; left:50%; transform:translateX(-50%); display:flex; gap:3px; background:rgba(0,0,0,0.45); backdrop-filter:blur(6px); border-radius:18px; padding:3px; z-index:4; }
+  .pf-mode-opt { font-size:9.5px; font-weight:600; color:rgba(255,255,255,0.6); padding:6px 14px; border-radius:15px; }
+  .pf-mode-opt.active { background:var(--accg); color:#fff; }
+  .pf-cam-bottom { position:absolute; bottom:28px; left:0; right:0; display:flex; align-items:center; justify-content:center; gap:36px; z-index:4; }
+  .pf-gallery { width:36px; height:36px; border-radius:9px; background:rgba(255,255,255,0.14); border:1.5px solid rgba(255,255,255,0.35); display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .pf-shutter { width:62px; height:62px; border-radius:50%; border:4px solid #fff; display:flex; align-items:center; justify-content:center; }
+  .pf-shutter-in { width:46px; height:46px; border-radius:50%; background:var(--acc); box-shadow:0 0 16px -2px var(--acc); }
+  .pf-flip { width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.14); display:flex; align-items:center; justify-content:center; color:#fff; font-size:15px; }
+  /* processing */
+  .pf-proc-photo { position:absolute; inset:0; font-size:90px; filter:blur(3px) brightness(0.42); }
+  .pf-proc-scrim { position:absolute; inset:0; background:rgba(3,3,12,0.5); }
+  .pf-proc-c { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:3; }
+  .pf-hearts { position:relative; width:128px; height:116px; }
+  .pf-hearts svg { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); overflow:visible; }
+  .pf-hearts svg path { vector-effect:non-scaling-stroke; }
+  .pf-h-ring1 { width:128px; height:115px; }
+  .pf-h-ring1 path { fill:none; stroke:var(--acc); stroke-width:1.5; opacity:0.22; }
+  .pf-h-ring2 { width:95px; height:86px; }
+  .pf-h-ring2 path { fill:none; stroke:var(--acc); stroke-width:1.5; opacity:0.5; }
+  .pf-h-glow { width:94px; height:85px; filter:blur(22px); opacity:0.95; }
+  .pf-h-glow path { fill:var(--acc); }
+  .pf-h-core { width:54px; height:49px; filter:blur(1.6px) drop-shadow(0 0 18px var(--acc)); }
+  .pf-h-core path { fill:var(--acc); }
+  .pf-proc-label { font-family:'Fraunces',serif; font-size:17px; font-weight:700; color:#fff; margin-top:28px; text-align:center; }
+  .pf-proc-sub { font-size:10.5px; color:rgba(255,255,255,0.6); margin-top:8px; }
+  .pf-dots { display:flex; gap:6px; margin-top:16px; }
+  .pf-dot { width:7px; height:7px; border-radius:50%; background:var(--acc); }
+  .pf-dot:nth-child(2){ opacity:0.6; } .pf-dot:nth-child(3){ opacity:0.3; }
+  /* review */
+  .pf-rev-photo { height:130px; font-size:56px; position:relative; }
+  .pf-rev-photo::after { content:''; position:absolute; inset:0; background:linear-gradient(to bottom,transparent 55%,rgba(0,0,0,0.35)); }
+  .pf-rev-cap { position:absolute; bottom:8px; left:13px; z-index:2; }
+  .pf-rev-title { font-family:'Fraunces',serif; font-size:16px; font-weight:700; color:#fff; }
+  .pf-rev-meta { font-size:8.5px; color:rgba(255,255,255,0.85); margin-top:1px; }
+  .pf-rev-body { padding:12px 13px 13px; }
+  .pf-fieldlabel { font-size:7px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--sub); margin:11px 2px 6px; font-family:'JetBrains Mono',monospace; }
+  .pf-allergen { display:flex; align-items:center; gap:9px; background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.32); border-radius:11px; padding:9px 11px; }
+  .pf-allergen-ic { font-size:15px; }
+  .pf-allergen-t { font-size:10px; font-weight:700; color:#E5685C; }
+  .pf-allergen-s { font-size:8px; color:var(--sub); margin-top:1px; }
+  .pf-food-row { display:flex; align-items:center; gap:9px; padding:8px 10px; background:var(--card); border:1px solid var(--cardbd); border-radius:11px; margin-bottom:6px; }
+  .pf-food-ic { width:26px; height:26px; border-radius:8px; background:var(--accg); display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
+  .pf-food-n { font-size:10.5px; font-weight:600; color:var(--tx); }
+  .pf-food-q { font-size:7.5px; color:var(--sub); margin-top:1px; }
+  .pf-food-cal { margin-left:auto; font-size:9.5px; font-weight:700; color:var(--acc); }
+  .pf-field { background:var(--card); border:1px solid var(--cardbd); border-radius:11px; padding:9px 11px; font-size:10px; color:var(--tx); }
+  .pf-actions { display:flex; gap:9px; margin-top:14px; }
+  .pf-retake { padding:11px 15px; border:1px solid var(--cardbd); border-radius:12px; color:var(--tx); font-size:11px; font-weight:600; }
+  .pf-save { flex:1; padding:11px; border-radius:12px; background:var(--accg); color:#fff; font-size:11px; font-weight:700; text-align:center; box-shadow:0 6px 16px -6px var(--acc); }
+
   /* footer */
   .footer {
     text-align: center;
@@ -701,7 +766,7 @@
      HOME SCREEN — 4 designs
 ════════════════════════════ -->
 <div class="section">
-  <p class="section-label">Screen 1 of 8</p>
+  <p class="section-label">Screen 1 of 9</p>
   <h2 class="section-title">Home Screen — Today's Log</h2>
   <div class="section-grid">
 
@@ -917,7 +982,7 @@
      HISTORY SCREEN — 3 designs
 ════════════════════════════ -->
 <div class="section">
-  <p class="section-label">Screen 2 of 8</p>
+  <p class="section-label">Screen 2 of 9</p>
   <h2 class="section-title">History Screen — Calendar + Day View</h2>
   <div class="section-grid">
 
@@ -1067,7 +1132,7 @@
 </div><!-- /section -->
 
 <div class="section">
-  <p class="section-label">Screen 3 of 8</p>
+  <p class="section-label">Screen 3 of 9</p>
   <h2 class="section-title">Settings Screen — hearty.ltd Skew-Gradient Cards</h2>
   <div class="section-grid">
 
@@ -1197,7 +1262,7 @@
 </div><!-- /section -->
 
 <div class="section">
-  <p class="section-label">Screen 4 of 8</p>
+  <p class="section-label">Screen 4 of 9</p>
   <h2 class="section-title">Settings Detail Screens — themed component set</h2>
   <div class="section-grid">
 
@@ -1326,7 +1391,7 @@
 </div><!-- /section -->
 
 <div class="section">
-  <p class="section-label">Screen 5 of 8</p>
+  <p class="section-label">Screen 5 of 9</p>
   <h2 class="section-title">Trends Screen — Food Signals &amp; charts</h2>
   <div class="section-grid">
 
@@ -1376,7 +1441,7 @@
 </div><!-- /section -->
 
 <div class="section">
-  <p class="section-label">Screen 6 of 8</p>
+  <p class="section-label">Screen 6 of 9</p>
   <h2 class="section-title">Logging Flow — capture · view · edit</h2>
   <div class="section-grid">
 
@@ -1432,7 +1497,7 @@
 </div><!-- /section -->
 
 <div class="section">
-  <p class="section-label">Screen 7 of 8</p>
+  <p class="section-label">Screen 7 of 9</p>
   <h2 class="section-title">Onboarding Pop-up Cards — permission wizard (AppSetupSheet)</h2>
   <div class="section-grid">
 
@@ -1485,7 +1550,7 @@
 </div><!-- /section -->
 
 <div class="section">
-  <p class="section-label">Screen 8 of 8</p>
+  <p class="section-label">Screen 8 of 9</p>
   <h2 class="section-title">Sign In — Heart Orb + Prism hero</h2>
   <div class="section-grid">
 
@@ -1551,6 +1616,59 @@
         <div class="au-fineprint">By continuing you agree to our Terms &amp; Privacy Policy</div>
       </div>
     </div></div></div><div class="card-info"><div class="card-screen">SIGN IN · HERO</div><div class="card-name">Sign In × Cosmic Bloom</div><div class="palette"><div class="swatch" style="background:#07021A;border-color:#555"></div><div class="swatch" style="background:#B700FF"></div><div class="swatch" style="background:#00C8FF"></div><div class="swatch" style="background:#FF3C78"></div><div class="palette-label">Cosmic Bloom</div></div></div></div>
+
+  </div><!-- /section-grid -->
+</div><!-- /section -->
+
+<div class="section">
+  <p class="section-label">Screen 9 of 9</p>
+  <h2 class="section-title">Photo / Camera Flow — capture · AI vision · review</h2>
+  <div class="section-grid">
+
+    <!-- ═══ CAMERA ═══ -->
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-warm">
+      <div class="pf-cam"><div class="pf-cam-view pf-food">🥗</div><div class="pf-cam-grad"></div><div class="pf-cam-top"><div class="pf-cam-btn">✕</div><div class="pf-cam-btn">⚡</div></div><div class="pf-frame"><span class="pf-corner tl"></span><span class="pf-corner tr"></span><span class="pf-corner bl"></span><span class="pf-corner br"></span></div><div class="pf-mode"><span class="pf-mode-opt active">Photo</span><span class="pf-mode-opt">Barcode</span></div><div class="pf-cam-bottom"><div class="pf-gallery">🖼️</div><div class="pf-shutter"><div class="pf-shutter-in"></div></div><div class="pf-flip">🔄</div></div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">CAMERA</div><div class="card-name">Capture × Warm & Grounded</div><div class="palette"><div class="swatch" style="background:#FDFBF7;border-color:#555"></div><div class="swatch" style="background:#C0392B"></div><div class="swatch" style="background:#9B8C78"></div><div class="swatch" style="background:#1A1209"></div><div class="palette-label">Warm & Grounded</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-aurora">
+      <div class="pf-cam"><div class="pf-cam-view pf-food">🥗</div><div class="pf-cam-grad"></div><div class="pf-cam-top"><div class="pf-cam-btn">✕</div><div class="pf-cam-btn">⚡</div></div><div class="pf-frame"><span class="pf-corner tl"></span><span class="pf-corner tr"></span><span class="pf-corner bl"></span><span class="pf-corner br"></span></div><div class="pf-mode"><span class="pf-mode-opt active">Photo</span><span class="pf-mode-opt">Barcode</span></div><div class="pf-cam-bottom"><div class="pf-gallery">🖼️</div><div class="pf-shutter"><div class="pf-shutter-in"></div></div><div class="pf-flip">🔄</div></div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">CAMERA</div><div class="card-name">Capture × Aurora</div><div class="palette"><div class="swatch" style="background:#112240"></div><div class="swatch" style="background:#34D399"></div><div class="swatch" style="background:#8B5CF6"></div><div class="swatch" style="background:#F87171"></div><div class="palette-label">Aurora</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-cosmic">
+      <div class="pf-cam"><div class="pf-cam-view pf-food">🥗</div><div class="pf-cam-grad"></div><div class="pf-cam-top"><div class="pf-cam-btn">✕</div><div class="pf-cam-btn">⚡</div></div><div class="pf-frame"><span class="pf-corner tl"></span><span class="pf-corner tr"></span><span class="pf-corner bl"></span><span class="pf-corner br"></span></div><div class="pf-mode"><span class="pf-mode-opt active">Photo</span><span class="pf-mode-opt">Barcode</span></div><div class="pf-cam-bottom"><div class="pf-gallery">🖼️</div><div class="pf-shutter"><div class="pf-shutter-in"></div></div><div class="pf-flip">🔄</div></div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">CAMERA</div><div class="card-name">Capture × Cosmic Bloom</div><div class="palette"><div class="swatch" style="background:#07021A;border-color:#555"></div><div class="swatch" style="background:#B700FF"></div><div class="swatch" style="background:#00C8FF"></div><div class="swatch" style="background:#FF3C78"></div><div class="palette-label">Cosmic Bloom</div></div></div></div>
+
+    <!-- ═══ PROCESSING ═══ -->
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-warm">
+      <div class="pf-proc-photo pf-food">🥗</div><div class="pf-proc-scrim"></div>
+      <div class="pf-proc-c"><div class="pf-hearts"><svg class="pf-h-ring1" viewBox="0 0 100 90"><path d="M50,84 C50,84 8,56 8,30 C8,16 19,9 30,9 C40,9 47,17 50,24 C53,17 60,9 70,9 C81,9 92,16 92,30 C92,56 50,84 50,84 Z"/></svg><svg class="pf-h-ring2" viewBox="0 0 100 90"><path d="M50,84 C50,84 8,56 8,30 C8,16 19,9 30,9 C40,9 47,17 50,24 C53,17 60,9 70,9 C81,9 92,16 92,30 C92,56 50,84 50,84 Z"/></svg><svg class="pf-h-glow" viewBox="0 0 100 90"><path d="M50,84 C50,84 8,56 8,30 C8,16 19,9 30,9 C40,9 47,17 50,24 C53,17 60,9 70,9 C81,9 92,16 92,30 C92,56 50,84 50,84 Z"/></svg><svg class="pf-h-core" viewBox="0 0 100 90"><path d="M50,84 C50,84 8,56 8,30 C8,16 19,9 30,9 C40,9 47,17 50,24 C53,17 60,9 70,9 C81,9 92,16 92,30 C92,56 50,84 50,84 Z"/></svg></div><div class="pf-proc-label">Analyzing your meal…</div><div class="pf-proc-sub">This usually takes 5–10 seconds.</div><div class="pf-dots"><span class="pf-dot"></span><span class="pf-dot"></span><span class="pf-dot"></span></div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">PROCESSING</div><div class="card-name">AI Vision × Warm & Grounded</div><div class="palette"><div class="swatch" style="background:#FDFBF7;border-color:#555"></div><div class="swatch" style="background:#C0392B"></div><div class="swatch" style="background:#9B8C78"></div><div class="swatch" style="background:#1A1209"></div><div class="palette-label">Warm & Grounded</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-aurora">
+      <div class="pf-proc-photo pf-food">🥗</div><div class="pf-proc-scrim"></div>
+      <div class="pf-proc-c"><div class="pf-hearts"><svg class="pf-h-ring1" viewBox="0 0 100 90"><path d="M50,84 C50,84 8,56 8,30 C8,16 19,9 30,9 C40,9 47,17 50,24 C53,17 60,9 70,9 C81,9 92,16 92,30 C92,56 50,84 50,84 Z"/></svg><svg class="pf-h-ring2" viewBox="0 0 100 90"><path d="M50,84 C50,84 8,56 8,30 C8,16 19,9 30,9 C40,9 47,17 50,24 C53,17 60,9 70,9 C81,9 92,16 92,30 C92,56 50,84 50,84 Z"/></svg><svg class="pf-h-glow" viewBox="0 0 100 90"><path d="M50,84 C50,84 8,56 8,30 C8,16 19,9 30,9 C40,9 47,17 50,24 C53,17 60,9 70,9 C81,9 92,16 92,30 C92,56 50,84 50,84 Z"/></svg><svg class="pf-h-core" viewBox="0 0 100 90"><path d="M50,84 C50,84 8,56 8,30 C8,16 19,9 30,9 C40,9 47,17 50,24 C53,17 60,9 70,9 C81,9 92,16 92,30 C92,56 50,84 50,84 Z"/></svg></div><div class="pf-proc-label">Analyzing your meal…</div><div class="pf-proc-sub">This usually takes 5–10 seconds.</div><div class="pf-dots"><span class="pf-dot"></span><span class="pf-dot"></span><span class="pf-dot"></span></div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">PROCESSING</div><div class="card-name">AI Vision × Aurora</div><div class="palette"><div class="swatch" style="background:#112240"></div><div class="swatch" style="background:#34D399"></div><div class="swatch" style="background:#8B5CF6"></div><div class="swatch" style="background:#F87171"></div><div class="palette-label">Aurora</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-cosmic">
+      <div class="pf-proc-photo pf-food">🥗</div><div class="pf-proc-scrim"></div>
+      <div class="pf-proc-c"><div class="pf-hearts"><svg class="pf-h-ring1" viewBox="0 0 100 90"><path d="M50,84 C50,84 8,56 8,30 C8,16 19,9 30,9 C40,9 47,17 50,24 C53,17 60,9 70,9 C81,9 92,16 92,30 C92,56 50,84 50,84 Z"/></svg><svg class="pf-h-ring2" viewBox="0 0 100 90"><path d="M50,84 C50,84 8,56 8,30 C8,16 19,9 30,9 C40,9 47,17 50,24 C53,17 60,9 70,9 C81,9 92,16 92,30 C92,56 50,84 50,84 Z"/></svg><svg class="pf-h-glow" viewBox="0 0 100 90"><path d="M50,84 C50,84 8,56 8,30 C8,16 19,9 30,9 C40,9 47,17 50,24 C53,17 60,9 70,9 C81,9 92,16 92,30 C92,56 50,84 50,84 Z"/></svg><svg class="pf-h-core" viewBox="0 0 100 90"><path d="M50,84 C50,84 8,56 8,30 C8,16 19,9 30,9 C40,9 47,17 50,24 C53,17 60,9 70,9 C81,9 92,16 92,30 C92,56 50,84 50,84 Z"/></svg></div><div class="pf-proc-label">Analyzing your meal…</div><div class="pf-proc-sub">This usually takes 5–10 seconds.</div><div class="pf-dots"><span class="pf-dot"></span><span class="pf-dot"></span><span class="pf-dot"></span></div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">PROCESSING</div><div class="card-name">AI Vision × Cosmic Bloom</div><div class="palette"><div class="swatch" style="background:#07021A;border-color:#555"></div><div class="swatch" style="background:#B700FF"></div><div class="swatch" style="background:#00C8FF"></div><div class="swatch" style="background:#FF3C78"></div><div class="palette-label">Cosmic Bloom</div></div></div></div>
+
+    <!-- ═══ REVIEW ═══ -->
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-warm">
+      <div class="pf-rev-photo pf-food">🥗<div class="pf-rev-cap"><div class="pf-rev-title">Caesar Salad</div><div class="pf-rev-meta">Detected · 92% confidence</div></div></div>
+      <div class="pf-rev-body"><div class="pf-allergen"><span class="pf-allergen-ic">⚠️</span><div><div class="pf-allergen-t">Allergen Warnings</div><div class="pf-allergen-s">Contains Dairy / Casein, Gluten</div></div></div><div class="pf-fieldlabel">Detected Foods</div><div class="pf-food-row"><div class="pf-food-ic">🥬</div><div><div class="pf-food-n">Romaine &amp; dressing</div><div class="pf-food-q">~1.5 cups</div></div><span class="pf-food-cal">220 cal</span></div><div class="pf-food-row"><div class="pf-food-ic">🍗</div><div><div class="pf-food-n">Grilled chicken</div><div class="pf-food-q">~120 g</div></div><span class="pf-food-cal">180 cal</span></div><div class="pf-food-row"><div class="pf-food-ic">🧀</div><div><div class="pf-food-n">Parmesan &amp; croutons</div><div class="pf-food-q">~30 g</div></div><span class="pf-food-cal">140 cal</span></div><div class="pf-fieldlabel">Description</div><div class="pf-field">Caesar salad with grilled chicken</div><div class="pf-actions"><span class="pf-retake">Retake</span><div class="pf-save">Save meal</div></div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">REVIEW</div><div class="card-name">Results × Warm & Grounded</div><div class="palette"><div class="swatch" style="background:#FDFBF7;border-color:#555"></div><div class="swatch" style="background:#C0392B"></div><div class="swatch" style="background:#9B8C78"></div><div class="swatch" style="background:#1A1209"></div><div class="palette-label">Warm & Grounded</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-aurora">
+      <div class="pf-rev-photo pf-food">🥗<div class="pf-rev-cap"><div class="pf-rev-title">Caesar Salad</div><div class="pf-rev-meta">Detected · 92% confidence</div></div></div>
+      <div class="pf-rev-body"><div class="pf-allergen"><span class="pf-allergen-ic">⚠️</span><div><div class="pf-allergen-t">Allergen Warnings</div><div class="pf-allergen-s">Contains Dairy / Casein, Gluten</div></div></div><div class="pf-fieldlabel">Detected Foods</div><div class="pf-food-row"><div class="pf-food-ic">🥬</div><div><div class="pf-food-n">Romaine &amp; dressing</div><div class="pf-food-q">~1.5 cups</div></div><span class="pf-food-cal">220 cal</span></div><div class="pf-food-row"><div class="pf-food-ic">🍗</div><div><div class="pf-food-n">Grilled chicken</div><div class="pf-food-q">~120 g</div></div><span class="pf-food-cal">180 cal</span></div><div class="pf-food-row"><div class="pf-food-ic">🧀</div><div><div class="pf-food-n">Parmesan &amp; croutons</div><div class="pf-food-q">~30 g</div></div><span class="pf-food-cal">140 cal</span></div><div class="pf-fieldlabel">Description</div><div class="pf-field">Caesar salad with grilled chicken</div><div class="pf-actions"><span class="pf-retake">Retake</span><div class="pf-save">Save meal</div></div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">REVIEW</div><div class="card-name">Results × Aurora</div><div class="palette"><div class="swatch" style="background:#112240"></div><div class="swatch" style="background:#34D399"></div><div class="swatch" style="background:#8B5CF6"></div><div class="swatch" style="background:#F87171"></div><div class="palette-label">Aurora</div></div></div></div>
+
+    <div class="design-card"><div class="phone-wrapper"><div class="phone phone-lg"><div class="dt-scr dt-cosmic">
+      <div class="pf-rev-photo pf-food">🥗<div class="pf-rev-cap"><div class="pf-rev-title">Caesar Salad</div><div class="pf-rev-meta">Detected · 92% confidence</div></div></div>
+      <div class="pf-rev-body"><div class="pf-allergen"><span class="pf-allergen-ic">⚠️</span><div><div class="pf-allergen-t">Allergen Warnings</div><div class="pf-allergen-s">Contains Dairy / Casein, Gluten</div></div></div><div class="pf-fieldlabel">Detected Foods</div><div class="pf-food-row"><div class="pf-food-ic">🥬</div><div><div class="pf-food-n">Romaine &amp; dressing</div><div class="pf-food-q">~1.5 cups</div></div><span class="pf-food-cal">220 cal</span></div><div class="pf-food-row"><div class="pf-food-ic">🍗</div><div><div class="pf-food-n">Grilled chicken</div><div class="pf-food-q">~120 g</div></div><span class="pf-food-cal">180 cal</span></div><div class="pf-food-row"><div class="pf-food-ic">🧀</div><div><div class="pf-food-n">Parmesan &amp; croutons</div><div class="pf-food-q">~30 g</div></div><span class="pf-food-cal">140 cal</span></div><div class="pf-fieldlabel">Description</div><div class="pf-field">Caesar salad with grilled chicken</div><div class="pf-actions"><span class="pf-retake">Retake</span><div class="pf-save">Save meal</div></div></div>
+    </div></div></div><div class="card-info"><div class="card-screen">REVIEW</div><div class="card-name">Results × Cosmic Bloom</div><div class="palette"><div class="swatch" style="background:#07021A;border-color:#555"></div><div class="swatch" style="background:#B700FF"></div><div class="swatch" style="background:#00C8FF"></div><div class="swatch" style="background:#FF3C78"></div><div class="palette-label">Cosmic Bloom</div></div></div></div>
 
   </div><!-- /section-grid -->
 </div><!-- /section -->

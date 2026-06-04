@@ -496,6 +496,20 @@ Copy is verbatim from `app_setup_sheet.dart` — this is a styling pass over an 
 
 ---
 
+## Photo / Camera Flow
+
+The AI-vision capture path: **Camera → Processing → Review**. Prototype: `docs/superpowers/mockups/photo_flow.html` (all three themes). Reuses the shared theme vars plus a `pf-*` set.
+
+**Camera (capture)** — full-bleed viewfinder (a live feed, so it stays dark on every theme). Only the *chrome* recolors: corner framing brackets in `--acc`, a **Photo | Barcode** mode toggle (active segment `--accg`), and a white shutter ring with an `--acc` core (matching the two capture modes in `camera_screen.dart`). Top row: close + flash; bottom row: gallery, shutter, flip-camera.
+
+**Processing (AI vision)** — the captured photo sits behind, blurred + dimmed (`blur(3px) brightness(0.42)` + scrim). Centered indicator is the brand **concentric-hearts** motif: two non-scaling-stroke heart outlines around a strongly-bloomed heart core (`blur(22px)` glow layer + a soft `blur(1.6px)`/`drop-shadow(18px)` core, so edges read luminous not hard). Fraunces "Analyzing your meal…" + the verbatim "5–10 seconds" copy + pulsing dots. In the build the hearts pulse outward.
+
+**Review (results)** — photo banner with detected name + confidence; a red **Allergen Warnings** card (`rgba(248,113,113,…)` held constant across themes so the safety signal never depends on palette); a **Detected Foods** list (icon chip, name, quantity, per-item calories in `--acc`); an editable description field; and **Retake / Save meal** actions. Mirrors the sections in `photo_review_screen.dart` (allergens, detected foods/nutrition, description, save/retake).
+
+The concentric-heart processing indicator deliberately echoes the Sign In hero's heart glow — the heart is the recurring brand motif (heart glow on auth, heart pulse while the AI thinks).
+
+---
+
 ## Sign In
 
 The brand moment and the app's first screen. Centered Fraunces "Hearty" wordmark (accent "y"), tagline, "Continue with Google" button, fine print. Prototype: `docs/superpowers/mockups/auth_heroes.html` (explores 5 hero treatments).
@@ -526,6 +540,7 @@ Other heroes explored (kept in the prototype as alternatives): Glowing Orb (orig
 | Logging | Log Entry / Detail / Edit | Capture · view · edit forms | All three |
 | Onboarding | Permission wizard | Bottom-sheet pop-up cards | All three |
 | Sign In | Auth | Heart Orb + Prism hero | All three |
+| Photo Flow | Camera / Processing / Review | Capture · AI vision · results | All three |
 | Settings (L2) | Settings | Glass Rows + Chip | Warm & Grounded · Cosmic Bloom · Aurora |
 | Settings (L1) | Settings | Skew Gradient Cards | Aurora (reference) |
 | Settings detail | Notifications / Voice / Conversation / Health Profile | Themed component set (L2 glass) | All three |
