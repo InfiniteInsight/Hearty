@@ -119,6 +119,12 @@ Pure logic: given the day's meals + symptoms + thresholds + "now", return an ord
 
 - [ ] **Step 1: Write the failing test**
 
+**Design decision (locked):** a missing chunk is *any* waking-window interval longer
+than the threshold with no meal in it — **including the leading interval before the
+first meal** ("skipped breakfast?") **and the trailing interval after the last meal
+up to `now`** ("nothing since lunch — did you have dinner?"). Both are genuinely
+useful for an end-of-day review, so the detector flags them and the tests expect them.
+
 ```python
 from datetime import datetime, timezone
 from app.services.checkin_detector import detect_gaps, MISSING_CHUNK_HOURS
@@ -128,7 +134,10 @@ def _dt(h, m=0):
     return datetime(2026, 6, 3, h, m, tzinfo=timezone.utc)
 
 
-def test_missing_chunk_flagged_between_distant_meals():
+def test_missing_chunks_between_and_after_meals():
+    # Breakfast 8am, lunch 4pm, now 10pm. Two long gaps: 8→16 (8h, between)
+    # and 16→22 (6h, trailing "did you have dinner?"). 12→16 is irrelevant; the
+    # leading interval is zero because the first meal is at waking_start.
     meals = [
         {"id": "m1", "logged_at": _dt(8).isoformat(), "foods": [{"name": "eggs"}]},
         {"id": "m2", "logged_at": _dt(16).isoformat(), "foods": [{"name": "salad"}]},
@@ -136,15 +145,21 @@ def test_missing_chunk_flagged_between_distant_meals():
     gaps = detect_gaps(meals, symptoms=[], now=_dt(22),
                        waking_start_hour=8, waking_end_hour=22)
     d_gaps = [g for g in gaps if g["type"] == "missing_chunk"]
-    assert len(d_gaps) == 1
-    assert d_gaps[0]["window_start"] == _dt(8).isoformat()
-    assert d_gaps[0]["window_end"] == _dt(16).isoformat()
+    assert len(d_gaps) == 2
+    assert (d_gaps[0]["window_start"], d_gaps[0]["window_end"]) == \
+        (_dt(8).isoformat(), _dt(16).isoformat())
+    assert (d_gaps[1]["window_start"], d_gaps[1]["window_end"]) == \
+        (_dt(16).isoformat(), _dt(22).isoformat())
 
 
-def test_no_missing_chunk_when_meals_close_together():
+def test_no_missing_chunk_when_meals_evenly_spaced():
+    # Meals at 8/12/16/20, now 10pm. Max interval 4h; trailing 20→22 is 2h.
+    # Nothing exceeds the 5h threshold.
     meals = [
-        {"id": "m1", "logged_at": _dt(12).isoformat(), "foods": [{"name": "a"}]},
-        {"id": "m2", "logged_at": _dt(15).isoformat(), "foods": [{"name": "b"}]},
+        {"id": "m1", "logged_at": _dt(8).isoformat(), "foods": [{"name": "a"}]},
+        {"id": "m2", "logged_at": _dt(12).isoformat(), "foods": [{"name": "b"}]},
+        {"id": "m3", "logged_at": _dt(16).isoformat(), "foods": [{"name": "c"}]},
+        {"id": "m4", "logged_at": _dt(20).isoformat(), "foods": [{"name": "d"}]},
     ]
     gaps = detect_gaps(meals, symptoms=[], now=_dt(22),
                        waking_start_hour=8, waking_end_hour=22)
@@ -152,11 +167,12 @@ def test_no_missing_chunk_when_meals_close_together():
 
 
 def test_missing_chunk_only_counts_up_to_now():
-    # 2pm "now": the unlived afternoon must not be flagged as a gap.
+    # 2pm "now": the unlived afternoon must not be flagged. First meal at 8am
+    # (== waking_start, so no leading gap); 8am→2pm trailing is 6h > threshold,
+    # and the gap end is clamped to now, not waking_end (10pm).
     meals = [{"id": "m1", "logged_at": _dt(8).isoformat(), "foods": [{"name": "a"}]}]
     gaps = detect_gaps(meals, symptoms=[], now=_dt(14),
                        waking_start_hour=8, waking_end_hour=22)
-    # 8am→2pm is 6h > threshold, but only elapsed time counts; the gap end is now.
     d_gaps = [g for g in gaps if g["type"] == "missing_chunk"]
     assert len(d_gaps) == 1
     assert d_gaps[0]["window_end"] == _dt(14).isoformat()
@@ -543,6 +559,11 @@ class _Supa:
 
 
 def test_gaps_endpoint_returns_queue(monkeypatch):
+    # Use TODAY (computed relative to now) so the request is always inside the
+    # 48h expiry window, regardless of when this deferred plan is executed.
+    from datetime import datetime, timezone
+    today = datetime.now(timezone.utc).date().isoformat()
+
     app.dependency_overrides[get_current_user] = lambda: {"id": "u1", "email": "e"}
     monkeypatch.setattr(checkin_module, "supabase", _Supa())
     monkeypatch.setattr(checkin_module.checkin_detector, "detect_gaps",
@@ -550,7 +571,7 @@ def test_gaps_endpoint_returns_queue(monkeypatch):
                                           "prompt": "p", "window_start": "s",
                                           "window_end": "e"}])
     client = TestClient(app)
-    r = client.get("/api/checkin/gaps?date=2026-06-03")
+    r = client.get(f"/api/checkin/gaps?date={today}")
     assert r.status_code == 200
     body = r.json()
     assert body["expired"] is False
