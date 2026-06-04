@@ -9,6 +9,38 @@ to the user's phone needs an awake agent.
 
 ---
 
+## 2026-06-03 session — follow-up bugs A & B (exposed by the mic fix)
+
+**Bug A — follow-up corrupted the meal + replied out of context. FIXED (commit 6886114).**
+Saying "I'm okay" to the post-meal nudge overwrote the meal ("tuna" → "no food described")
+because the chat follow-up branch treated "no symptom extracted" as a meal clarification and
+re-ran extract_meal on "I'm okay". Layered fix in hearty-api/app/routers/chat.py + frontend:
+(1) frontend sends `symptom_followup=true` for the nudge check-in → backend LOCKS the meal,
+never edits it; (2) defense-in-depth: meal-clarification branch only updates when extract_meal
+returns food; (3) backend fetches the logged meal into the LLM context so it stops asking "what
+did you eat?". Backend VERIFIED via mocked unit tests (tests/test_chat_followup_unit.py, 3/3) +
+an integration test added (test_api.py). NOTE: live integration suite needs a fresh TEST_JWT
+(current one EXPIRED — all chat integration tests 401). Backend fix is LIVE on the local
+--reload API; the frontend `symptom_followup` flag needs a rebuild to reach the phone (the
+backend foods-guard alone already covers the nudge case on the old build).
+
+**Bug B — follow-up showed "listening" before STT captured. Fixed in CODE (commit 3208d48), PENDING device confirmation.**
+_beginStt set micPhase=listening BEFORE the wake-word handoff (release + 250ms), so the waveform
+showed ~250ms before SpeechRecognizer captured → first words lost ("mic active but nothing
+transcribed"). Fix: (1) flip micPhase to listening only after the handoff, right before
+_stt.listen() (overlay shows "Getting ready…" during handoff); (2) pay the settle delay only on
+the FIRST listen of a session (flag `_wakeWordMicReleased`), so restarts/tap-to-talk resume
+re-acquire instantly. Regression test added. CAVEAT (advisor): #2 is an optimization bundled
+with the real fix (#1) and is the ONLY change that could reintroduce mic contention — if device
+testing shows residual "nothing transcribed", REVERT #2 first (it's isolated). Frontend-only →
+needs a rebuild to device-test.
+
+**NEXT on resume:** rebuild (`make run`) → run the full 4-test wake-word matrix (esp. #4 "hey
+hearty AGAIN after a session" = re-arm regression from the _beginStt changes) + bug-A phrasings
+("I'm okay" / "I feel fine" / "good, a bit full"); confirm the meal isn't overwritten. Port: a
+local --reload API (with both fixes' backend) is serving 8080 — free it before `make run` so its
+own API binds, or the clash is harmless (same code).
+
 ## 2026-06-02 session — mic-contention fix + branch consolidation
 
 **FIXED: STT heard nothing on follow-up notification (and in-app tap-to-talk).**
