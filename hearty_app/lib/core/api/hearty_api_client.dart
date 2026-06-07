@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -203,6 +205,32 @@ class HeartyApiClient {
         }..removeWhere((_, v) => v == null),
       );
       return ChatResult.fromJson(response.data!);
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Transcription (cloud STT proxy)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Transcribes headerless LINEAR16 PCM [pcm] (mono, [sampleRate] Hz) via the
+  /// backend Google STT proxy. Returns the transcript ('' if nothing heard).
+  /// Throws (incl. [OfflineException]) on failure so the caller can fall back.
+  Future<String> transcribe({
+    required Uint8List pcm,
+    int sampleRate = 16000,
+  }) {
+    return _call(() async {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/transcribe',
+        data: {'audio': base64Encode(pcm), 'sample_rate': sampleRate},
+        options: Options(
+          // The shared receiveTimeout is 30s; a ~2.6MB upload + Google
+          // processing wants more headroom.
+          sendTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 60),
+        ),
+      );
+      return (response.data?['transcript'] as String?)?.trim() ?? '';
     });
   }
 
