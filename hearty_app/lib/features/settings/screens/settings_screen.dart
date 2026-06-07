@@ -26,6 +26,14 @@ class SettingsScreen extends ConsumerWidget {
               subtitle: const Text('no-ANR gate for the on-device engine'),
               onTap: () => context.push('/isolate-probe'),
             ),
+          // TEMP (Whisper/STT spike): on-device candidate benchmark.
+          if (kDebugMode)
+            ListTile(
+              leading: const Icon(Icons.speed, color: Colors.teal),
+              title: const Text('▶ Whisper/STT spike (dev)'),
+              subtitle: const Text('benchmark on-device STT candidates'),
+              onTap: () => context.push('/whisper-spike'),
+            ),
           // Account section
           ListTile(
             leading: const Icon(Icons.account_circle),
