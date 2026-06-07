@@ -716,9 +716,10 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 > Requires: `GOOGLE_STT_API_KEY` set on the backend; the 122 MB on-device model pushed (for the offline leg); `make run`.
 
-- [ ] **Online (cloud):** Flow 1 — "Hey Hearty" → "I had an IQ bar" → confirm the **cloud** transcript is correct (the open-vocab brand the on-device model fumbled), auto-submits ~2.5 s after silence, and the auto-submit → `stop()` → network round-trip **does not look hung** (no frozen-forever "listening"; lands in thinking within the timeout).
+- [ ] **Online (cloud) — END-TO-END CONTRACT:** Flow 1 — "Hey Hearty" → "I had an IQ bar" → confirm the **cloud transcript is actually correct** (the open-vocab brand the on-device model fumbled). This is the only thing that proves the base64 → `audio.content` → Google LINEAR16/sample-rate contract round-trips — the unit tests cover the selector boolean and buffer logic but **never the real round trip**. Also confirm auto-submit ~2.5 s after silence and that the `stop()` → network round-trip **does not look hung** (lands in thinking within the timeout).
 - [ ] **Airplane mode (on-device):** same phrase → confirm it falls back to the on-device engine and still logs (lower accuracy expected).
-- [ ] **Mid-session drop:** start online, kill network before stop → confirm it drops to tap-to-talk/text (not a stuck spinner, not an empty submit).
+- [ ] **Mid-session drop:** start online, kill network before stop → confirm it drops to the **text field** (not a stuck spinner, not an empty submit). NOTE: on the **wake-word/listening** screen `_pauseForManual` only surfaces the "Or type here…" field — the tap-to-talk button renders only under `awaitingFollowUp`, not `listening` (pre-existing from B1.5; real tap-to-talk-under-listening is Plan D). So verify the **text** fallback specifically here.
+- [ ] **Empty/garbage audio:** stay silent or make noise → confirm it does **not** hang in thinking (drops to manual) — the cloud-empty-transcript dead-spinner guard.
 - [ ] **`useCloudWhenOnline=false`:** (temporarily pass `false` in the provider) confirm on-device is used even when online.
 - [ ] No ANR; one ding; half-duplex — all still hold from Phase B.
 

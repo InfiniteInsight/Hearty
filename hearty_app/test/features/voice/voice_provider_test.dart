@@ -230,6 +230,20 @@ void main() {
       expect(container.read(voiceProvider).transcript, 'i had an iq bar');
     });
 
+    test('empty transcript does not advance to thinking (no dead spinner)',
+        () async {
+      // Cloud returns '' on silence/unintelligible audio (ok:true) and has no
+      // partials, so advancing would pin a thinking spinner that never replies.
+      final n = c(container);
+      n.startListening();
+      await pump();
+      h.latest!.nextTranscript = '';
+      h.latest!.fireAutoSubmit();
+      await pump();
+      expect(container.read(voiceProvider).status, isNot(VoiceStatus.thinking));
+      expect(container.read(voiceProvider).micPhase, MicPhase.paused);
+    });
+
     test('a failed cloud transcription drops to manual, not empty thinking',
         () async {
       final n = c(container);
