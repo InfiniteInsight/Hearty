@@ -1,15 +1,15 @@
 // TEMPORARY (Whisper/STT spike — see docs/.../2026-06-07-voice-rebuild-whisper-
-// ondevice-spike.md). Throwaway kDebugMode probe that benchmarks on-device
-// OfflineRecognizer candidates (Whisper / Moonshine / Parakeet) by replaying the
-// same pre-recorded §3 phrase WAVs to each and logging transcript + decode ms.
-// Delete this file + whisper_spike_isolate.dart + the /whisper-spike route + the
-// Settings tile once the decision lands. NOT production code.
+// ondevice-spike.md). Throwaway kDebugMode probe that (1) records the §3 phrase
+// set once on-device as 16 kHz mono WAVs, then (2) benchmarks each on-device
+// OfflineRecognizer candidate (Whisper / Moonshine / Parakeet) by replaying the
+// SAME WAVs and logging transcript + decode ms. Delete this file +
+// whisper_spike_isolate.dart + the /whisper-spike route + the Settings tile once
+// the decision lands. NOT production code.
 //
-// Setup on device (adb push):
-//   models → <externalFiles>/spike-whisper-base, spike-whisper-small,
-//            spike-moonshine-base, spike-parakeet-tdt   (see plan Task S0)
-//   wavs   → <externalFiles>/spike-wavs/p1.wav … p8.wav (plan Task S1)
-// Pull results with `adb shell cat <externalFiles>/whisper_spike_log.txt`
+// Setup on device (adb push): models → <externalFiles>/spike-whisper-base,
+//   spike-whisper-small, spike-moonshine-base, spike-parakeet-tdt (Task S0).
+// WAVs are recorded in-app (this screen) to <externalFiles>/spike-wavs/.
+// Pull results: `adb shell cat <externalFiles>/whisper_spike_log.txt`
 // (NOT adb pull — it returns a stale cache).
 
 import 'dart:async';
@@ -19,6 +19,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:record/record.dart';
 
 import 'whisper_spike_isolate.dart';
 
@@ -30,8 +32,7 @@ class _Candidate {
   final Map<String, String> files; // logical key -> expected filename
 }
 
-// Expected sherpa-onnx release filenames. If a tarball uses different names, the
-// "Run" button reports the dir's actual contents so they can be corrected.
+// Expected sherpa-onnx release filenames (verified against the pushed models).
 const _candidates = <_Candidate>[
   _Candidate('Whisper base.en int8', 'spike-whisper-base', 'whisper', {
     'encoder': 'base.en-encoder.int8.onnx',
@@ -58,8 +59,29 @@ const _candidates = <_Candidate>[
   }),
 ];
 
+class _Phrase {
+  const _Phrase(this.id, this.text, [this.hint = '']);
+  final String id; // p1..p8 (== wav basename)
+  final String text; // what to say
+  final String hint;
+}
+
+// The §3 phrase set, verbatim. P8 is the noise pass (P2+P6 with background audio).
+const _phrases = <_Phrase>[
+  _Phrase('p1', 'I had heartburn about a 2', 'digit after a pause'),
+  _Phrase('p2', 'For lunch I had a turkey sandwich and a cold brew coffee',
+      'multi-noun meal'),
+  _Phrase('p3', 'acid reflux', 'short symptom'),
+  _Phrase('p4', 'bloating', 'single word'),
+  _Phrase('p5', 'Aloha oatmeal chocolate chip protein bar', 'brand + "protein"'),
+  _Phrase('p6', 'I had an IQ bar cookies and cream', 'THE brand-gating case'),
+  _Phrase('p7', 'rate it 1 to 10', 'digit range'),
+  _Phrase('p8',
+      'For lunch I had a turkey sandwich and a cold brew coffee. I had an IQ bar cookies and cream',
+      'NOISE PASS — play background audio while recording'),
+];
+
 const _kWavDir = 'spike-wavs';
-const _kPhrases = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8'];
 const _kNumThreads = 4;
 
 class WhisperSpikeScreen extends StatefulWidget {
@@ -70,11 +92,13 @@ class WhisperSpikeScreen extends StatefulWidget {
 }
 
 class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
+  final _recorder = AudioRecorder();
   _Candidate _selected = _candidates.first;
   bool _running = false;
+  int? _recordingIdx; // which phrase is currently being recorded
+  final Set<String> _recorded = {}; // phrase ids with a wav on disk
   int _taps = 0; // proves the UI thread stays alive (no ANR) during decode
-  String _status = 'Pick a model, tap "Run all phrases". '
-      'Keep tapping the counter — it must stay live (no ANR).';
+  String _status = 'Record the 8 phrases, then pick a model and Run.';
   final List<String> _results = [];
   String _logPath = '';
   String _extPath = '';
@@ -83,7 +107,7 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
   SendPort? _tx;
   ReceivePort? _rx;
   Completer<void>? _ready;
-  Completer<List<dynamic>>? _decode; // completes with ['result', text, ms]
+  Completer<List<dynamic>>? _decode;
 
   @override
   void initState() {
@@ -91,13 +115,31 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
     getExternalStorageDirectory().then((d) {
       _extPath = d?.path ?? '';
       _logPath = '$_extPath/whisper_spike_log.txt';
+      _refreshRecorded();
     });
   }
 
   @override
   void dispose() {
     _teardownIsolate();
+    _recorder.dispose();
     super.dispose();
+  }
+
+  void _refreshRecorded() {
+    if (_extPath.isEmpty) return;
+    final dir = Directory('$_extPath/$_kWavDir');
+    final present = <String>{};
+    if (dir.existsSync()) {
+      for (final p in _phrases) {
+        if (File('${dir.path}/${p.id}.wav').existsSync()) present.add(p.id);
+      }
+    }
+    setState(() {
+      _recorded
+        ..clear()
+        ..addAll(present);
+    });
   }
 
   Future<void> _appendLog(String line) async {
@@ -111,6 +153,47 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
     } catch (_) {}
   }
 
+  // --- Recording ------------------------------------------------------------
+
+  Future<void> _toggleRecord(int i) async {
+    if (_running) return;
+    if (_recordingIdx == i) {
+      try {
+        await _recorder.stop();
+      } catch (_) {}
+      setState(() => _recordingIdx = null);
+      _refreshRecorded();
+      return;
+    }
+    if (_recordingIdx != null) return; // one at a time
+    if (!await Permission.microphone.request().isGranted) {
+      setState(() => _status = 'Mic permission denied.');
+      return;
+    }
+    final dir = Directory('$_extPath/$_kWavDir')..createSync(recursive: true);
+    final path = '${dir.path}/${_phrases[i].id}.wav';
+    try {
+      await _recorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.wav,
+          sampleRate: 16000,
+          numChannels: 1,
+          androidConfig: AndroidRecordConfig(
+              audioSource: AndroidAudioSource.voiceRecognition),
+        ),
+        path: path,
+      );
+      setState(() {
+        _recordingIdx = i;
+        _status = 'Recording ${_phrases[i].id}… tap ⏹ when done.';
+      });
+    } catch (e) {
+      setState(() => _status = 'Record failed: $e');
+    }
+  }
+
+  // --- Benchmark ------------------------------------------------------------
+
   void _teardownIsolate() {
     _tx?.send(['dispose']);
     _rx?.close();
@@ -120,8 +203,6 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
     _tx = null;
   }
 
-  /// Resolve a candidate's model files to absolute paths, or return an error
-  /// string listing the dir's actual contents so names can be corrected.
   Future<Object> _resolvePaths(_Candidate c) async {
     final dir = Directory('$_extPath/${c.dir}');
     if (!dir.existsSync()) {
@@ -138,18 +219,15 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
       }
     }
     if (missing.isNotEmpty) {
-      final actual = dir
-          .listSync()
-          .map((e) => e.path.split('/').last)
-          .join(', ');
-      return 'MISSING ${missing.join(", ")} in ${c.dir}. '
-          'Actual files: [$actual]. Fix the names in _candidates.';
+      final actual =
+          dir.listSync().map((e) => e.path.split('/').last).join(', ');
+      return 'MISSING ${missing.join(", ")} in ${c.dir}. Actual: [$actual].';
     }
     return resolved;
   }
 
   Future<void> _runAll() async {
-    if (_running) return;
+    if (_running || _recordingIdx != null) return;
     final c = _selected;
     setState(() {
       _running = true;
@@ -167,7 +245,6 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
     }
     final modelPaths = paths as Map<String, String>;
 
-    // Spawn the batch isolate and init the model (timed = loadMs).
     _rx = ReceivePort();
     _ready = Completer<void>();
     _isolate = await Isolate.spawn(WhisperSpikeIsolate.entry, _rx!.sendPort);
@@ -192,7 +269,6 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
       }
     });
 
-    // Wait for the isolate to hand us its SendPort before init.
     while (_tx == null) {
       await Future<void>.delayed(const Duration(milliseconds: 10));
     }
@@ -212,14 +288,13 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
     }
     final loadMs = DateTime.now().difference(loadStart).inMilliseconds;
     await _appendLog('model=${c.dir} loadMs=$loadMs (init ok)');
-    setState(() => _status =
-        '${c.label}: loaded in ${loadMs}ms. Decoding phrases…');
+    setState(() => _status = '${c.label}: loaded ${loadMs}ms. Decoding…');
 
-    // Replay each phrase WAV through the same recognizer.
-    for (final p in _kPhrases) {
-      final wav = File('$_extPath/$_kWavDir/$p.wav');
+    for (final p in _phrases) {
+      final wav = File('$_extPath/$_kWavDir/${p.id}.wav');
       if (!wav.existsSync()) {
-        await _appendLog('model=${c.dir} phrase=$p SKIP (no wav)');
+        await _appendLog('model=${c.dir} phrase=${p.id} SKIP (no wav)');
+        setState(() => _results.add('${p.id}  (not recorded)'));
         continue;
       }
       final samples = _wavToFloat32(await wav.readAsBytes());
@@ -230,23 +305,21 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
         final text = res[1] as String;
         final ms = res[2] as int;
         await _appendLog(
-            'model=${c.dir} phrase=$p loadMs=$loadMs decodeMs=$ms text="$text"');
-        setState(() => _results.add('$p  ${ms}ms  "$text"'));
+            'model=${c.dir} phrase=${p.id} loadMs=$loadMs decodeMs=$ms text="$text"');
+        setState(() => _results.add('${p.id}  ${ms}ms  "$text"'));
       } catch (e) {
-        await _appendLog('model=${c.dir} phrase=$p DECODE ERROR: $e');
-        setState(() => _results.add('$p  ERROR: $e'));
+        await _appendLog('model=${c.dir} phrase=${p.id} DECODE ERROR: $e');
+        setState(() => _results.add('${p.id}  ERROR: $e'));
       }
     }
 
     _teardownIsolate();
     setState(() {
       _running = false;
-      _status = '${c.label} done. `adb shell cat` the log. Run the next model.';
+      _status = '${c.label} done. Pick the next model, or cat the log.';
     });
   }
 
-  /// Parse a 16 kHz mono PCM16 WAV into normalized Float32 by locating the
-  /// 'data' subchunk (tolerates extra header chunks).
   static Float32List _wavToFloat32(Uint8List bytes) {
     final bd = ByteData.sublistView(bytes);
     var i = 12; // skip RIFF/WAVE header
@@ -260,8 +333,7 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
       }
       i = start + size + (size.isOdd ? 1 : 0);
     }
-    // Fallback: assume a standard 44-byte header.
-    return _int16ToFloat32(bd, 44, bytes.length);
+    return _int16ToFloat32(bd, 44, bytes.length); // fallback: 44-byte header
   }
 
   static Float32List _int16ToFloat32(ByteData bd, int start, int end) {
@@ -275,13 +347,28 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final recordedCount = _recorded.length;
     return Scaffold(
-      appBar: AppBar(title: const Text('Whisper/STT spike (benchmark)')),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
+      appBar: AppBar(title: const Text('Whisper/STT spike')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Text(_status, style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: () => setState(() => _taps++),
+              child: Text('Responsiveness tap counter: $_taps (must stay live)'),
+            ),
+            const Divider(height: 28),
+            Text('1) Record phrases  ($recordedCount/8)',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            for (var i = 0; i < _phrases.length; i++) _recordRow(i),
+            const Divider(height: 28),
+            Text('2) Benchmark', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
             DropdownButton<_Candidate>(
               value: _selected,
               isExpanded: true,
@@ -294,36 +381,64 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            Text(_status, style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: () => setState(() => _taps++),
-              child: Text('Responsiveness tap counter: $_taps'),
+            FilledButton(
+              onPressed:
+                  (_running || recordedCount == 0) ? null : _runAll,
+              child: Text(_running ? 'Running…' : 'Run all phrases'),
             ),
             const SizedBox(height: 12),
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: SingleChildScrollView(
-                  child: Text(
-                    _results.isEmpty ? '(results)' : _results.join('\n'),
-                    style: const TextStyle(fontSize: 16, height: 1.4),
-                  ),
+            Container(
+              width: double.infinity,
+              height: 220,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: SingleChildScrollView(
+                child: Text(
+                  _results.isEmpty ? '(results)' : _results.join('\n'),
+                  style: const TextStyle(fontSize: 15, height: 1.4),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: _running ? null : _runAll,
-              child: Text(_running ? 'Running…' : 'Run all phrases'),
-            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _recordRow(int i) {
+    final p = _phrases[i];
+    final isRec = _recordingIdx == i;
+    final done = _recorded.contains(p.id);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          IconButton(
+            onPressed: _running ? null : () => _toggleRecord(i),
+            icon: Icon(
+              isRec ? Icons.stop_circle : Icons.fiber_manual_record,
+              color: isRec ? Colors.red : (done ? Colors.green : Colors.grey),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${p.id.toUpperCase()}${done ? "  ✓" : ""}  "${p.text}"',
+                    style: const TextStyle(fontSize: 14)),
+                if (p.hint.isNotEmpty)
+                  Text(p.hint,
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.black.withValues(alpha: 0.5))),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
