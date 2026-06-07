@@ -374,4 +374,20 @@ void main() {
       expect(notifier.soundLevel.value, 0.0);
     });
   });
+
+  group('prepareForSpeech', () {
+    test('reads digit ranges with dash as "to", not the dash', () {
+      expect(
+        VoiceNotifier.prepareForSpeech('Any discomfort on a scale of 1–10?'),
+        'Any discomfort on a scale of 1 to 10?',
+      );
+      expect(VoiceNotifier.prepareForSpeech('rate it 1-10'), 'rate it 1 to 10');
+      expect(VoiceNotifier.prepareForSpeech('1—10'), '1 to 10');
+    });
+
+    test('still reads slash ratings as "out of"', () {
+      expect(
+          VoiceNotifier.prepareForSpeech('about a 4/10'), 'about a 4 out of 10');
+    });
+  });
 }

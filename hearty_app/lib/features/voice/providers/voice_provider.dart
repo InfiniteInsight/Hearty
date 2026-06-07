@@ -374,19 +374,27 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   Future<void> _speakResponse(String response, bool askFollowUp) async {
     _askFollowUp = askFollowUp;
     await _ready;
-    await _tts.speak(_prepareForSpeech(response));
+    await _tts.speak(prepareForSpeech(response));
   }
 
   void _stopTts() {
     _ready.then((_) { _tts.stop(); });
   }
 
-  static String _prepareForSpeech(String text) {
+  /// Normalizes text for natural TTS. Exposed for unit testing.
+  @visibleForTesting
+  static String prepareForSpeech(String text) {
     text = _stripEmojis(text);
     // "4/10" → "4 out of 10" so TTS doesn't read it as a fraction
     text = text.replaceAllMapped(
       RegExp(r'(\d+)/(\d+)'),
       (m) => '${m[1]} out of ${m[2]}',
+    );
+    // "1-10" / "1–10" / "1—10" → "1 to 10" (a range, not a fraction) so TTS
+    // doesn't read the dash literally ("one ten").
+    text = text.replaceAllMapped(
+      RegExp(r'(\d+)\s*[-–—]\s*(\d+)'),
+      (m) => '${m[1]} to ${m[2]}',
     );
     return text;
   }
