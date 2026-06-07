@@ -94,6 +94,7 @@ class WhisperSpikeScreen extends StatefulWidget {
 class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
   final _recorder = AudioRecorder();
   _Candidate _selected = _candidates.first;
+  bool _prep = true; // peak-normalize + pad short clips before decode
   bool _running = false;
   int? _recordingIdx; // which phrase is currently being recorded
   final Set<String> _recorded = {}; // phrase ids with a wav on disk
@@ -297,7 +298,8 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
         setState(() => _results.add('${p.id}  (not recorded)'));
         continue;
       }
-      final samples = _wavToFloat32(await wav.readAsBytes());
+      var samples = _wavToFloat32(await wav.readAsBytes());
+      if (_prep) samples = _prepSamples(samples);
       _decode = Completer<List<dynamic>>();
       _tx!.send(['decode', samples]);
       try {
@@ -305,7 +307,7 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
         final text = res[1] as String;
         final ms = res[2] as int;
         await _appendLog(
-            'model=${c.dir} phrase=${p.id} loadMs=$loadMs decodeMs=$ms text="$text"');
+            'model=${c.dir} phrase=${p.id} prep=${_prep ? "on" : "off"} loadMs=$loadMs decodeMs=$ms text="$text"');
         setState(() => _results.add('${p.id}  ${ms}ms  "$text"'));
       } catch (e) {
         await _appendLog('model=${c.dir} phrase=${p.id} DECODE ERROR: $e');
@@ -318,6 +320,27 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
       _running = false;
       _status = '${c.label} done. Pick the next model, or cat the log.';
     });
+  }
+
+  // Standard ASR preprocessing to make quiet/short captures decodable (Moonshine
+  // intermittently returns empty on quiet or very short clips). Peak-normalize
+  // to 0.95 (SNR-preserving gain) and pad with a little leading + trailing
+  // silence to a >=1.5s minimum. This is what a production engine should also do.
+  static Float32List _prepSamples(Float32List s) {
+    var peak = 0.0;
+    for (final v in s) {
+      final a = v.abs();
+      if (a > peak) peak = a;
+    }
+    final gain = peak > 1e-4 ? (0.95 / peak) : 1.0;
+    const lead = 1600; // 0.1s
+    const minLen = 24000; // 1.5s
+    final total = (lead * 2 + s.length) < minLen ? minLen : (lead * 2 + s.length);
+    final out = Float32List(total);
+    for (var i = 0; i < s.length; i++) {
+      out[lead + i] = s[i] * gain;
+    }
+    return out;
   }
 
   static Float32List _wavToFloat32(Uint8List bytes) {
@@ -368,6 +391,14 @@ class _WhisperSpikeScreenState extends State<WhisperSpikeScreen> {
             for (var i = 0; i < _phrases.length; i++) _recordRow(i),
             const Divider(height: 28),
             Text('2) Benchmark', style: Theme.of(context).textTheme.titleMedium),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: const Text('Preprocess: normalize + pad'),
+              subtitle: const Text('boosts quiet/short clips (fixes blanks)'),
+              value: _prep,
+              onChanged: _running ? null : (v) => setState(() => _prep = v),
+            ),
             const SizedBox(height: 8),
             DropdownButton<_Candidate>(
               value: _selected,
