@@ -273,32 +273,37 @@ async def chat(
 
     else:
         # ── First turn: insert new meal ────────────────────────────────────────
-        try:
-            foods = None
-            inferred_meal_type = None
-            normalized_description = None
+        # A symptom check-in that lost its meal reference (e.g. the local meal_id
+        # was cleared) must NEVER fabricate a meal from the user's feelings answer.
+        if body.symptom_followup:
+            logger.info("symptom_followup with no meal_id; skipping meal insert")
+        else:
             try:
-                extracted = ai_extraction.extract_meal(body.message)
-                foods = extracted.get("foods") or None
-                inferred_meal_type = extracted.get("inferred_meal_type")
-                normalized_description = extracted.get("normalized_description")
-            except Exception as extract_err:
-                logger.warning("Meal extraction failed (inserting raw): %s", extract_err)
+                foods = None
+                inferred_meal_type = None
+                normalized_description = None
+                try:
+                    extracted = ai_extraction.extract_meal(body.message)
+                    foods = extracted.get("foods") or None
+                    inferred_meal_type = extracted.get("inferred_meal_type")
+                    normalized_description = extracted.get("normalized_description")
+                except Exception as extract_err:
+                    logger.warning("Meal extraction failed (inserting raw): %s", extract_err)
 
-            row = {
-                "user_id": user["id"],
-                "description": normalized_description or body.message,
-                "meal_type": inferred_meal_type,
-                "foods": foods,
-                "logged_at": (body.logged_at or datetime.now(timezone.utc)).isoformat(),
-                "input_method": "voice",
-            }
-            row = {k: v for k, v in row.items() if v is not None}
-            result = supabase.table("meals").insert(row).execute()
-            meal_id = result.data[0]["id"] if result.data else None
-            logger.info("Meal inserted: %s", result.data)
-        except Exception as e:
-            logger.error("Meal insert failed: %s", e, exc_info=True)
+                row = {
+                    "user_id": user["id"],
+                    "description": normalized_description or body.message,
+                    "meal_type": inferred_meal_type,
+                    "foods": foods,
+                    "logged_at": (body.logged_at or datetime.now(timezone.utc)).isoformat(),
+                    "input_method": "voice",
+                }
+                row = {k: v for k, v in row.items() if v is not None}
+                result = supabase.table("meals").insert(row).execute()
+                meal_id = result.data[0]["id"] if result.data else None
+                logger.info("Meal inserted: %s", result.data)
+            except Exception as e:
+                logger.error("Meal insert failed: %s", e, exc_info=True)
 
     # Build health context from top food signals.
     signal_context = _build_signal_context(user["id"])

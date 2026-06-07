@@ -170,6 +170,25 @@ def test_followup_without_food_does_not_overwrite_meal(harness):
     assert _meal_updates(recorder) == []  # no food -> not a clarification -> untouched
 
 
+def test_symptom_followup_without_meal_id_never_inserts_a_meal(harness):
+    client, recorder, mp = harness
+    # If a check-in arrives with symptom_followup but no meal_id, the first-turn
+    # branch must NOT fabricate a meal from the feelings answer — even if
+    # extract_meal would return food.
+    mp.setattr(
+        chat_module.ai_extraction,
+        "extract_meal",
+        lambda _t: {"foods": [{"name": "salad"}], "normalized_description": "salad"},
+    )
+
+    r = client.post(
+        "/api/chat",
+        json={"message": "I feel fine", "symptom_followup": True},
+    )
+    assert r.status_code == 200
+    assert not any(name == "meals" for (name, _rows) in recorder["insert"])
+
+
 def test_followup_with_food_updates_meal(harness):
     client, recorder, mp = harness
     # A genuine meal clarification (food extracted) still updates the meal.
