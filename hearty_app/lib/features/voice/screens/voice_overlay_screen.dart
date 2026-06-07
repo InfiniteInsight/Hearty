@@ -224,7 +224,10 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           FilledButton.icon(
-            onPressed: () => ref.read(voiceProvider.notifier).setThinking(),
+            // submit() stops the live engine and ships its final transcript;
+            // falling back to the last partial only if the engine is already
+            // closed. (The text-entry field below uses setThinking directly.)
+            onPressed: () => ref.read(voiceProvider.notifier).submit(),
             icon: const Icon(Icons.send),
             label: const Text('Submit'),
           ),
