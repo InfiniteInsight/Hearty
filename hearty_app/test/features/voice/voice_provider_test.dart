@@ -390,4 +390,13 @@ void main() {
           VoiceNotifier.prepareForSpeech('about a 4/10'), 'about a 4 out of 10');
     });
   });
+
+  group('replyIsQuestion', () {
+    test('true only when the reply ends with a question mark', () {
+      expect(VoiceNotifier.replyIsQuestion('How are you feeling?'), isTrue);
+      expect(VoiceNotifier.replyIsQuestion('Logged it.  '), isFalse);
+      expect(VoiceNotifier.replyIsQuestion('Got it, enjoy!'), isFalse);
+      expect(VoiceNotifier.replyIsQuestion('Any discomfort 1 to 10? '), isTrue);
+    });
+  });
 }

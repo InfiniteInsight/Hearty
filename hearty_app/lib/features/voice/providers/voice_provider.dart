@@ -399,6 +399,11 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     return text;
   }
 
+  /// True when Hearty's reply is itself a question (keeps the conversation open
+  /// for one more turn). Exposed for unit testing.
+  @visibleForTesting
+  static bool replyIsQuestion(String reply) => reply.trimRight().endsWith('?');
+
   // Removes emoji codepoints so TTS doesn't read out their names.
   static String _stripEmojis(String text) {
     return text.replaceAll(
@@ -538,8 +543,11 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         conversationStyle: prefs?.conversationStyle ?? 'warm',
       );
       if (!mounted) return;
+      final reply =
+          result.reply.isNotEmpty ? result.reply : 'Got it! How are you feeling?';
       setResponse(
-        result.reply.isNotEmpty ? result.reply : 'Got it! How are you feeling?',
+        reply,
+        askFollowUp: replyIsQuestion(reply),
         mealId: result.mealId,
       );
       if (result.mealId != null) {
@@ -596,7 +604,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       );
       if (!mounted) return;
       final reply = result.reply.isNotEmpty ? result.reply : 'Got it, thanks!';
-      final keepGoing = reply.trimRight().endsWith('?');
+      final keepGoing = replyIsQuestion(reply);
       setResponse(reply, askFollowUp: keepGoing);
       ref.read(syncTriggerProvider).schedule();
     } catch (_) {
