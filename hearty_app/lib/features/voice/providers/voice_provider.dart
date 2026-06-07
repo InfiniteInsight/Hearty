@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,8 @@ import '../../../core/audio/audio_beep_channel.dart';
 import '../../../core/offline/local_voice_queue_dao.dart';
 import '../../../core/stt/stt_engine.dart';
 import '../../../core/stt/on_device_stt_engine.dart';
+import '../../../core/stt/cloud_stt_engine.dart';
+import '../../../core/stt/stt_engine_selector.dart';
 import '../../../core/tts/tts_engine.dart';
 import '../../../core/tts/tts_engine_factory.dart';
 import '../../wake_word/wake_word_channel.dart';
@@ -42,11 +45,17 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     Duration? micHandoffDelay,
     bool autoSubmit = true,
     double autoSubmitSilenceSeconds = 2.5,
+    bool useCloudWhenOnline = true,
+    Future<bool> Function()? isOnline,
   })  : _ref = ref,
         _injectedTts = ttsForTesting,
-        _engineFactory = engineFactory ??
-            (() => OnDeviceSttEngine(silenceSeconds: autoSubmitSilenceSeconds)),
+        // Null in production → _openSession selects cloud/on-device per
+        // connectivity. Tests inject a synchronous factory to bypass selection.
+        _engineFactory = engineFactory,
         _autoSubmit = autoSubmit,
+        _silenceSeconds = autoSubmitSilenceSeconds,
+        _useCloudWhenOnline = useCloudWhenOnline,
+        _isOnline = isOnline ?? _defaultIsOnline,
         _followUpStartDelay =
             followUpStartDelay ?? const Duration(milliseconds: 2500),
         _beep = beepChannelForTesting ?? AudioBeepChannel(),
@@ -64,12 +73,40 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   late final Future<void> _ready;
   bool _askFollowUp = true;
 
-  // STT engine — created per capture session via the factory, torn down on every
-  // exit path. _partialSub forwards live partials into the transcript.
-  final SttEngine Function() _engineFactory;
+  // STT engine — created per capture session, torn down on every exit path.
+  // _partialSub forwards live partials into the transcript. In production
+  // _engineFactory is null and _selectEngine() picks cloud vs on-device per
+  // connectivity + _useCloudWhenOnline; tests inject a synchronous factory.
+  final SttEngine Function()? _engineFactory;
   final bool _autoSubmit;
+  final double _silenceSeconds;
+  final bool _useCloudWhenOnline;
+  final Future<bool> Function() _isOnline;
   SttEngine? _engine;
   StreamSubscription<String>? _partialSub;
+
+  static Future<bool> _defaultIsOnline() async {
+    final r = await Connectivity().checkConnectivity();
+    return r.any((x) => x != ConnectivityResult.none);
+  }
+
+  /// Production engine selection: cloud when online and the setting allows it,
+  /// else the on-device sherpa engine. (Bypassed when a test [engineFactory] is
+  /// injected.) Note: connectivity reporting "online" does not guarantee the
+  /// backend is reachable — the runtime fallback in [submit] covers that.
+  Future<SttEngine> _selectEngine() async {
+    final online = await _isOnline();
+    if (SttEngineSelector.useCloud(
+        online: online, useCloudWhenOnline: _useCloudWhenOnline)) {
+      return CloudSttEngine(
+        silenceSeconds: _silenceSeconds,
+        transcribe: (pcm, sr) => _ref!
+            .read(heartyApiClientProvider)
+            .transcribe(pcm: pcm, sampleRate: sr),
+      );
+    }
+    return OnDeviceSttEngine(silenceSeconds: _silenceSeconds);
+  }
 
   // True while in the post-meal symptom check-in (started by the nudge). Tells
   // the backend this turn is a "how are you feeling?" response about an
@@ -161,7 +198,17 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       return;
     }
 
-    final engine = _engineFactory();
+    // Production selection (async connectivity check) vs injected test factory.
+    final engine =
+        _engineFactory != null ? _engineFactory() : await _selectEngine();
+    // _selectEngine adds another await; the user may have dismissed during the
+    // connectivity check, so re-check before adopting the engine.
+    if (!mounted ||
+        (state.status != VoiceStatus.listening &&
+            state.status != VoiceStatus.awaitingFollowUp)) {
+      await engine.dispose();
+      return;
+    }
     _engine = engine;
     _partialSub = engine.partials.listen((text) {
       // Ignore stray partials that land after we've left listening.

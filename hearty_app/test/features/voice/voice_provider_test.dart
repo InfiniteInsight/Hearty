@@ -216,6 +216,20 @@ void main() {
       expect(container.read(voiceProvider).status, VoiceStatus.thinking);
     });
 
+    test('a partial-less (cloud-style) engine still auto-submits to thinking',
+        () async {
+      // CloudSttEngine emits no partials (batch); the FakeSttEngine models that
+      // when emitPartial is never called. The lifecycle must still complete.
+      final n = c(container);
+      n.startListening();
+      await pump();
+      h.latest!.nextTranscript = 'i had an iq bar';
+      h.latest!.fireAutoSubmit();
+      await pump();
+      expect(container.read(voiceProvider).status, VoiceStatus.thinking);
+      expect(container.read(voiceProvider).transcript, 'i had an iq bar');
+    });
+
     test('dismiss during submit()\'s stop() leaves the turn cancelled (idle)',
         () async {
       final n = c(container);
