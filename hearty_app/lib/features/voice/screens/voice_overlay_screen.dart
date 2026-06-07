@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../models/voice_state.dart';
 import '../providers/voice_provider.dart';
 import '../widgets/prism_waveform.dart';
@@ -17,7 +18,16 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
   final _textController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    // Keep the screen awake for the whole voice session so it doesn't sleep
+    // mid-dictation. Released in dispose().
+    WakelockPlus.enable();
+  }
+
+  @override
   void dispose() {
+    WakelockPlus.disable();
     _textController.dispose();
     // The voice session is over — re-arm the wake-word service mic that
     // _beginStt handed off. This is the single session-end chokepoint covering

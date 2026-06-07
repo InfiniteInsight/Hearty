@@ -42,6 +42,7 @@ dependencies:
   just_audio: ^0.10.4
   sherpa_onnx: ^1.13.2
   path_provider: ^2.1.3
+  wakelock_plus: ^1.2.8 # keep screen awake during a voice session
   # Wake word: openWakeWord via ONNX Runtime (inference runs in Kotlin foreground service,
   # not Dart — no Flutter package needed; Android dependency added in build.gradle)
 
