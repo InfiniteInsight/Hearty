@@ -216,6 +216,21 @@ void main() {
       expect(container.read(voiceProvider).status, VoiceStatus.thinking);
     });
 
+    test('dismiss during submit()\'s stop() leaves the turn cancelled (idle)',
+        () async {
+      final n = c(container);
+      n.startListening();
+      await pump();
+      h.latest!.nextTranscript = 'i had a turkey sandwich';
+      // Auto-submit kicks off submit(); the engine.stop() await is still pending.
+      h.latest!.fireAutoSubmit();
+      // User taps close before stop() resolves.
+      n.dismiss();
+      await pump();
+      // The cancelled turn must NOT be resurrected into thinking.
+      expect(container.read(voiceProvider).status, VoiceStatus.idle);
+    });
+
     test(
       'manual submit() advances to thinking with the final transcript',
       () async {

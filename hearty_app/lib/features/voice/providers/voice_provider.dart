@@ -200,6 +200,15 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     final result = await engine.stop();
     await _closeEngine();
     if (!mounted) return;
+    // engine.stop() can take up to ~2s on device; the user may have dismissed
+    // (→ idle) during that window. dismiss() does not unmount the app-scoped
+    // notifier, so re-check the status before forcing the turn forward — else we
+    // resurrect a cancelled turn into thinking. (Restores the old
+    // _autoSubmitIfPending guard the speech_to_text path had.)
+    if (state.status != VoiceStatus.listening &&
+        state.status != VoiceStatus.awaitingFollowUp) {
+      return;
+    }
     final text = result.transcript.trim();
     if (text.isNotEmpty) setTranscript(text);
     setThinking();
@@ -238,6 +247,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   /// response to the meal that triggered the nudge notification.
   void primeForSymptomFollowUp({String? mealId}) {
     _stopTts();
+    // Tear down any lingering engine from a previous session now, rather than
+    // waiting for the orientation timer to fire _openSession ~2.5s later.
+    unawaited(_closeEngine());
     // This whole session is a symptom check-in on the locked meal.
     _symptomCheckIn = true;
 
