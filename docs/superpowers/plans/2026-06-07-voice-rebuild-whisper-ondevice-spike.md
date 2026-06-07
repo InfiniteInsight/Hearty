@@ -189,14 +189,20 @@ Reuse the exact spike phrases (see `memory/project-voice-stt-engine-research`), 
 
 > Latency columns = p50/p90 of decodeMs **over the 10 s-class phrases P2/P6/P8** (per the gate). Keep per-phrase decodeMs in the raw log so the length-scaling asymmetry (Whisper ≈ constant; Moonshine/Parakeet scale with length) is visible.
 
-| Model | On-disk size | Load (ms) | WER on P1–P8 | Brand/digit cases (P5 P6 P1/P7) | p50 decode 10s (ms) | p90 decode 10s (ms) | Partials? | Notes |
-|---|---|---|---|---|---|---|---|---|
-| Whisper base.en int8 | ~?MB | | | | | | No (batch) | |
-| Whisper small.en int8 | ~?MB | | | | | | No (batch) | |
-| Moonshine base.en int8 | ~?MB | | | | | | No (batch; v2 may stream) | |
-| Parakeet-TDT-0.6b int8 | ~630MB (verify) | | | | | | No (batch) | 6GB device — load/CPU is the risk, not RAM |
-| *ref:* Zipformer 122MB (incumbent) | 122 MB | ~5000 | (from §3: good, fumbles brands) | IQ bar ✗ / digits ✓ | ~real-time | ~real-time | **Yes (live)** | offline, $0, private |
-| *ref:* Cloud Google STT (§3) | n/a | n/a | (from §3: best) | IQ bar ✓ / digits ✓ | network RTT | network RTT | No (batch) | costs $; off-device |
+**RESULTS — filled in on device 2026-06-07 (Pixel 4a, identical in-app-recorded 16 kHz WAVs).** Decode p50/p90 over the 10 s-class phrases P2/P6/P8.
+
+| Model | On-disk size | Load (ms) | Brand/digit cases (P5 P6 P1/P7) | p50 decode 10s (ms) | p90 decode 10s (ms) | Partials? | Verdict |
+|---|---|---|---|---|---|---|---|
+| Whisper base.en int8 | 433M† | 1990 | Aloha/protein ✓ · **IQ bar ✗ ("ITU bar")** · "a 2" ✓ · "1 to 10" ✓ · **bloating ✗ ("boring")** | ~1995 | ~2763 | No (batch) | **FAIL accuracy** — brand + word miss (fast enough) |
+| Whisper small.en int8 | 1.2G† | 5985 | IQ bar ✓ · **"a 2" ✗ ("a tube")** | **5304** | **9235** | No (batch) | **FAIL latency** (5–9 s) — nails brand but too slow + digit miss |
+| Moonshine base int8 | 275M | 4124 | IQ bar ✓ · **bloating ✗ ("Boring")** · **P7 empty ✗** | 956 | 1577 | No (batch; v2 may stream) | **FAIL accuracy** — fastest, but word miss + dropped P7 |
+| **Parakeet-TDT-0.6b int8** | 631M | **20584 ⚠** | **all correct** — IQ bar ✓ · Aloha/protein ✓ · "a 2"→"two" ✓ · "1 to 10"→"one to ten" ✓ · bloating ✓ | **1161** | **2194** | No (batch) | **PASS BOTH GATES** ✓ — high accuracy + ~1–2 s decode; ⚠ 20.6 s cold load (amortizable: load once, keep warm) |
+| *ref:* Zipformer 122MB (incumbent) | 122 MB | ~5000 | IQ bar ✗ ("I KEU BAR") / digits ✓ | ~real-time | ~real-time | **Yes (live)** | offline, $0, private; fumbles brands |
+| *ref:* Cloud Google STT (§3) | n/a | n/a | IQ bar ✓ / digits ✓ | network RTT | network RTT | No (batch) | best accuracy; costs $; off-device |
+
+† Whisper dirs include unused fp32 copies; the int8 working set is smaller.
+
+**Outcome:** Only **Parakeet-TDT-0.6b** clears both gates — and it does so decisively, nailing the brand-gating "IQ bar" (which the incumbent Zipformer fumbles and which justified cloud) at ~1–2 s decode. This **refutes the pre-spike "keep the hybrid" hypothesis.** Whisper behaved exactly as predicted (base fast/inaccurate on brands; small accurate-on-brand but 5–9 s). Moonshine was fastest but missed a word and dropped P7. The sole caveat on Parakeet is the **20.6 s cold model load** — a one-time warm-up, amortizable by loading once at app start and keeping the recognizer warm (as the Zipformer already is); per-utterance decode is fast. Tradeoff carried forward: batch ⇒ **no live partials** (same as cloud).
 
 ---
 
@@ -212,6 +218,8 @@ Reuse the exact spike phrases (see `memory/project-voice-stt-engine-research`), 
   → Best outcome — high accuracy *and* a fast decoder *and* (potentially) restorable partials via a streaming transducer. Write the production plan as above; this is the strongest case for deleting cloud. (Flag: only if it loads/runs acceptably on the 730G — if it loads too slowly or is too heavy under app+wake-word pressure, it's out.)
 - **Nothing beats the 122 MB Zipformer + cloud combo (the predicted outcome):**
   → **Keep the current setup unchanged.** Record the benchmark in the spec as the evidence that closes the §14 open question; do not pursue an on-device Whisper engine. Plan C (cloud) stays.
+
+**DECISION (2026-06-07): the "transducer clears both gates" branch fired.** Parakeet-TDT-0.6b int8 passed accuracy (all brand/digit cases, incl. "IQ bar") and latency (p50 1.2 s / p90 2.2 s decode). → **Write a production plan** to add a `ParakeetSttEngine` (batch, `CloudSttEngine` shape, empty `partials`) behind `SttEngine`, **loaded once at app start and kept warm** to hide the 20.6 s cold load, and **evaluate deleting Plan C's cloud path** (`/api/transcribe` + `CloudSttEngine`). Open items for that plan: (a) keep-warm/preload strategy + first-run model download (631 MB) since it's no longer optional/offline-only; (b) confirm the no-live-partials UX regression is acceptable (it matches cloud, already accepted online); (c) whether on-device-only also lets the **streaming Zipformer** be retired or kept as the instant-partials path. Cloud (Plan C) stays until that plan ships and is device-verified.
 
 ---
 
