@@ -9,13 +9,15 @@ class FakeSttEngine implements SttEngine {
   bool started = false;
   int startCount = 0;
   int disposeCount = 0;
+  bool throwOnStart = false; // simulate model-missing / mic-denied
   void Function()? autoSubmit;
 
   @override
   Future<void> start({void Function()? onAutoSubmit}) async {
-    started = true;
     startCount++;
     autoSubmit = onAutoSubmit;
+    if (throwOnStart) throw StateError('fake engine start failed');
+    started = true;
   }
 
   /// Test helper: push a live partial.

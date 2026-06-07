@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:speech_to_text/speech_to_text.dart';
 import 'package:hearty_app/features/voice/models/voice_state.dart';
 import 'package:hearty_app/features/voice/providers/voice_provider.dart';
 import 'package:hearty_app/features/voice/screens/voice_overlay_screen.dart';
 import 'package:hearty_app/features/voice/widgets/prism_waveform.dart';
 import 'fake_tts_engine.dart';
+import '../../core/stt/fake_stt_engine.dart';
 
 void main() {
   group('VoiceOverlayScreen', () {
@@ -156,18 +156,15 @@ void main() {
   });
 }
 
-class _FakeStt extends Fake implements SpeechToText {
-  @override
-  bool get isListening => false;
-  @override
-  bool get isNotListening => true;
-  @override
-  dynamic noSuchMethod(Invocation invocation) => Future.value();
-}
-
 class _StubVoiceNotifier extends VoiceNotifier {
   _StubVoiceNotifier(VoiceState initial)
-      : super(sttForTesting: _FakeStt(), ttsForTesting: FakeTtsEngine()) {
+      : super(
+          ttsForTesting: FakeTtsEngine(),
+          engineFactory: FakeSttEngine.new,
+          releaseWakeWordMic: _noop,
+        ) {
     state = initial;
   }
+
+  static Future<void> _noop() async {}
 }

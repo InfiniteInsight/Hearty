@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:speech_to_text/speech_to_text.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/api/hearty_api_client.dart';
 import '../../../core/api/offline_exception.dart';
@@ -12,6 +11,8 @@ import '../../../core/api/providers/preferences_provider.dart';
 import '../../../core/notifications/notification_service.dart';
 import '../../../core/audio/audio_beep_channel.dart';
 import '../../../core/offline/local_voice_queue_dao.dart';
+import '../../../core/stt/stt_engine.dart';
+import '../../../core/stt/on_device_stt_engine.dart';
 import '../../../core/tts/tts_engine.dart';
 import '../../../core/tts/tts_engine_factory.dart';
 import '../../wake_word/wake_word_channel.dart';
@@ -23,24 +24,32 @@ final voiceProvider = StateNotifierProvider<VoiceNotifier, VoiceState>((ref) {
   return VoiceNotifier(ref: ref);
 });
 
+/// Drives the voice lifecycle on top of an [SttEngine] (on-device sherpa
+/// streaming by default; injectable for tests). The engine streams partials and
+/// signals turn-end via its own trailing-silence policy ([SttEngine.start]'s
+/// `onAutoSubmit`); we own only the state machine: listening → submit → thinking
+/// → responding → awaitingFollowUp, with one ding per session, half-duplex TTS
+/// gating (the engine is only ever opened after TTS completion — see the call
+/// sites of [_openSession]), and the wake-word mic handoff.
 class VoiceNotifier extends StateNotifier<VoiceState> {
   VoiceNotifier({
     Ref? ref,
-    SpeechToText? sttForTesting,
     TtsEngine? ttsForTesting,
+    SttEngine Function()? engineFactory,
     Duration? followUpStartDelay,
     AudioBeepChannel? beepChannelForTesting,
-    Duration? beepSuppressDelay,
     Future<void> Function()? releaseWakeWordMic,
     Duration? micHandoffDelay,
+    bool autoSubmit = true,
+    double autoSubmitSilenceSeconds = 2.5,
   })  : _ref = ref,
-        _stt = sttForTesting ?? SpeechToText(),
         _injectedTts = ttsForTesting,
+        _engineFactory = engineFactory ??
+            (() => OnDeviceSttEngine(silenceSeconds: autoSubmitSilenceSeconds)),
+        _autoSubmit = autoSubmit,
         _followUpStartDelay =
             followUpStartDelay ?? const Duration(milliseconds: 2500),
         _beep = beepChannelForTesting ?? AudioBeepChannel(),
-        _beepSuppressDelay =
-            beepSuppressDelay ?? const Duration(milliseconds: 800),
         _releaseWakeWordMic =
             releaseWakeWordMic ?? WakeWordChannel.stopListening,
         _micHandoffDelay =
@@ -50,59 +59,52 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   final Ref? _ref;
-  final SpeechToText _stt;
   final TtsEngine? _injectedTts;
   late TtsEngine _tts;
   late final Future<void> _ready;
-  bool _sttInitialized = false;
   bool _askFollowUp = true;
-  // Follow-up STT state — Android fires notListening after its own short
-  // silence timeout, ignoring pauseFor. We restart up to _maxFollowUpRestarts
-  // times and accumulate the transcript across sessions — but only once the
-  // user has actually started speaking (see _onSttStatus), so pre-speech
-  // silence does not churn through restarts (each restart plays a beep).
-  bool _inFollowUpListen = false;
+
+  // STT engine — created per capture session via the factory, torn down on every
+  // exit path. _partialSub forwards live partials into the transcript.
+  final SttEngine Function() _engineFactory;
+  final bool _autoSubmit;
+  SttEngine? _engine;
+  StreamSubscription<String>? _partialSub;
+
   // True while in the post-meal symptom check-in (started by the nudge). Tells
   // the backend this turn is a "how are you feeling?" response about an
   // already-logged meal so it never edits the meal (see symptom_followup).
   bool _symptomCheckIn = false;
-  int _followUpRestarts = 0;
-  String _followUpAccumulated = '';
-  static const int _maxFollowUpRestarts = 3;
-  bool _useDictation = true; // try dictation mode first; falls back on error
+
   // Orientation delay before the follow-up mic opens, so the user can read the
   // question first. Cancelable via dismiss(); injectable for tests.
   final Duration _followUpStartDelay;
   Timer? _followUpStartTimer;
-  // Beep suppression: let the first follow-up beep play, then mute the
-  // recognizer beep streams so the restart sessions are silent. Released via
-  // _releaseBeepSuppression() on every exit path so it can never leak.
+
+  // One short "I'm listening" tone per capture session (sherpa on-device has no
+  // system start beep of its own, unlike the old SpeechRecognizer).
   final AudioBeepChannel _beep;
-  final Duration _beepSuppressDelay;
-  Timer? _beepSuppressTimer;
-  bool _beepSuppressed = false;
+
   // The always-on wake-word foreground service holds the microphone (an
   // AudioRecord on VOICE_RECOGNITION). On Android the existing capture client
-  // wins, so SpeechRecognizer is starved and hears nothing unless we hand the
-  // mic off first — exactly what the native onWakeWordDetected() does for the
-  // wake-word path. We mirror that for every STT session and re-arm the service
-  // when the voice overlay closes (VoiceOverlayScreen.dispose). _micHandoffDelay
-  // gives the audio HAL a beat to release the input before SpeechRecognizer
-  // grabs it. Injectable so unit tests stay synchronous and timer-free.
+  // wins, so a new mic stream is starved unless we hand the mic off first —
+  // exactly what the native onWakeWordDetected() does for the wake-word path. We
+  // mirror that for every capture session and re-arm the service when the voice
+  // overlay closes (VoiceOverlayScreen.dispose). _micHandoffDelay gives the
+  // audio HAL a beat to release the input before we grab it. Injectable so unit
+  // tests stay synchronous and timer-free.
   final Future<void> Function() _releaseWakeWordMic;
   final Duration _micHandoffDelay;
-  // Once the wake-word mic is handed off for a session it stays released until
-  // the overlay closes (re-armed in VoiceOverlayScreen.dispose). So we only pay
-  // the settle delay on the first listen of a session — restarts re-acquire
-  // immediately, avoiding a dead window mid-speech. Reset at each session start.
   bool _wakeWordMicReleased = false;
-  // Live mic amplitude (0..1) for the prism visualiser, updated from the STT
-  // recognizer's onSoundLevelChange while listening; reset to 0 when listening
-  // stops so the beam settles. The painter's gate + smoothing shape the look.
+
+  // Live mic amplitude (0..1) for the prism visualiser. The on-device engine
+  // does not yet surface RMS, so this stays at 0 for now (flat beam) — wiring an
+  // amplitude stream off the engine is a follow-up. Kept so the overlay and the
+  // pure normalize helper keep compiling/working.
   final ValueNotifier<double> soundLevel = ValueNotifier<double>(0.0);
 
-  /// Maps the recognizer's rms-dB-ish sound level (~-2 silence .. ~10 loud,
-  /// per Android's onRmsChanged range) to a 0..1 amplitude for the visualiser.
+  /// Maps a recognizer's rms-dB-ish sound level (~-2 silence .. ~10 loud) to a
+  /// 0..1 amplitude for the visualiser.
   static double normalizeSoundLevel(double raw) =>
       ((raw + 2.0) / 12.0).clamp(0.0, 1.0);
 
@@ -118,126 +120,126 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     });
   }
 
-  Future<bool> _ensureSttInitialized() async {
-    if (!_sttInitialized) {
-      _sttInitialized = await _stt.initialize(
-        onStatus: _onSttStatus,
-        onError: _onSttError,
-      );
-    }
-    return _sttInitialized;
-  }
+  // ---------------------------------------------------------------------------
+  // Capture session lifecycle
+  // ---------------------------------------------------------------------------
 
-  void _onSttError(dynamic error) {
-    if (_inFollowUpListen && _useDictation) {
-      // Dictation mode failed (no network or unsupported) — retry in command mode.
-      _useDictation = false;
-      _inFollowUpListen = false;
-      Future.delayed(const Duration(milliseconds: 200), () {
-        if (mounted && state.status == VoiceStatus.awaitingFollowUp) {
-          _beginStt(isFollowUp: true);
-        }
-      });
-    } else {
-      _releaseBeepSuppression();
-      _autoSubmitIfPending();
-    }
-  }
+  /// Opens a single capture session. CRITICAL: every caller of this is reached
+  /// only after any TTS has completed (startListening = no TTS; setAwaitingFollowUp
+  /// = TTS-completion handler; primeForSymptomFollowUp/resumeFollowUpListening =
+  /// no TTS), which is what keeps the lifecycle half-duplex. Do not call it from
+  /// a path that can run while Hearty is speaking.
+  Future<void> _openSession({required bool isFollowUp}) async {
+    await _closeEngine();
+    _wakeWordMicReleased = false;
+    // Preserve the listening vs awaitingFollowUp distinction: the overlay routes
+    // the submit on the pre-thinking status (awaitingFollowUp → sendFollowUpToApi
+    // with history/mealId/symptom_followup; else → sendToChat). Blanketing this
+    // to listening would drop follow-up context.
+    state = state.copyWith(
+      status: isFollowUp ? VoiceStatus.awaitingFollowUp : VoiceStatus.listening,
+      micPhase: MicPhase.preparing,
+      transcript: '',
+    );
 
-  void _onSttStatus(String status) {
-    if (status == SpeechToText.notListeningStatus || status == SpeechToText.doneStatus) {
-      if (_inFollowUpListen &&
-          state.transcript.isNotEmpty &&
-          _followUpRestarts < _maxFollowUpRestarts &&
-          mounted &&
-          state.status == VoiceStatus.awaitingFollowUp) {
-        // The user started talking and Android ended the session early —
-        // restart so they can finish. Accumulate what was captured so far.
-        _followUpAccumulated = state.transcript;
-        _followUpRestarts++;
-        _beginStt(isFollowUp: true);
-        return;
+    // Hand the mic off from the wake-word service first, or the new capture
+    // stream is starved. Swallow failures: if wake word is off the service
+    // isn't running and the channel throws.
+    try {
+      await _releaseWakeWordMic();
+    } catch (_) {/* wake word off / service not running */}
+    if (!_wakeWordMicReleased) {
+      if (_micHandoffDelay > Duration.zero) {
+        await Future<void>.delayed(_micHandoffDelay);
       }
-      if (_inFollowUpListen &&
-          state.transcript.isEmpty &&
-          mounted &&
+      _wakeWordMicReleased = true;
+    }
+    // The user may have dismissed (→ idle) or submitted during the handoff.
+    if (!mounted ||
+        (state.status != VoiceStatus.listening &&
+            state.status != VoiceStatus.awaitingFollowUp)) {
+      return;
+    }
+
+    final engine = _engineFactory();
+    _engine = engine;
+    _partialSub = engine.partials.listen((text) {
+      // Ignore stray partials that land after we've left listening.
+      if (state.status == VoiceStatus.listening ||
           state.status == VoiceStatus.awaitingFollowUp) {
-        // Nothing captured yet — don't churn through restarts (each restart
-        // beeps). Go idle and let the user tap to talk when ready.
-        _pauseFollowUpMic();
-        return;
+        setTranscript(text);
       }
-      // Android frequently fires notListening/done a beat BEFORE the final
-      // recognition result lands. Submitting immediately ships a truncated
-      // transcript (e.g. "I had" instead of "I had an Oreo"). Defer the
-      // auto-submit so the finalResult can arrive first — finalResult calls
-      // setThinking, which moves us out of listening and no-ops this fallback.
-      Future.delayed(const Duration(milliseconds: 700), () {
-        _autoSubmitIfPending();
-      });
+    });
+
+    try {
+      await engine.start(onAutoSubmit: _autoSubmit ? _onAutoSubmit : null);
+      if (!mounted) return;
+      _beep.ding(); // exactly one ding, once capture is actually live
+      state = state.copyWith(micPhase: MicPhase.listening);
+    } catch (_) {
+      // Model missing, mic denied, etc. — drop to manual (tap-to-talk + text).
+      await _closeEngine();
+      _pauseForManual();
     }
   }
 
-  void _pauseFollowUpMic() {
-    _releaseBeepSuppression();
-    _inFollowUpListen = false;
+  // Bridges the engine's `void Function()?` auto-submit callback to async submit.
+  void _onAutoSubmit() {
+    submit();
+  }
+
+  /// Stop capturing, ship the (final) transcript, and advance to thinking. Wired
+  /// to the engine's auto-submit and to the overlay's manual Submit. Safe to call
+  /// when no engine is open (text-entry path) — it just advances.
+  Future<void> submit() async {
+    final engine = _engine;
+    if (engine == null) {
+      setThinking();
+      return;
+    }
+    final result = await engine.stop();
+    await _closeEngine();
+    if (!mounted) return;
+    final text = result.transcript.trim();
+    if (text.isNotEmpty) setTranscript(text);
+    setThinking();
+  }
+
+  void _pauseForManual() {
     soundLevel.value = 0.0;
     if (mounted) state = state.copyWith(micPhase: MicPhase.paused);
   }
 
-  void _releaseBeepSuppression() {
-    _beepSuppressTimer?.cancel();
-    if (_beepSuppressed) {
-      _beep.restore();
-      _beepSuppressed = false;
-    }
+  Future<void> _closeEngine() async {
+    final sub = _partialSub;
+    _partialSub = null;
+    final e = _engine;
+    _engine = null;
+    await sub?.cancel();
+    await e?.dispose();
   }
 
-  /// Re-opens one follow-up listen session — wired to the overlay's
-  /// "Tap to talk" button after the mic went idle on pre-speech silence.
+  /// Re-opens one follow-up capture session — wired to the overlay's
+  /// "Tap to talk" button after the mic dropped to manual.
   void resumeFollowUpListening() {
     if (state.micPhase != MicPhase.paused) return;
-    _beginStt(isFollowUp: true);
-  }
-
-  void _autoSubmitIfPending() {
-    if (!mounted) return;
-    final s = state;
-    if (s.transcript.isNotEmpty &&
-        (s.status == VoiceStatus.listening || s.status == VoiceStatus.awaitingFollowUp)) {
-      setThinking();
-    }
+    _openSession(isFollowUp: true);
   }
 
   void startListening() {
-    // Release any lingering follow-up beep suppression when a fresh session
-    // starts, so the "released on every exit" invariant holds unconditionally.
-    _releaseBeepSuppression();
     // A fresh manual/wake-word session is a normal meal log, not a check-in.
     _symptomCheckIn = false;
-    _wakeWordMicReleased = false; // new session — wake-word mic is armed again
     state = const VoiceState(status: VoiceStatus.listening);
-    _beginStt();
+    _openSession(isFollowUp: false);
   }
 
-  /// Opens the overlay in follow-up mode with Hearty's symptom question
-  /// already showing, mic active, no TTS. [mealId] links the response to the
-  /// meal that triggered the nudge notification.
+  /// Opens the overlay in follow-up mode with Hearty's symptom question already
+  /// showing, mic active after an orientation beat, no TTS. [mealId] links the
+  /// response to the meal that triggered the nudge notification.
   void primeForSymptomFollowUp({String? mealId}) {
-    // Stop any in-progress audio from a previous session. Calling
-    // _stt.listen() while already listening silently fails on Android.
-    if (_stt.isListening) _stt.stop();
     _stopTts();
-
-    // Reset follow-up STT accumulators. If a previous session hit the
-    // max-restart limit, the counter would stay at 3 and prevent retries.
-    _inFollowUpListen = false;
-    _followUpRestarts = 0;
-    _followUpAccumulated = '';
-    _useDictation = true;
     // This whole session is a symptom check-in on the locked meal.
     _symptomCheckIn = true;
-    _wakeWordMicReleased = false; // new session — wake-word mic is armed again
 
     const question =
         'How are you feeling after your last meal? Let me know about any discomfort — you can rate it 1–10, or just say you\'re feeling good.';
@@ -251,98 +253,13 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       ],
     );
 
-    // Wait a beat so the user can orient before the mic opens — otherwise
-    // Android times out on the orientation silence and the restart loop
-    // plays a storm of beeps.
+    // Wait a beat so the user can orient before the mic opens.
     _followUpStartTimer?.cancel();
     _followUpStartTimer = Timer(_followUpStartDelay, () {
       if (mounted && state.status == VoiceStatus.awaitingFollowUp) {
-        _beginStt(isFollowUp: true);
+        _openSession(isFollowUp: true);
       }
     });
-  }
-
-  Future<void> _beginStt({bool isFollowUp = false}) async {
-    _inFollowUpListen = isFollowUp;
-    if (!await _ensureSttInitialized()) {
-      return;
-    }
-    if (isFollowUp && _followUpRestarts == 0) {
-      // Let this first session's beep play, then mute the candidate streams so
-      // the restart sessions' beeps are silenced. Released on any exit.
-      _beepSuppressTimer?.cancel();
-      _beepSuppressTimer = Timer(_beepSuppressDelay, () {
-        if (mounted && state.status == VoiceStatus.awaitingFollowUp) {
-          _beep.suppress();
-          _beepSuppressed = true;
-        }
-      });
-    }
-    final mode = isFollowUp && _useDictation
-        ? ListenMode.dictation
-        : ListenMode.confirmation;
-    // Hand the mic off from the wake-word service before listening, or
-    // SpeechRecognizer is starved (see _releaseWakeWordMic). Swallow failures:
-    // if wake word is disabled the service isn't running and the channel throws.
-    try {
-      await _releaseWakeWordMic();
-    } catch (_) {/* wake word off / service not running */}
-    // Only wait for the audio HAL to free the input on the first listen of a
-    // session; on restarts the mic is already ours, so re-acquire immediately.
-    if (!_wakeWordMicReleased) {
-      if (_micHandoffDelay > Duration.zero) {
-        await Future<void>.delayed(_micHandoffDelay);
-      }
-      _wakeWordMicReleased = true;
-    }
-    if (!mounted) return;
-    // Flip the UI to "listening" only now that STT is actually about to capture —
-    // showing the waveform during the handoff above loses the user's first words.
-    if (isFollowUp) {
-      state = state.copyWith(micPhase: MicPhase.listening);
-    }
-    await _stt.listen(
-      onResult: (result) {
-        if (result.recognizedWords.isNotEmpty) {
-          final words = result.recognizedWords;
-          // When Android hands the restarted session buffered audio, `words`
-          // can be a superset of `_followUpAccumulated`. Detect that and use
-          // `words` directly so the transcript is not duplicated.
-          final combined = _followUpAccumulated.isNotEmpty
-              ? (words.startsWith(_followUpAccumulated.trim())
-                  ? words
-                  : '$_followUpAccumulated $words')
-              : words;
-          setTranscript(combined);
-        }
-        if (result.finalResult) {
-          if (_inFollowUpListen &&
-              state.transcript.isNotEmpty &&
-              _followUpRestarts < _maxFollowUpRestarts) {
-            // Android fired finalResult early — save what we have and restart.
-            _followUpAccumulated = state.transcript;
-            _followUpRestarts++;
-            _inFollowUpListen = false;
-            Future.delayed(const Duration(milliseconds: 200), () {
-              if (mounted && state.status == VoiceStatus.awaitingFollowUp) {
-                _beginStt(isFollowUp: true);
-              }
-            });
-          } else if (_inFollowUpListen && state.transcript.isEmpty) {
-            // finalResult with nothing captured — go idle (tap-to-talk).
-            _pauseFollowUpMic();
-          } else {
-            setThinking();
-          }
-        }
-      },
-      onSoundLevelChange: (level) =>
-          soundLevel.value = normalizeSoundLevel(level),
-      listenFor: const Duration(seconds: 60),
-      pauseFor: const Duration(seconds: 8),
-      localeId: 'en-US',
-      listenOptions: SpeechListenOptions(listenMode: mode),
-    );
   }
 
   void setTranscript(String text) {
@@ -350,12 +267,8 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   void setThinking() {
-    _releaseBeepSuppression();
-    _inFollowUpListen = false;
-    _followUpRestarts = 0;
-    _followUpAccumulated = '';
-    _useDictation = true;
-    if (_stt.isListening) _stt.stop();
+    _followUpStartTimer?.cancel();
+    unawaited(_closeEngine());
     soundLevel.value = 0.0;
     state = state.copyWith(status: VoiceStatus.thinking);
   }
@@ -378,7 +291,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   void _stopTts() {
-    _ready.then((_) { _tts.stop(); });
+    _ready.then((_) {
+      _tts.stop();
+    });
   }
 
   /// Normalizes text for natural TTS. Exposed for unit testing.
@@ -432,13 +347,15 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     if (!mounted) return;
     // Re-entry guard: arming a follow-up should happen once per turn. If we're
     // already in a follow-up turn, ignore duplicate TTS-completion callbacks so
-    // they can't re-arm the mic in a loop (defense-in-depth behind the
+    // they can't re-open the mic in a loop (defense-in-depth behind the
     // edge-detected completion in NeuralTtsEngine).
     if (state.status == VoiceStatus.awaitingFollowUp) return;
     final updatedHistory = [
       ...state.history,
-      if (state.transcript.isNotEmpty) {'role': 'user', 'content': state.transcript},
-      if (state.response.isNotEmpty) {'role': 'assistant', 'content': state.response},
+      if (state.transcript.isNotEmpty)
+        {'role': 'user', 'content': state.transcript},
+      if (state.response.isNotEmpty)
+        {'role': 'assistant', 'content': state.response},
     ];
     state = state.copyWith(
       status: VoiceStatus.awaitingFollowUp,
@@ -446,26 +363,12 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       transcript: '',
       micPhase: MicPhase.preparing,
     );
-    _beginFollowUpStt();
-  }
-
-  Future<void> _beginFollowUpStt() async {
-    _followUpRestarts = 0;
-    _followUpAccumulated = '';
-    _useDictation = true;
-    // Cancel any lingering Android SpeechRecognizer session from the first turn
-    // and give it time to fully tear down before starting a new listen().
-    if (_stt.isListening) await _stt.cancel();
-    await Future.delayed(const Duration(milliseconds: 350));
-    if (mounted && state.status == VoiceStatus.awaitingFollowUp) {
-      await _beginStt(isFollowUp: true);
-    }
+    _openSession(isFollowUp: true);
   }
 
   void dismiss() {
-    _releaseBeepSuppression();
     _followUpStartTimer?.cancel();
-    if (_stt.isListening) _stt.stop();
+    unawaited(_closeEngine());
     _stopTts();
     soundLevel.value = 0.0;
     state = const VoiceState();
@@ -524,7 +427,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     if (transcript.isEmpty) return;
 
     if (_isOffTopic(transcript)) {
-      setResponse("That's outside what I track. I focus on food, symptoms, and wellbeing.", askFollowUp: false);
+      setResponse(
+          "That's outside what I track. I focus on food, symptoms, and wellbeing.",
+          askFollowUp: false);
       return;
     }
 
@@ -543,8 +448,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         conversationStyle: prefs?.conversationStyle ?? 'warm',
       );
       if (!mounted) return;
-      final reply =
-          result.reply.isNotEmpty ? result.reply : 'Got it! How are you feeling?';
+      final reply = result.reply.isNotEmpty
+          ? result.reply
+          : 'Got it! How are you feeling?';
       setResponse(
         reply,
         askFollowUp: replyIsQuestion(reply),
@@ -555,7 +461,8 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         final sharedPrefs = await SharedPreferences.getInstance();
         await sharedPrefs.setString('hearty_last_meal_id', result.mealId!);
         if (prefs != null && prefs.postMealNudgeEnabled) {
-          await NotificationService.scheduleFollowUpNotification(prefs.nudgeDelayMinutes);
+          await NotificationService.scheduleFollowUpNotification(
+              prefs.nudgeDelayMinutes);
         }
       }
       ref.read(syncTriggerProvider).schedule();
@@ -599,7 +506,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         message: transcript,
         mealId: state.pendingMealId,
         history: state.history.isEmpty ? null : state.history,
-        conversationStyle: ref.read(preferencesProvider).valueOrNull?.conversationStyle ?? 'warm',
+        conversationStyle:
+            ref.read(preferencesProvider).valueOrNull?.conversationStyle ??
+                'warm',
         symptomFollowUp: _symptomCheckIn,
       );
       if (!mounted) return;
@@ -620,10 +529,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
   @override
   void dispose() {
-    _releaseBeepSuppression();
     _followUpStartTimer?.cancel();
+    unawaited(_closeEngine());
     soundLevel.dispose();
-    _stt.stop();
     _ready.then((_) => _tts.dispose());
     super.dispose();
   }

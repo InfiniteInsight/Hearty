@@ -1,74 +1,70 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:speech_to_text/speech_to_text.dart';
 import 'package:hearty_app/features/voice/models/voice_state.dart';
 import 'package:hearty_app/features/voice/providers/voice_provider.dart';
 import 'package:hearty_app/core/audio/audio_beep_channel.dart';
+import 'package:hearty_app/core/stt/stt_engine.dart';
 import 'fake_tts_engine.dart';
+import '../../core/stt/fake_stt_engine.dart';
 
 class FakeBeepChannel implements AudioBeepChannel {
   int suppressCount = 0;
   int restoreCount = 0;
+  int dingCount = 0;
   @override
   Future<void> suppress() async => suppressCount++;
   @override
   Future<void> restore() async => restoreCount++;
+  @override
+  Future<void> ding() async => dingCount++;
 }
 
-// Fake SpeechToText for testing
-class FakeSpeechToText extends Fake implements SpeechToText {
-  bool _isListening = false;
-  int listenCount = 0;
-  void Function(String)? statusCallback;
-
-  @override
-  bool get isListening => _isListening;
-
-  @override
-  bool get isNotListening => !_isListening;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) {
-    if (invocation.memberName == #initialize) {
-      statusCallback =
-          invocation.namedArguments[#onStatus] as void Function(String)?;
-      return Future<bool>.value(true);
-    }
-    if (invocation.memberName == #listen) {
-      listenCount++;
-      _isListening = true;
-      return Future.value();
-    }
-    if (invocation.memberName == #stop) {
-      _isListening = false;
-      return Future.value();
-    }
-    if (invocation.memberName == #cancel) {
-      _isListening = false;
-      return Future.value();
-    }
-    return super.noSuchMethod(invocation);
+/// Hands out a fresh [FakeSttEngine] per capture session (the notifier opens a
+/// new engine each session) while tracking the latest one and the total count.
+class EngineHarness {
+  FakeSttEngine? latest;
+  int creations = 0;
+  bool nextThrowOnStart = false;
+  SttEngine create() {
+    final e = FakeSttEngine()..throwOnStart = nextThrowOnStart;
+    latest = e;
+    creations++;
+    return e;
   }
 }
 
+/// Drains queued microtasks/zero-timers so the async [_openSession] chain
+/// (close → mic handoff → engine.start) settles.
+Future<void> pump([int times = 6]) async {
+  for (var i = 0; i < times; i++) {
+    await Future<void>.delayed(Duration.zero);
+  }
+}
 
 void main() {
   group('VoiceNotifier state transitions', () {
+    late EngineHarness h;
+    late FakeTtsEngine tts;
+    late FakeBeepChannel beep;
     late ProviderContainer container;
-    late FakeSpeechToText fakeStt;
-    late FakeTtsEngine fakeTts;
 
     setUp(() {
-      fakeStt = FakeSpeechToText();
-      fakeTts = FakeTtsEngine();
+      h = EngineHarness();
+      tts = FakeTtsEngine(fireCompletionOnSpeak: false);
+      beep = FakeBeepChannel();
       container = ProviderContainer(
         overrides: [
-          voiceProvider.overrideWith((ref) => VoiceNotifier(
-                sttForTesting: fakeStt,
-                ttsForTesting: fakeTts,
-                releaseWakeWordMic: () async {},
-                micHandoffDelay: Duration.zero,
-              )),
+          voiceProvider.overrideWith(
+            (ref) => VoiceNotifier(
+              ref: ref,
+              ttsForTesting: tts,
+              engineFactory: h.create,
+              beepChannelForTesting: beep,
+              releaseWakeWordMic: () async {},
+              micHandoffDelay: Duration.zero,
+              followUpStartDelay: Duration.zero,
+            ),
+          ),
         ],
       );
     });
@@ -100,9 +96,14 @@ void main() {
 
     test('setResponse transitions to responding with response text', () {
       container.read(voiceProvider.notifier).setThinking();
-      container.read(voiceProvider.notifier).setResponse('Logged! How are you feeling?');
+      container
+          .read(voiceProvider.notifier)
+          .setResponse('Logged! How are you feeling?');
       expect(container.read(voiceProvider).status, VoiceStatus.responding);
-      expect(container.read(voiceProvider).response, 'Logged! How are you feeling?');
+      expect(
+        container.read(voiceProvider).response,
+        'Logged! How are you feeling?',
+      );
     });
 
     test('dismiss resets to idle', () {
@@ -123,239 +124,18 @@ void main() {
 
     test('copyWith updates micPhase', () {
       const s = VoiceState();
-      expect(s.copyWith(micPhase: MicPhase.listening).micPhase, MicPhase.listening);
+      expect(
+        s.copyWith(micPhase: MicPhase.listening).micPhase,
+        MicPhase.listening,
+      );
       // unspecified copyWith preserves existing value
-      expect(s.copyWith(micPhase: MicPhase.paused).copyWith(transcript: 'x').micPhase,
-          MicPhase.paused);
-    });
-
-    test('primeForSymptomFollowUp does not open mic synchronously; opens after delay', () async {
-      final notifier = VoiceNotifier(
-        sttForTesting: fakeStt,
-        ttsForTesting: fakeTts,
-        releaseWakeWordMic: () async {},
-        micHandoffDelay: Duration.zero,
-        followUpStartDelay: Duration.zero,
+      expect(
+        s
+            .copyWith(micPhase: MicPhase.paused)
+            .copyWith(transcript: 'x')
+            .micPhase,
+        MicPhase.paused,
       );
-      notifier.primeForSymptomFollowUp(mealId: 'm1');
-      // Mic not opened yet; we are in the orientation phase.
-      expect(fakeStt.listenCount, 0);
-      expect(notifier.state.micPhase, MicPhase.preparing);
-      expect(notifier.state.status, VoiceStatus.awaitingFollowUp);
-      // Let the zero-delay timer fire.
-      await Future<void>.delayed(Duration.zero);
-      expect(fakeStt.listenCount, 1);
-      expect(notifier.state.micPhase, MicPhase.listening);
-      notifier.dispose();
-    });
-
-    test('dismiss during the orientation delay cancels the mic start', () async {
-      final notifier = VoiceNotifier(
-        sttForTesting: fakeStt,
-        ttsForTesting: fakeTts,
-        releaseWakeWordMic: () async {},
-        micHandoffDelay: Duration.zero,
-        followUpStartDelay: const Duration(seconds: 10),
-      );
-      notifier.primeForSymptomFollowUp(mealId: 'm1');
-      notifier.dismiss();
-      await Future<void>.delayed(Duration.zero);
-      expect(fakeStt.listenCount, 0);
-      expect(notifier.state.status, VoiceStatus.idle);
-      notifier.dispose();
-    });
-
-    test('dispose cancels a pending follow-up start timer', () async {
-      final notifier = VoiceNotifier(
-        sttForTesting: fakeStt,
-        ttsForTesting: fakeTts,
-        releaseWakeWordMic: () async {},
-        micHandoffDelay: Duration.zero,
-        followUpStartDelay: const Duration(seconds: 10),
-      );
-      notifier.primeForSymptomFollowUp(mealId: 'm1');
-      notifier.dispose();
-      await Future<void>.delayed(Duration.zero);
-      expect(fakeStt.listenCount, 0);
-    });
-
-    test('premature notListening with empty transcript does NOT restart; goes paused', () async {
-      final notifier = VoiceNotifier(
-        sttForTesting: fakeStt,
-        ttsForTesting: fakeTts,
-        releaseWakeWordMic: () async {},
-        micHandoffDelay: Duration.zero,
-        followUpStartDelay: Duration.zero,
-      );
-      notifier.primeForSymptomFollowUp(mealId: 'm1');
-      await Future<void>.delayed(Duration.zero); // mic opens (listenCount == 1)
-      expect(fakeStt.listenCount, 1);
-
-      // Android ends the session before the user said anything.
-      fakeStt.statusCallback!(SpeechToText.notListeningStatus);
-      await Future<void>.delayed(Duration.zero);
-
-      expect(fakeStt.listenCount, 1); // no restart
-      expect(notifier.state.micPhase, MicPhase.paused);
-      notifier.dispose();
-    });
-
-    test('premature notListening with non-empty transcript DOES restart', () async {
-      final notifier = VoiceNotifier(
-        sttForTesting: fakeStt,
-        ttsForTesting: fakeTts,
-        releaseWakeWordMic: () async {},
-        micHandoffDelay: Duration.zero,
-        followUpStartDelay: Duration.zero,
-      );
-      notifier.primeForSymptomFollowUp(mealId: 'm1');
-      await Future<void>.delayed(Duration.zero); // listenCount == 1
-      notifier.setTranscript('I feel a bit bloated');
-
-      fakeStt.statusCallback!(SpeechToText.notListeningStatus);
-      await Future<void>.delayed(Duration.zero);
-
-      expect(fakeStt.listenCount, 2); // restarted to let them finish
-      notifier.dispose();
-    });
-
-    test('resumeFollowUpListening opens a session and sets listening', () async {
-      final notifier = VoiceNotifier(
-        sttForTesting: fakeStt,
-        ttsForTesting: fakeTts,
-        releaseWakeWordMic: () async {},
-        micHandoffDelay: Duration.zero,
-        followUpStartDelay: Duration.zero,
-      );
-      notifier.primeForSymptomFollowUp(mealId: 'm1');
-      await Future<void>.delayed(Duration.zero);
-      fakeStt.statusCallback!(SpeechToText.notListeningStatus); // -> paused
-      expect(notifier.state.micPhase, MicPhase.paused);
-
-      notifier.resumeFollowUpListening();
-      await Future<void>.delayed(Duration.zero);
-      expect(fakeStt.listenCount, 2);
-      expect(notifier.state.micPhase, MicPhase.listening);
-      notifier.dispose();
-    });
-
-    test('duplicate TTS completions arm the follow-up mic only once', () async {
-      final notifier = VoiceNotifier(
-        sttForTesting: fakeStt,
-        ttsForTesting: fakeTts,
-        releaseWakeWordMic: () async {},
-        micHandoffDelay: Duration.zero,
-      );
-      // First completion arms the follow-up turn.
-      notifier.setAwaitingFollowUp();
-      expect(notifier.state.status, VoiceStatus.awaitingFollowUp);
-      // A duplicate completion (the ding-storm trigger) must be a no-op.
-      notifier.setAwaitingFollowUp();
-      // _beginFollowUpStt opens the mic after a 350ms internal delay.
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-      expect(fakeStt.listenCount, 1); // armed exactly once, not twice
-      notifier.dispose();
-    });
-
-    test('first follow-up suppresses beep after the delay, dismiss restores', () async {
-      final beep = FakeBeepChannel();
-      final notifier = VoiceNotifier(
-        sttForTesting: fakeStt,
-        ttsForTesting: fakeTts,
-        releaseWakeWordMic: () async {},
-        micHandoffDelay: Duration.zero,
-        followUpStartDelay: Duration.zero,
-        beepChannelForTesting: beep,
-        beepSuppressDelay: Duration.zero,
-      );
-      notifier.primeForSymptomFollowUp(mealId: 'm1');
-      // Orientation timer -> _beginStt -> arms the beep-suppress timer -> fires.
-      await Future<void>.delayed(const Duration(milliseconds: 30));
-      expect(beep.suppressCount, 1);
-      notifier.dismiss();
-      expect(beep.restoreCount, 1);
-      notifier.dispose();
-    });
-
-    test('dismiss before the suppress delay never suppresses', () async {
-      final beep = FakeBeepChannel();
-      final notifier = VoiceNotifier(
-        sttForTesting: fakeStt,
-        ttsForTesting: fakeTts,
-        releaseWakeWordMic: () async {},
-        micHandoffDelay: Duration.zero,
-        followUpStartDelay: Duration.zero,
-        beepChannelForTesting: beep,
-        beepSuppressDelay: const Duration(seconds: 10),
-      );
-      notifier.primeForSymptomFollowUp(mealId: 'm1');
-      await Future<void>.delayed(const Duration(milliseconds: 30)); // beginStt arms 10s timer
-      notifier.dismiss(); // cancels it
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      expect(beep.suppressCount, 0);
-      notifier.dispose();
-    });
-
-    test('beep restore is idempotent across multiple exits', () async {
-      final beep = FakeBeepChannel();
-      final notifier = VoiceNotifier(
-        sttForTesting: fakeStt,
-        ttsForTesting: fakeTts,
-        releaseWakeWordMic: () async {},
-        micHandoffDelay: Duration.zero,
-        followUpStartDelay: Duration.zero,
-        beepChannelForTesting: beep,
-        beepSuppressDelay: Duration.zero,
-      );
-      notifier.primeForSymptomFollowUp(mealId: 'm1');
-      await Future<void>.delayed(const Duration(milliseconds: 30));
-      expect(beep.suppressCount, 1);
-      notifier.setThinking(); // releases
-      notifier.dismiss(); // releases again -> no-op
-      expect(beep.restoreCount, 1);
-      notifier.dispose();
-    });
-
-    test('hands the wake-word mic off BEFORE starting STT', () async {
-      var listenCountAtRelease = -1;
-      final notifier = VoiceNotifier(
-        sttForTesting: fakeStt,
-        ttsForTesting: fakeTts,
-        releaseWakeWordMic: () async {
-          listenCountAtRelease = fakeStt.listenCount;
-        },
-        micHandoffDelay: Duration.zero,
-      );
-      notifier.startListening();
-      await Future<void>.delayed(Duration.zero);
-      // Mic was released while STT had not yet started listening...
-      expect(listenCountAtRelease, 0);
-      // ...and STT did start afterward.
-      expect(fakeStt.listenCount, 1);
-      notifier.dispose();
-    });
-
-    test('follow-up stays "preparing" during handoff, "listening" only at capture', () async {
-      late final VoiceNotifier notifier;
-      MicPhase? phaseAtRelease;
-      notifier = VoiceNotifier(
-        sttForTesting: fakeStt,
-        ttsForTesting: fakeTts,
-        // The handoff runs before STT starts — capture the UI phase at that moment.
-        releaseWakeWordMic: () async {
-          phaseAtRelease = notifier.state.micPhase;
-        },
-        micHandoffDelay: Duration.zero,
-        followUpStartDelay: Duration.zero,
-      );
-      notifier.primeForSymptomFollowUp(mealId: 'm1');
-      await Future<void>.delayed(Duration.zero);
-      // During the mic handoff the UI must NOT claim to be listening yet...
-      expect(phaseAtRelease, MicPhase.preparing);
-      // ...it flips to listening only once STT is actually capturing.
-      expect(fakeStt.listenCount, 1);
-      expect(notifier.state.micPhase, MicPhase.listening);
-      notifier.dispose();
     });
 
     test('normalizeSoundLevel maps the recognizer dB range to 0..1', () {
@@ -375,6 +155,254 @@ void main() {
     });
   });
 
+  group('SttEngine-driven lifecycle', () {
+    late EngineHarness h;
+    late FakeTtsEngine tts;
+    late FakeBeepChannel beep;
+    late ProviderContainer container;
+
+    setUp(() {
+      h = EngineHarness();
+      tts = FakeTtsEngine(fireCompletionOnSpeak: false);
+      beep = FakeBeepChannel();
+      container = ProviderContainer(
+        overrides: [
+          voiceProvider.overrideWith(
+            (ref) => VoiceNotifier(
+              ref: ref,
+              ttsForTesting: tts,
+              engineFactory: h.create,
+              beepChannelForTesting: beep,
+              releaseWakeWordMic: () async {},
+              micHandoffDelay: Duration.zero,
+              followUpStartDelay: Duration.zero,
+            ),
+          ),
+        ],
+      );
+    });
+
+    tearDown(() => container.dispose());
+
+    test('startListening opens the engine and streams partials', () async {
+      final n = c(container);
+      n.startListening();
+      await pump();
+      expect(h.latest!.started, isTrue);
+      h.latest!.emitPartial('i had a');
+      await pump();
+      expect(container.read(voiceProvider).transcript, 'i had a');
+      expect(container.read(voiceProvider).micPhase, MicPhase.listening);
+    });
+
+    test('opens with exactly one ding per session', () async {
+      final n = c(container);
+      n.startListening();
+      await pump();
+      expect(beep.dingCount, 1);
+    });
+
+    test('auto-submit stops the engine and moves to thinking', () async {
+      final n = c(container);
+      n.startListening();
+      await pump();
+      h.latest!.nextTranscript = 'i had a turkey sandwich';
+      h.latest!.fireAutoSubmit();
+      await pump();
+      expect(
+        container.read(voiceProvider).transcript,
+        'i had a turkey sandwich',
+      );
+      expect(container.read(voiceProvider).status, VoiceStatus.thinking);
+    });
+
+    test(
+      'manual submit() advances to thinking with the final transcript',
+      () async {
+        final n = c(container);
+        n.startListening();
+        await pump();
+        h.latest!.nextTranscript = 'bloating';
+        await n.submit();
+        expect(container.read(voiceProvider).status, VoiceStatus.thinking);
+        expect(container.read(voiceProvider).transcript, 'bloating');
+      },
+    );
+
+    test(
+      'submit() with no open engine still advances (text-entry path)',
+      () async {
+        final n = c(container);
+        n.setTranscript('typed entry');
+        await n.submit();
+        expect(container.read(voiceProvider).status, VoiceStatus.thinking);
+        expect(container.read(voiceProvider).transcript, 'typed entry');
+      },
+    );
+
+    // Regression guard for the dispatch-routing bug: a follow-up session must
+    // stay in awaitingFollowUp right up until submit, so the overlay routes the
+    // answer to sendFollowUpToApi (history/mealId/symptom_followup) — not
+    // sendToChat. _openSession must NOT blanket the status to listening.
+    test('follow-up session stays awaitingFollowUp until submit', () async {
+      final n = c(container);
+      n.primeForSymptomFollowUp(mealId: 'm1');
+      await pump();
+      expect(
+        container.read(voiceProvider).status,
+        VoiceStatus.awaitingFollowUp,
+      );
+      h.latest!.emitPartial('a little nauseous');
+      await pump();
+      // still a follow-up while capturing — not downgraded to listening
+      expect(
+        container.read(voiceProvider).status,
+        VoiceStatus.awaitingFollowUp,
+      );
+      expect(container.read(voiceProvider).transcript, 'a little nauseous');
+    });
+
+    test('primeForSymptomFollowUp does not open mic synchronously; opens '
+        'after the orientation delay', () async {
+      final n = c(container);
+      n.primeForSymptomFollowUp(mealId: 'm1');
+      expect(h.creations, 0); // orientation timer has not fired yet
+      expect(container.read(voiceProvider).micPhase, MicPhase.preparing);
+      expect(
+        container.read(voiceProvider).status,
+        VoiceStatus.awaitingFollowUp,
+      );
+      await pump();
+      expect(h.creations, 1);
+      expect(container.read(voiceProvider).micPhase, MicPhase.listening);
+    });
+
+    test(
+      'duplicate TTS completions open the follow-up engine only once',
+      () async {
+        final n = c(container);
+        n.setAwaitingFollowUp();
+        expect(
+          container.read(voiceProvider).status,
+          VoiceStatus.awaitingFollowUp,
+        );
+        n.setAwaitingFollowUp(); // duplicate completion → no-op
+        await pump();
+        expect(h.creations, 1);
+      },
+    );
+  });
+
+  group('SttEngine-driven lifecycle (custom wiring)', () {
+    test(
+      'dismiss during the orientation delay cancels the mic start',
+      () async {
+        final h = EngineHarness();
+        final n = VoiceNotifier(
+          ttsForTesting: FakeTtsEngine(fireCompletionOnSpeak: false),
+          engineFactory: h.create,
+          beepChannelForTesting: FakeBeepChannel(),
+          releaseWakeWordMic: () async {},
+          micHandoffDelay: Duration.zero,
+          followUpStartDelay: const Duration(seconds: 10),
+        );
+        n.primeForSymptomFollowUp(mealId: 'm1');
+        n.dismiss();
+        await pump();
+        expect(h.creations, 0);
+        expect(n.state.status, VoiceStatus.idle);
+        n.dispose();
+      },
+    );
+
+    test('dispose cancels a pending follow-up start timer', () async {
+      final h = EngineHarness();
+      final n = VoiceNotifier(
+        ttsForTesting: FakeTtsEngine(fireCompletionOnSpeak: false),
+        engineFactory: h.create,
+        beepChannelForTesting: FakeBeepChannel(),
+        releaseWakeWordMic: () async {},
+        micHandoffDelay: Duration.zero,
+        followUpStartDelay: const Duration(seconds: 10),
+      );
+      n.primeForSymptomFollowUp(mealId: 'm1');
+      n.dispose();
+      await pump();
+      expect(h.creations, 0);
+    });
+
+    test(
+      'a failed engine start drops to manual (paused); resume re-opens it',
+      () async {
+        final h = EngineHarness()..nextThrowOnStart = true;
+        final n = VoiceNotifier(
+          ttsForTesting: FakeTtsEngine(fireCompletionOnSpeak: false),
+          engineFactory: h.create,
+          beepChannelForTesting: FakeBeepChannel(),
+          releaseWakeWordMic: () async {},
+          micHandoffDelay: Duration.zero,
+          followUpStartDelay: Duration.zero,
+        );
+        n.primeForSymptomFollowUp(mealId: 'm1');
+        await pump();
+        expect(h.creations, 1);
+        expect(n.state.micPhase, MicPhase.paused); // fell back to tap-to-talk
+
+        h.nextThrowOnStart = false;
+        n.resumeFollowUpListening();
+        await pump();
+        expect(h.creations, 2);
+        expect(n.state.micPhase, MicPhase.listening);
+        n.dispose();
+      },
+    );
+
+    test('hands the wake-word mic off BEFORE opening the engine', () async {
+      final h = EngineHarness();
+      var creationsAtRelease = -1;
+      final n = VoiceNotifier(
+        ttsForTesting: FakeTtsEngine(fireCompletionOnSpeak: false),
+        engineFactory: h.create,
+        beepChannelForTesting: FakeBeepChannel(),
+        releaseWakeWordMic: () async {
+          creationsAtRelease = h.creations;
+        },
+        micHandoffDelay: Duration.zero,
+      );
+      n.startListening();
+      await pump();
+      expect(creationsAtRelease, 0); // released before any engine was created
+      expect(h.creations, 1);
+      expect(h.latest!.started, isTrue);
+      n.dispose();
+    });
+
+    test(
+      'follow-up stays "preparing" during handoff, "listening" at capture',
+      () async {
+        final h = EngineHarness();
+        late final VoiceNotifier n;
+        MicPhase? phaseAtRelease;
+        n = VoiceNotifier(
+          ttsForTesting: FakeTtsEngine(fireCompletionOnSpeak: false),
+          engineFactory: h.create,
+          beepChannelForTesting: FakeBeepChannel(),
+          // Handoff runs before the engine starts — capture the UI phase then.
+          releaseWakeWordMic: () async {
+            phaseAtRelease = n.state.micPhase;
+          },
+          micHandoffDelay: Duration.zero,
+          followUpStartDelay: Duration.zero,
+        );
+        n.primeForSymptomFollowUp(mealId: 'm1');
+        await pump();
+        expect(phaseAtRelease, MicPhase.preparing);
+        expect(n.state.micPhase, MicPhase.listening);
+        n.dispose();
+      },
+    );
+  });
+
   group('prepareForSpeech', () {
     test('reads digit ranges with dash as "to", not the dash', () {
       expect(
@@ -387,7 +415,9 @@ void main() {
 
     test('still reads slash ratings as "out of"', () {
       expect(
-          VoiceNotifier.prepareForSpeech('about a 4/10'), 'about a 4 out of 10');
+        VoiceNotifier.prepareForSpeech('about a 4/10'),
+        'about a 4 out of 10',
+      );
     });
   });
 
@@ -400,3 +430,7 @@ void main() {
     });
   });
 }
+
+/// Reads the notifier from a container.
+VoiceNotifier c(ProviderContainer container) =>
+    container.read(voiceProvider.notifier);
