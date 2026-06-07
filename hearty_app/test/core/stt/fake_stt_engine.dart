@@ -10,6 +10,7 @@ class FakeSttEngine implements SttEngine {
   int startCount = 0;
   int disposeCount = 0;
   bool throwOnStart = false; // simulate model-missing / mic-denied
+  bool nextResultOk = true; // simulate a failed (cloud) transcription
   void Function()? autoSubmit;
 
   @override
@@ -32,7 +33,7 @@ class FakeSttEngine implements SttEngine {
   @override
   Future<SttResult> stop() async {
     started = false;
-    return SttResult(transcript: nextTranscript);
+    return SttResult(transcript: nextResultOk ? nextTranscript : '', ok: nextResultOk);
   }
 
   @override

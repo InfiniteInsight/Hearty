@@ -256,6 +256,13 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         state.status != VoiceStatus.awaitingFollowUp) {
       return;
     }
+    if (!result.ok) {
+      // Transcription failed (e.g. cloud network error even though connectivity
+      // said online). Drop to manual — re-record or type — rather than advancing
+      // with an empty transcript. The captured audio is lost (stated v1 limit).
+      _pauseForManual();
+      return;
+    }
     final text = result.transcript.trim();
     if (text.isNotEmpty) setTranscript(text);
     setThinking();

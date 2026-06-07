@@ -230,6 +230,18 @@ void main() {
       expect(container.read(voiceProvider).transcript, 'i had an iq bar');
     });
 
+    test('a failed cloud transcription drops to manual, not empty thinking',
+        () async {
+      final n = c(container);
+      n.startListening();
+      await pump();
+      h.latest!.nextResultOk = false; // simulate transcribe failure
+      h.latest!.fireAutoSubmit();
+      await pump();
+      expect(container.read(voiceProvider).status, isNot(VoiceStatus.thinking));
+      expect(container.read(voiceProvider).micPhase, MicPhase.paused);
+    });
+
     test('dismiss during submit()\'s stop() leaves the turn cancelled (idle)',
         () async {
       final n = c(container);
