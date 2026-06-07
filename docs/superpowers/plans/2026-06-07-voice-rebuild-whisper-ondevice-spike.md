@@ -113,24 +113,19 @@ Reuse the exact spike phrases (see `memory/project-voice-stt-engine-research`), 
 
 ## Harness tasks
 
-### Task S0: Obtain / convert candidate models on pkix, push to device
+### Task S0: Download the pre-built models on the dev box, push to device
 
-**Files:** none in-repo (models live on device only).
+**Files:** `scripts/spike-download-push-models.sh` (throwaway helper; delete on teardown).
 
-- [ ] **Step 1: Download the pre-built sherpa-onnx tarballs** (no conversion needed for these — they are released by sherpa-onnx):
-  - `sherpa-onnx-whisper-base.en` (int8) — from the sherpa-onnx `asr-models` releases.
-  - `sherpa-onnx-whisper-small.en` (int8).
-  - `sherpa-onnx-moonshine-base-en-int8`.
-  - `sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8` (`wget https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8.tar.bz2`).
-  Do the downloads on **pkix** (fast link, lots of disk) per `reference-pkix-server` (ssh `evan@192.168.1.220`, key `~/.ssh/pkix_training`); `sftp` the tarballs back. **pkix GPU is NOT needed** for pre-built models — only use it (free the GPU first: `docker stop llama-server ollama`) if you must export a non-prebuilt variant (e.g. a custom distil-medium.en int8) via the sherpa `export-onnx.py` pipeline.
-- [ ] **Step 2: Push each model to its own dir** under the app external files (mirrors the spike's `asr-model-122` convention; pull recipe in `reference-wifi-debug`):
-  ```
-  adb push sherpa-onnx-whisper-base.en/  /sdcard/Android/data/com.hearty.app/files/spike-whisper-base/
-  adb push sherpa-onnx-whisper-small.en/ /sdcard/Android/data/com.hearty.app/files/spike-whisper-small/
-  adb push sherpa-onnx-moonshine-base-en-int8/ /sdcard/Android/data/com.hearty.app/files/spike-moonshine-base/
-  adb push sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8/ /sdcard/Android/data/com.hearty.app/files/spike-parakeet-tdt/
-  ```
-  Note each model's **on-disk size** (for the table) and confirm the Parakeet tarball (~1.3 GB) actually fits / pushes.
+> **No pkix, no GPU, no conversion.** All four candidates are **pre-exported** by sherpa-onnx — published as ready-to-use `.tar.bz2` assets on the `asr-models` GitHub release (all four URLs verified live). So S0 is just `wget → extract → adb push`, done **on this dev box** (which already has wifi-adb to the Pixel). pkix would only matter *later*, if the spike concludes we want a model variant sherpa does **not** pre-ship and we must export it ourselves via `export-onnx.py` (that needs a GPU). It is irrelevant to running this spike.
+
+- [ ] **Step 1: Run the helper** — `bash scripts/spike-download-push-models.sh`. It downloads the four tarballs (into `${TMPDIR:-/tmp}/hearty-spike-models`, ~2 GB total — skips any already present), extracts them, `adb push`es each into its own device dir, and prints each model's on-disk size for the results table. Verified release assets:
+  - `sherpa-onnx-whisper-base.en.tar.bz2` → `spike-whisper-base`
+  - `sherpa-onnx-whisper-small.en.tar.bz2` → `spike-whisper-small`
+  - `sherpa-onnx-moonshine-base-en-int8.tar.bz2` → `spike-moonshine-base`
+  - `sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8.tar.bz2` → `spike-parakeet-tdt`
+  (base = `https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/`)
+- [ ] **Step 2: Confirm the push** — the script lists the pushed dirs; verify Parakeet (~1.3 GB tarball) actually fit. If a model's internal filenames differ from what `whisper_spike_screen.dart`'s `_candidates` expects, the probe screen prints the dir's actual contents on "Run" so you can correct the constant (or rename on device).
 
 ### Task S1: Record the §3 phrase WAVs once and push them
 
