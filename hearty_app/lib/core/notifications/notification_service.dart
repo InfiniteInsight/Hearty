@@ -22,6 +22,12 @@ class NotificationService {
   // 1001 is reserved by HeartyWakeWordService — use a non-colliding range.
   static const _kFollowUpNotifId  = 3010;
 
+  /// Post-meal check-in notification copy. The body tells the user the app will
+  /// listen for a spoken reply, so the listen "ding" doesn't catch them off guard.
+  static const String followUpTitle = 'How are you feeling?';
+  static const String followUpBody =
+      "Tap to check in on your last meal — I'll listen for your reply.";
+
   static final _localNotifs = FlutterLocalNotificationsPlugin();
 
   /// Call once in main() before runApp, after Firebase.initializeApp().
@@ -138,8 +144,8 @@ class NotificationService {
 
     await _localNotifs.zonedSchedule(
       _kFollowUpNotifId,
-      'How are you feeling?',
-      'Time to check in on how your last meal is sitting.',
+      followUpTitle,
+      followUpBody,
       scheduled,
       const NotificationDetails(
         android: AndroidNotificationDetails(
