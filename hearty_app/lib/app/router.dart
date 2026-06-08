@@ -35,6 +35,8 @@ import '../features/logging/screens/edit_symptom_screen.dart';
 import '../features/setup/screens/setup_screen.dart';
 import '../features/setup/screens/notification_setup_screen.dart';
 import '../features/setup/screens/conversation_style_setup_screen.dart';
+import '../core/api/providers/preferences_provider.dart';
+import '../core/stt/on_device_model.dart';
 import '../core/api/providers/last_logged_provider.dart';
 import '../core/api/providers/meals_provider.dart';
 import '../core/api/providers/symptoms_provider.dart';
@@ -300,7 +302,10 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initWakeWord());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initWakeWord();
+      _prewarmDictation();
+    });
   }
 
   Future<void> _initWakeWord() async {
@@ -310,6 +315,23 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
     if (prefs.getBool('wake_word_enabled') ?? true) {
       WakeWordChannel.startService().catchError((_) {});
     }
+  }
+
+  /// Plan D decision #5: download + warm the selected on-device STT model in the
+  /// background after launch, so the FIRST voice interaction isn't silently
+  /// degraded to manual while a 275 MB download runs with no UX. Fire-and-forget
+  /// — the capture path's own `ensureAndWarm` coalesces with this via the
+  /// manager's in-flight guard, and the warm isolate self-releases after 3 min
+  /// idle. Gated on mic permission (no point fetching STT if they can't dictate)
+  /// and skipped for cloud users. (RAM survival alongside the wake-word service
+  /// is verified on device in D5.)
+  Future<void> _prewarmDictation() async {
+    if (!await Permission.microphone.isGranted) return;
+    if (!mounted) return;
+    final prefs = await ref.read(preferencesProvider.future);
+    if (!mounted || prefs.useCloudWhenOnline) return;
+    final model = OnDeviceModel.fromPrefString(prefs.useOnDeviceModel);
+    ref.read(asrModelManagerProvider).ensureAndWarm(model).catchError((_) {});
   }
 
   @override
