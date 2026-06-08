@@ -44,6 +44,7 @@ dependencies:
   path_provider: ^2.1.3
   wakelock_plus: ^1.2.8 # keep screen awake during a voice session
   record: ^6.1.1 # raw PCM16 mic stream for on-device ASR (6.x = consistent federated set)
+  archive: ^3.6.1 # extract the on-device ASR model .tar.bz2 on first-run download
   # Wake word: openWakeWord via ONNX Runtime (inference runs in Kotlin foreground service,
   # not Dart — no Flutter package needed; Android dependency added in build.gradle)
 
