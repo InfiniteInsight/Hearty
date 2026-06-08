@@ -27,6 +27,7 @@ import '../features/logging/screens/onboarding_screen.dart';
 import '../features/photos/screens/camera_screen.dart';
 import '../features/settings/screens/notification_preferences_screen.dart';
 import '../features/settings/screens/voice_settings_screen.dart';
+import '../features/settings/screens/dictation_settings_screen.dart';
 import '../features/settings/screens/wake_word_settings_screen.dart';
 import '../features/settings/screens/conversation_style_screen.dart';
 import '../features/logging/screens/edit_meal_screen.dart';
@@ -55,6 +56,7 @@ class Routes {
   static const String camera = 'camera';
   static const String notificationPreferences = 'notification-preferences';
   static const String voiceSettings = 'voice-settings';
+  static const String dictationSettings = 'dictation-settings';
   static const String wakeWordSettings = 'wake-word-settings';
   static const String editMeal = 'edit-meal';
   static const String editSymptom = 'edit-symptom';
@@ -198,6 +200,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/settings/voice',
         name: Routes.voiceSettings,
         builder: (context, state) => const VoiceSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/dictation',
+        name: Routes.dictationSettings,
+        builder: (context, state) => const DictationSettingsScreen(),
       ),
       GoRoute(
         path: '/settings/wake-word',

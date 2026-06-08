@@ -60,8 +60,16 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.record_voice_over_outlined),
             title: const Text('Voice'),
+            subtitle: const Text("Hearty's spoken voice"),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/settings/voice'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.keyboard_voice_outlined),
+            title: const Text('Dictation'),
+            subtitle: const Text('Transcription model & auto-submit'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/dictation'),
           ),
           ListTile(
             leading: const Icon(Icons.mic_none_outlined),

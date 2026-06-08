@@ -30,6 +30,20 @@ enum OnDeviceModel {
 
   String get prefString => name;
 
+  /// Human label for the Settings model picker.
+  String get label => switch (this) {
+        OnDeviceModel.moonshine => 'Moonshine',
+        OnDeviceModel.parakeet => 'Parakeet',
+      };
+
+  /// One-line trade-off shown under the label in Settings.
+  String get blurb => switch (this) {
+        OnDeviceModel.moonshine =>
+          'Smaller & faster — recommended (~${spec.approxMb} MB)',
+        OnDeviceModel.parakeet =>
+          'Larger, most accurate (~${spec.approxMb} MB download)',
+      };
+
   static OnDeviceModel fromPrefString(String? s) {
     for (final m in values) {
       if (m.name == s) return m;

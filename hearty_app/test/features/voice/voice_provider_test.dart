@@ -5,8 +5,21 @@ import 'package:hearty_app/features/voice/providers/voice_provider.dart';
 import 'package:hearty_app/core/audio/audio_beep_channel.dart';
 import 'package:hearty_app/core/stt/stt_engine.dart';
 import 'package:hearty_app/core/stt/asr_model_manager.dart';
+import 'package:hearty_app/core/api/models/user_preferences.dart';
+import 'package:hearty_app/core/api/providers/preferences_provider.dart';
 import 'fake_tts_engine.dart';
 import '../../core/stt/fake_stt_engine.dart';
+
+/// Seeds [preferencesProvider] with fixed prefs so engine selection / capture
+/// config read real user settings instead of the test DB.
+class _SeedPrefs extends PreferencesNotifier {
+  _SeedPrefs(this._seed);
+  final UserPreferences _seed;
+  @override
+  Future<UserPreferences> build() async => _seed;
+}
+
+const _defaultPrefs = UserPreferences();
 
 class FakeBeepChannel implements AudioBeepChannel {
   int suppressCount = 0;
@@ -55,6 +68,9 @@ void main() {
       beep = FakeBeepChannel();
       container = ProviderContainer(
         overrides: [
+          // Seed prefs so the capture path's pref reads (auto-submit, model,
+          // cloud) don't spin up the real drift DB / platform channels.
+          preferencesProvider.overrideWith(() => _SeedPrefs(_defaultPrefs)),
           voiceProvider.overrideWith(
             (ref) => VoiceNotifier(
               ref: ref,
@@ -168,6 +184,9 @@ void main() {
       beep = FakeBeepChannel();
       container = ProviderContainer(
         overrides: [
+          // Seed prefs so the capture path's pref reads (auto-submit, model,
+          // cloud) don't spin up the real drift DB / platform channels.
+          preferencesProvider.overrideWith(() => _SeedPrefs(_defaultPrefs)),
           voiceProvider.overrideWith(
             (ref) => VoiceNotifier(
               ref: ref,
@@ -502,6 +521,54 @@ void main() {
       expect(VoiceNotifier.replyIsQuestion('Logged it.  '), isFalse);
       expect(VoiceNotifier.replyIsQuestion('Got it, enjoy!'), isFalse);
       expect(VoiceNotifier.replyIsQuestion('Any discomfort 1 to 10? '), isTrue);
+    });
+  });
+
+  // Proves the Settings auto-submit toggle isn't dead UI: the capture session
+  // actually gates onAutoSubmit on the live pref (not just the constructor
+  // default). Without the _effectiveAutoSubmit wiring the slider/toggle would
+  // persist a value nothing consumes.
+  group('auto-submit pref consumption', () {
+    late EngineHarness h;
+    ProviderContainer makeContainer(UserPreferences seed) {
+      h = EngineHarness();
+      return ProviderContainer(
+        overrides: [
+          preferencesProvider.overrideWith(() => _SeedPrefs(seed)),
+          voiceProvider.overrideWith(
+            (ref) => VoiceNotifier(
+              ref: ref,
+              ttsForTesting: FakeTtsEngine(fireCompletionOnSpeak: false),
+              engineFactory: h.create,
+              beepChannelForTesting: FakeBeepChannel(),
+              releaseWakeWordMic: () async {},
+              micHandoffDelay: Duration.zero,
+              followUpStartDelay: Duration.zero,
+            ),
+          ),
+        ],
+      );
+    }
+
+    test('autoSubmit:true → engine started WITH an onAutoSubmit callback',
+        () async {
+      final container = makeContainer(const UserPreferences(autoSubmit: true));
+      addTearDown(container.dispose);
+      // Realize the seeded prefs so valueOrNull is populated before the session.
+      await container.read(preferencesProvider.future);
+      c(container).startListening();
+      await pump();
+      expect(h.latest!.autoSubmit, isNotNull);
+    });
+
+    test('autoSubmit:false → engine started WITHOUT an onAutoSubmit callback',
+        () async {
+      final container = makeContainer(const UserPreferences(autoSubmit: false));
+      addTearDown(container.dispose);
+      await container.read(preferencesProvider.future);
+      c(container).startListening();
+      await pump();
+      expect(h.latest!.autoSubmit, isNull);
     });
   });
 }

@@ -25,8 +25,20 @@ import '../models/voice_state.dart';
 
 const _uuid = Uuid();
 
+/// App-wide ASR model manager: owns the 275 MB+ warm recognizer isolate and any
+/// in-flight model download. keepAlive (NOT autoDispose) so popping the Settings
+/// screen never tears down an active Parakeet download or the warm isolate — the
+/// manager self-releases via its own 3-min idle timer. Shared by [voiceProvider]
+/// (hot path) and the dictation Settings screen (model switch / pre-warm).
+final asrModelManagerProvider = Provider<AsrModelManager>((ref) {
+  final mgr = AsrModelManager();
+  ref.onDispose(mgr.dispose);
+  return mgr;
+});
+
 final voiceProvider = StateNotifierProvider<VoiceNotifier, VoiceState>((ref) {
-  return VoiceNotifier(ref: ref);
+  return VoiceNotifier(
+      ref: ref, modelManager: ref.read(asrModelManagerProvider));
 });
 
 /// Drives the voice lifecycle on top of an [SttEngine] (on-device sherpa
@@ -107,10 +119,11 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   Future<SttEngine> _selectEngine() async {
     final prefs = _ref?.read(preferencesProvider).valueOrNull;
     final useCloud = prefs?.useCloudWhenOnline ?? _useCloudWhenOnline;
+    final silenceSeconds = prefs?.autoSubmitSilenceSeconds ?? _silenceSeconds;
     if (SttEngineSelector.useCloud(
         online: await _isOnline(), useCloudWhenOnline: useCloud)) {
       return CloudSttEngine(
-        silenceSeconds: _silenceSeconds,
+        silenceSeconds: silenceSeconds,
         transcribe: (pcm, sr) => _ref!
             .read(heartyApiClientProvider)
             .transcribe(pcm: pcm, sampleRate: sr),
@@ -127,8 +140,14 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       throw const SttNotReadyException();
     }
     return OnDeviceBatchSttEngine(
-        silenceSeconds: _silenceSeconds, decode: decode);
+        silenceSeconds: silenceSeconds, decode: decode);
   }
+
+  /// Auto-submit (trailing-silence turn end) honors the user's pref; the
+  /// constructor value is the test/no-prefs fallback. Wired here so the Settings
+  /// toggle actually gates `onAutoSubmit` instead of being dead UI.
+  bool get _effectiveAutoSubmit =>
+      _ref?.read(preferencesProvider).valueOrNull?.autoSubmit ?? _autoSubmit;
 
   // True while in the post-meal symptom check-in (started by the nudge). Tells
   // the backend this turn is a "how are you feeling?" response about an
@@ -248,7 +267,8 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     });
 
     try {
-      await engine.start(onAutoSubmit: _autoSubmit ? _onAutoSubmit : null);
+      await engine.start(
+          onAutoSubmit: _effectiveAutoSubmit ? _onAutoSubmit : null);
       if (!mounted) return;
       _beep.ding(); // exactly one ding, once capture is actually live
       state = state.copyWith(micPhase: MicPhase.listening);
