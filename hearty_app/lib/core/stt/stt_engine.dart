@@ -8,6 +8,15 @@ class SttResult {
   final String? error;
 }
 
+/// Thrown by engine selection when the chosen on-device model isn't downloaded/
+/// warm yet. The capture path must catch this and drop to manual (text entry)
+/// rather than block on a download — the model is fetched + warmed out-of-band.
+class SttNotReadyException implements Exception {
+  const SttNotReadyException();
+  @override
+  String toString() => 'SttNotReadyException: on-device model not ready';
+}
+
 /// Engine-agnostic streaming speech-to-text for one capture session.
 ///
 /// Implementations: [OnDeviceSttEngine] (sherpa on a background isolate) and,

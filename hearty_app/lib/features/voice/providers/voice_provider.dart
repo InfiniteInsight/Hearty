@@ -13,8 +13,10 @@ import '../../../core/notifications/notification_service.dart';
 import '../../../core/audio/audio_beep_channel.dart';
 import '../../../core/offline/local_voice_queue_dao.dart';
 import '../../../core/stt/stt_engine.dart';
-import '../../../core/stt/on_device_stt_engine.dart';
 import '../../../core/stt/cloud_stt_engine.dart';
+import '../../../core/stt/on_device_batch_stt_engine.dart';
+import '../../../core/stt/on_device_model.dart';
+import '../../../core/stt/asr_model_manager.dart';
 import '../../../core/stt/stt_engine_selector.dart';
 import '../../../core/tts/tts_engine.dart';
 import '../../../core/tts/tts_engine_factory.dart';
@@ -45,16 +47,20 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     Duration? micHandoffDelay,
     bool autoSubmit = true,
     double autoSubmitSilenceSeconds = 2.5,
-    bool useCloudWhenOnline = true,
+    bool useCloudWhenOnline = false, // dormant by default — on-device is the path
+    OnDeviceModel onDeviceModel = OnDeviceModel.defaultModel,
+    AsrModelManager? modelManager,
     Future<bool> Function()? isOnline,
   })  : _ref = ref,
         _injectedTts = ttsForTesting,
-        // Null in production → _openSession selects cloud/on-device per
+        // Null in production → _openSession selects the engine per prefs +
         // connectivity. Tests inject a synchronous factory to bypass selection.
         _engineFactory = engineFactory,
         _autoSubmit = autoSubmit,
         _silenceSeconds = autoSubmitSilenceSeconds,
         _useCloudWhenOnline = useCloudWhenOnline,
+        _onDeviceModelFallback = onDeviceModel,
+        _modelManager = modelManager ?? AsrModelManager(),
         _isOnline = isOnline ?? _defaultIsOnline,
         _followUpStartDelay =
             followUpStartDelay ?? const Duration(milliseconds: 2500),
@@ -80,7 +86,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   final SttEngine Function()? _engineFactory;
   final bool _autoSubmit;
   final double _silenceSeconds;
-  final bool _useCloudWhenOnline;
+  final bool _useCloudWhenOnline; // fallback when prefs unavailable (tests)
+  final OnDeviceModel _onDeviceModelFallback; // ditto
+  final AsrModelManager _modelManager;
   final Future<bool> Function() _isOnline;
   SttEngine? _engine;
   StreamSubscription<String>? _partialSub;
@@ -90,14 +98,17 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     return r.any((x) => x != ConnectivityResult.none);
   }
 
-  /// Production engine selection: cloud when online and the setting allows it,
-  /// else the on-device sherpa engine. (Bypassed when a test [engineFactory] is
-  /// injected.) Note: connectivity reporting "online" does not guarantee the
-  /// backend is reachable — the runtime fallback in [submit] covers that.
+  /// Production engine selection (bypassed when a test [engineFactory] is set):
+  /// cloud only if the user re-enabled it AND online (dormant by default); else
+  /// the on-device batch engine for the selected model. CRITICAL: never block on
+  /// a download here — if the model isn't warm yet, kick off the fetch+warm
+  /// out-of-band and throw [SttNotReadyException] so the capture path drops to
+  /// text entry instead of hanging.
   Future<SttEngine> _selectEngine() async {
-    final online = await _isOnline();
+    final prefs = _ref?.read(preferencesProvider).valueOrNull;
+    final useCloud = prefs?.useCloudWhenOnline ?? _useCloudWhenOnline;
     if (SttEngineSelector.useCloud(
-        online: online, useCloudWhenOnline: _useCloudWhenOnline)) {
+        online: await _isOnline(), useCloudWhenOnline: useCloud)) {
       return CloudSttEngine(
         silenceSeconds: _silenceSeconds,
         transcribe: (pcm, sr) => _ref!
@@ -105,7 +116,18 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
             .transcribe(pcm: pcm, sampleRate: sr),
       );
     }
-    return OnDeviceSttEngine(silenceSeconds: _silenceSeconds);
+    final model = prefs != null
+        ? OnDeviceModel.fromPrefString(prefs.useOnDeviceModel)
+        : _onDeviceModelFallback;
+    final decode = _modelManager.warmDecodeOrNull(model);
+    if (decode == null) {
+      // Not downloaded/warm yet — fetch + warm in the background (swallow bg
+      // errors), and fall back to manual for this turn.
+      unawaited(_modelManager.ensureAndWarm(model).catchError((_) {}));
+      throw const SttNotReadyException();
+    }
+    return OnDeviceBatchSttEngine(
+        silenceSeconds: _silenceSeconds, decode: decode);
   }
 
   // True while in the post-meal symptom check-in (started by the nudge). Tells
@@ -198,9 +220,16 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       return;
     }
 
-    // Production selection (async connectivity check) vs injected test factory.
-    final engine =
-        _engineFactory != null ? _engineFactory() : await _selectEngine();
+    // Production selection (connectivity + model readiness) vs injected test
+    // factory. A not-ready model / selection failure drops to manual (text
+    // entry) rather than hanging — never block the capture path on a download.
+    final SttEngine engine;
+    try {
+      engine = _engineFactory != null ? _engineFactory() : await _selectEngine();
+    } catch (_) {
+      if (mounted) _pauseForManual();
+      return;
+    }
     // _selectEngine adds another await; the user may have dismissed during the
     // connectivity check, so re-check before adopting the engine.
     if (!mounted ||

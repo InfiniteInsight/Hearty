@@ -4,6 +4,7 @@ import 'package:hearty_app/features/voice/models/voice_state.dart';
 import 'package:hearty_app/features/voice/providers/voice_provider.dart';
 import 'package:hearty_app/core/audio/audio_beep_channel.dart';
 import 'package:hearty_app/core/stt/stt_engine.dart';
+import 'package:hearty_app/core/stt/asr_model_manager.dart';
 import 'fake_tts_engine.dart';
 import '../../core/stt/fake_stt_engine.dart';
 
@@ -411,6 +412,25 @@ void main() {
         n.dispose();
       },
     );
+
+    test('on-device model not ready → drops to manual, never blocks/downloads '
+        'in the capture path', () async {
+      // No engineFactory → real selection. Offline (skip cloud), and a manager
+      // that can never be ready (no external dir) → warmDecodeOrNull == null.
+      final n = VoiceNotifier(
+        ttsForTesting: FakeTtsEngine(fireCompletionOnSpeak: false),
+        beepChannelForTesting: FakeBeepChannel(),
+        releaseWakeWordMic: () async {},
+        micHandoffDelay: Duration.zero,
+        isOnline: () async => false,
+        modelManager: AsrModelManager(externalDir: () async => null),
+      );
+      n.startListening();
+      await pump();
+      // Fell back to manual (tap-to-talk / text), no engine adopted.
+      expect(n.state.micPhase, MicPhase.paused);
+      n.dispose();
+    });
 
     test('hands the wake-word mic off BEFORE opening the engine', () async {
       final h = EngineHarness();

@@ -13,6 +13,12 @@ class UserPreferences {
   final int dailyCheckinMinute;
   final String? fcmToken;
   final String conversationStyle;
+  // Voice transcription (Plan C/D). Cloud is dormant by default — on-device
+  // batch (Moonshine by default) is the path; see SttEngineSelector.
+  final bool useCloudWhenOnline;
+  final bool autoSubmit;
+  final double autoSubmitSilenceSeconds;
+  final String useOnDeviceModel; // OnDeviceModel.prefString
 
   const UserPreferences({
     this.allergens = const [],
@@ -29,6 +35,10 @@ class UserPreferences {
     this.dailyCheckinMinute = 0,
     this.fcmToken,
     this.conversationStyle = 'warm',
+    this.useCloudWhenOnline = false,
+    this.autoSubmit = true,
+    this.autoSubmitSilenceSeconds = 2.5,
+    this.useOnDeviceModel = 'moonshine',
   });
 
   static List<String> _toStringList(dynamic raw) {
@@ -56,6 +66,12 @@ class UserPreferences {
       dailyCheckinMinute: (json['daily_checkin_minute'] as int?) ?? 0,
       fcmToken: json['fcm_token'] as String?,
       conversationStyle: (json['conversation_style'] as String?) ?? 'warm',
+      useCloudWhenOnline: (json['use_cloud_when_online'] as bool?) ?? false,
+      autoSubmit: (json['auto_submit'] as bool?) ?? true,
+      autoSubmitSilenceSeconds:
+          (json['auto_submit_silence_seconds'] as num?)?.toDouble() ?? 2.5,
+      useOnDeviceModel:
+          (json['use_on_device_model'] as String?) ?? 'moonshine',
     );
   }
 
@@ -74,6 +90,10 @@ class UserPreferences {
         'daily_checkin_minute': dailyCheckinMinute,
         if (fcmToken != null) 'fcm_token': fcmToken,
         'conversation_style': conversationStyle,
+        'use_cloud_when_online': useCloudWhenOnline,
+        'auto_submit': autoSubmit,
+        'auto_submit_silence_seconds': autoSubmitSilenceSeconds,
+        'use_on_device_model': useOnDeviceModel,
       };
 
   UserPreferences copyWith({
@@ -91,6 +111,10 @@ class UserPreferences {
     int? dailyCheckinMinute,
     String? fcmToken,
     String? conversationStyle,
+    bool? useCloudWhenOnline,
+    bool? autoSubmit,
+    double? autoSubmitSilenceSeconds,
+    String? useOnDeviceModel,
   }) {
     return UserPreferences(
       allergens: allergens ?? this.allergens,
@@ -108,6 +132,11 @@ class UserPreferences {
       dailyCheckinMinute: dailyCheckinMinute ?? this.dailyCheckinMinute,
       fcmToken: fcmToken ?? this.fcmToken,
       conversationStyle: conversationStyle ?? this.conversationStyle,
+      useCloudWhenOnline: useCloudWhenOnline ?? this.useCloudWhenOnline,
+      autoSubmit: autoSubmit ?? this.autoSubmit,
+      autoSubmitSilenceSeconds:
+          autoSubmitSilenceSeconds ?? this.autoSubmitSilenceSeconds,
+      useOnDeviceModel: useOnDeviceModel ?? this.useOnDeviceModel,
     );
   }
 }
