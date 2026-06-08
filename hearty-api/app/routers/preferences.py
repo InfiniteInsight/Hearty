@@ -45,7 +45,7 @@ class UserPreferencesSchema(BaseModel):
     use_cloud_when_online: bool = False
     auto_submit: bool = True
     auto_submit_silence_seconds: float = 2.5
-    use_on_device_model: Literal['moonshine', 'parakeet'] = 'moonshine'
+    use_on_device_model: Literal['moonshine', 'parakeet'] = 'parakeet'
 
 
 def _get_or_create_notif_prefs(user_id: str) -> dict:
@@ -112,7 +112,7 @@ def _row_to_schema(hp: dict, np: dict) -> UserPreferencesSchema:
         use_cloud_when_online=np.get("use_cloud_when_online") if np.get("use_cloud_when_online") is not None else False,
         auto_submit=np.get("auto_submit") if np.get("auto_submit") is not None else True,
         auto_submit_silence_seconds=np.get("auto_submit_silence_seconds") if np.get("auto_submit_silence_seconds") is not None else 2.5,
-        use_on_device_model=np.get("use_on_device_model") or "moonshine",
+        use_on_device_model=np.get("use_on_device_model") or "parakeet",
     )
 
 

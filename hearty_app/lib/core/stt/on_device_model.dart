@@ -17,14 +17,16 @@ class OnDeviceModelSpec {
   final int approxMb;
 }
 
-/// The selectable on-device transcription models. Moonshine is the default
-/// (small, fast to load); Parakeet is the higher-accuracy, heavier option.
+/// The selectable on-device transcription models. Parakeet is the default
+/// (highest accuracy — the only one that reliably transcribes short symptom
+/// words like "bloating"/digits; Moonshine blanked/mis-heard them on-device,
+/// D5 2026-06-08). Moonshine stays selectable as the smaller/faster option.
 /// Both run through one batch engine — `kind` is the only thing that differs.
 enum OnDeviceModel {
   moonshine,
   parakeet;
 
-  static const defaultModel = OnDeviceModel.moonshine;
+  static const defaultModel = OnDeviceModel.parakeet;
 
   OnDeviceModelSpec get spec => _specs[this]!;
 
@@ -39,9 +41,9 @@ enum OnDeviceModel {
   /// One-line trade-off shown under the label in Settings.
   String get blurb => switch (this) {
         OnDeviceModel.moonshine =>
-          'Smaller & faster — recommended (~${spec.approxMb} MB)',
+          'Smaller & faster, but misses short words (~${spec.approxMb} MB)',
         OnDeviceModel.parakeet =>
-          'Larger, most accurate (~${spec.approxMb} MB download)',
+          'Most accurate — recommended (~${spec.approxMb} MB)',
       };
 
   static OnDeviceModel fromPrefString(String? s) {

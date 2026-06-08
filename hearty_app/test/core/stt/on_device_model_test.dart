@@ -3,8 +3,8 @@ import 'package:hearty_app/core/stt/on_device_model.dart';
 
 void main() {
   group('OnDeviceModel registry', () {
-    test('moonshine is the default', () {
-      expect(OnDeviceModel.defaultModel, OnDeviceModel.moonshine);
+    test('parakeet is the default', () {
+      expect(OnDeviceModel.defaultModel, OnDeviceModel.parakeet);
     });
 
     test('moonshine resolves to a moonshine-kind spec with its files', () {
