@@ -48,5 +48,20 @@ void main() {
       expect(await mgr.isReady(OnDeviceModel.moonshine), isTrue);
       expect(await mgr.isReady(OnDeviceModel.parakeet), isFalse);
     });
+
+    test('concurrent ensureAndWarm for one model coalesces into one op',
+        () async {
+      // Files present → no download; both calls must share ONE in-flight op so
+      // repeated mic taps don't spawn racing downloads/isolates. (Warming the
+      // recognizer itself fails in the test host — no native lib — which is
+      // fine: we only assert coalescing, then settle the shared error.)
+      writeFiles(OnDeviceModel.moonshine);
+      final f1 = mgr.ensureAndWarm(OnDeviceModel.moonshine);
+      final f2 = mgr.ensureAndWarm(OnDeviceModel.moonshine);
+      expect(identical(f1, f2), isTrue);
+      await f1.catchError((_) {});
+      await f2.catchError((_) {});
+      await mgr.dispose();
+    });
   });
 }

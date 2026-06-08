@@ -1,8 +1,19 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hearty_app/core/stt/on_device_batch_stt_engine.dart';
 
 Uint8List _pcmBytes(int samples) => Uint8List(samples * 2); // 16-bit silence
+
+/// 16-bit PCM at a constant amplitude (rms == |amp|, like the detector tests).
+Uint8List _pcmTone(int samples, double amp) {
+  final bd = ByteData(samples * 2);
+  final v = (amp * 32767).round().clamp(-32768, 32767);
+  for (var i = 0; i < samples; i++) {
+    bd.setInt16(i * 2, v, Endian.little);
+  }
+  return bd.buffer.asUint8List();
+}
 
 void main() {
   group('OnDeviceBatchSttEngine', () {
@@ -62,6 +73,37 @@ void main() {
       final result = await engine.stop();
       expect(result.ok, isFalse);
       expect(result.transcript, isEmpty);
+    });
+
+    test('a hung decode times out to ok:false (warm isolate died)', () async {
+      final engine = OnDeviceBatchSttEngine(
+        silenceSeconds: 2.5,
+        decodeTimeout: const Duration(milliseconds: 50),
+        decode: (samples) => Completer<String>().future, // never completes
+      );
+      engine.ingestForTest(_pcmBytes(1600));
+      final result = await engine.stop();
+      expect(result.ok, isFalse);
+      expect(result.transcript, isEmpty);
+    });
+
+    test('auto-submit fires for a quiet speaker (adaptive VAD)', () async {
+      var autoSubmits = 0;
+      final engine = OnDeviceBatchSttEngine(
+        silenceSeconds: 2.5,
+        decode: (samples) async => '',
+      );
+      engine.armForTest(onAutoSubmit: () => autoSubmits++);
+      // Quiet speech, amp 0.01 — below the old fixed 0.015 cut.
+      for (var i = 0; i < 5; i++) {
+        engine.ingestForTest(_pcmTone(1600, 0.01));
+      }
+      for (var i = 0; i < 24; i++) {
+        engine.ingestForTest(_pcmBytes(1600)); // 2.4s silence — not yet
+      }
+      expect(autoSubmits, 0);
+      engine.ingestForTest(_pcmBytes(1600)); // crosses 2.5s — fires
+      expect(autoSubmits, 1);
     });
   });
 }

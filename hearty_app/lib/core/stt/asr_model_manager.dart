@@ -113,8 +113,35 @@ class AsrModelManager {
     return null;
   }
 
+  Future<void>? _warming;
+  OnDeviceModel? _warmingModel;
+
   /// Ensure [model] is downloaded and its recognizer warm. Call out-of-band.
+  ///
+  /// In-flight guard: the capture path fires this on *every* not-ready
+  /// session-open, so repeated mic taps during the first-run download would
+  /// otherwise spawn concurrent `_dio.download` calls writing the same temp
+  /// path (and racing isolate spawns). Concurrent calls for the same model
+  /// share one operation.
   Future<void> ensureAndWarm(
+    OnDeviceModel model, {
+    void Function(double progress)? onProgress,
+  }) {
+    final existing = _warming;
+    if (existing != null && _warmingModel == model) return existing;
+    late final Future<void> f;
+    f = _ensureAndWarm(model, onProgress: onProgress).whenComplete(() {
+      if (identical(_warming, f)) {
+        _warming = null;
+        _warmingModel = null;
+      }
+    });
+    _warming = f;
+    _warmingModel = model;
+    return f;
+  }
+
+  Future<void> _ensureAndWarm(
     OnDeviceModel model, {
     void Function(double progress)? onProgress,
   }) async {
@@ -173,6 +200,18 @@ class AsrModelManager {
   Future<void> _disposeIsolate() async {
     _idleTimer?.cancel();
     _idleTimer = null;
+    // Strand-proof a reap/model-switch mid-decode: any future awaiting the
+    // isolate must be completed (with an error) before we kill it, or the
+    // engine's `decode(...)` would hang until its own timeout. The engine maps
+    // ok:false → manual, so an error here is the correct, prompt outcome.
+    if (_decode?.isCompleted == false) {
+      _decode!.completeError(StateError('recognizer isolate disposed'));
+    }
+    if (_ready?.isCompleted == false) {
+      _ready!.completeError(StateError('recognizer isolate disposed'));
+    }
+    _decode = null;
+    _ready = null;
     _tx?.send(['dispose']);
     _rx?.close();
     _rx = null;

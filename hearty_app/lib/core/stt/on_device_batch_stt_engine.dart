@@ -20,10 +20,15 @@ class OnDeviceBatchSttEngine implements SttEngine {
     required this.silenceSeconds,
     required this.decode,
     this.maxBufferSeconds = 60,
+    this.decodeTimeout = const Duration(seconds: 8),
   });
 
   final double silenceSeconds;
   final int maxBufferSeconds;
+
+  /// Cap on a single decode; if the warm isolate dies no result returns, so we
+  /// surface ok:false instead of wedging. Injectable so tests don't wait it out.
+  final Duration decodeTimeout;
 
   /// Decode a whole utterance to text (throws on failure). Supplied by the
   /// model manager from its warm isolate; the engine does not own it.
@@ -60,7 +65,13 @@ class OnDeviceBatchSttEngine implements SttEngine {
     _silence = onAutoSubmit == null
         ? null
         : SilenceDetector(
-            sampleRate: _kSampleRate, silenceSeconds: silenceSeconds);
+            sampleRate: _kSampleRate,
+            silenceSeconds: silenceSeconds,
+            // Adaptive cut: the mic stream is raw (normalize+pad only runs at
+            // stop()), so a quiet speaker sits below the fixed 0.015 cut and
+            // auto-submit would never fire. Key the cut off their own peak.
+            relativeThreshold: 0.35,
+          );
   }
 
   /// Test seam: arm the auto-submit/silence policy without starting `record`.
@@ -102,7 +113,11 @@ class OnDeviceBatchSttEngine implements SttEngine {
     if (pcm.isEmpty) return const SttResult(transcript: '');
     final samples = normalizeAndPad(pcm16ToFloat32(pcm));
     try {
-      final text = await decode(samples);
+      // Bound the decode: if the warm isolate dies (native crash / OOM — plausible
+      // for the larger model on a 6 GB phone) no result ever returns, so cap the
+      // wait and surface ok:false → the lifecycle drops to manual instead of
+      // wedging in "listening". (The old streaming engine had the same guard.)
+      final text = await decode(samples).timeout(decodeTimeout);
       return SttResult(transcript: text.trim());
     } catch (e) {
       return SttResult(transcript: '', ok: false, error: '$e');
