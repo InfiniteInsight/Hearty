@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -36,6 +37,7 @@ import '../features/setup/screens/setup_screen.dart';
 import '../features/setup/screens/notification_setup_screen.dart';
 import '../features/setup/screens/conversation_style_setup_screen.dart';
 import '../core/api/providers/preferences_provider.dart';
+import '../core/api/models/user_preferences.dart';
 import '../core/stt/on_device_model.dart';
 import '../core/api/providers/last_logged_provider.dart';
 import '../core/api/providers/meals_provider.dart';
@@ -326,12 +328,28 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
   /// and skipped for cloud users. (RAM survival alongside the wake-word service
   /// is verified on device in D5.)
   Future<void> _prewarmDictation() async {
-    if (!await Permission.microphone.isGranted) return;
+    if (!await Permission.microphone.isGranted) {
+      if (kDebugMode) debugPrint('[asr] preload skipped: mic not granted');
+      return;
+    }
     if (!mounted) return;
-    final prefs = await ref.read(preferencesProvider.future);
-    if (!mounted || prefs.useCloudWhenOnline) return;
+    final UserPreferences prefs;
+    try {
+      prefs = await ref.read(preferencesProvider.future);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[asr] preload skipped: prefs threw ($e)');
+      return;
+    }
+    if (!mounted) return;
+    if (prefs.useCloudWhenOnline) {
+      if (kDebugMode) debugPrint('[asr] preload skipped: cloud-when-online on');
+      return;
+    }
     final model = OnDeviceModel.fromPrefString(prefs.useOnDeviceModel);
-    ref.read(asrModelManagerProvider).ensureAndWarm(model).catchError((_) {});
+    if (kDebugMode) debugPrint('[asr] preload firing for ${model.spec.dir}');
+    ref.read(asrModelManagerProvider).ensureAndWarm(model).catchError((e) {
+      if (kDebugMode) debugPrint('[asr] preload ensureAndWarm failed: $e');
+    });
   }
 
   @override

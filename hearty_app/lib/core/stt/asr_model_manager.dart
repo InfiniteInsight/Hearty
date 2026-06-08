@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
-import 'dart:typed_data';
 
-import 'package:archive/archive.dart';
+import 'package:archive/archive_io.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'batch_asr_isolate.dart';
@@ -64,6 +64,9 @@ class AsrModelManager {
     final tmp = '${(await getTemporaryDirectory()).path}/${spec.dir}.tar.bz2';
 
     try {
+      if (kDebugMode) {
+        debugPrint('[asr] downloading ${spec.dir} from ${spec.downloadUrl}');
+      }
       await _dio.download(
         spec.downloadUrl,
         tmp,
@@ -71,16 +74,36 @@ class AsrModelManager {
           if (t > 0 && onProgress != null) onProgress(r / t);
         },
       );
-      final tarBytes = BZip2Decoder().decodeBytes(File(tmp).readAsBytesSync());
-      final archive = TarDecoder().decodeBytes(tarBytes);
+      if (kDebugMode) debugPrint('[asr] downloaded ${spec.dir}, extracting…');
+      final dirPath = dir.path;
       final wanted = spec.files.values.toSet();
-      for (final f in archive) {
-        if (!f.isFile) continue;
-        final name = f.name.split('/').last;
-        if (!wanted.contains(name)) continue; // skip README/test_wavs/etc.
-        File('${dir.path}/$name')
-            .writeAsBytesSync(f.content as List<int>, flush: true);
-      }
+      // Extract OFF the main isolate: bunzip+untar of a ~240 MB archive is heavy
+      // pure-Dart CPU work that ANRs the UI thread if run inline (confirmed on
+      // the Pixel 4a). Stream bz2 → a temp .tar → individual files so peak
+      // memory stays bounded (no 240 MB readAsBytes + 280 MB decode in RAM).
+      await Isolate.run(() {
+        final tarPath = '$tmp.tar';
+        final bzIn = InputFileStream(tmp);
+        final tarOut = OutputFileStream(tarPath);
+        BZip2Decoder().decodeStream(bzIn, tarOut);
+        bzIn.closeSync();
+        tarOut.closeSync();
+        final tarIn = InputFileStream(tarPath);
+        final archive = TarDecoder().decodeBuffer(tarIn);
+        for (final f in archive.files) {
+          if (!f.isFile) continue;
+          final name = f.name.split('/').last;
+          if (!wanted.contains(name)) continue; // skip README/test_wavs/etc.
+          final out = OutputFileStream('$dirPath/$name');
+          f.writeContent(out);
+          out.closeSync();
+        }
+        tarIn.closeSync();
+        try {
+          File(tarPath).deleteSync();
+        } catch (_) {}
+      });
+      if (kDebugMode) debugPrint('[asr] extracted ${spec.dir}');
     } finally {
       try {
         File(tmp).deleteSync();
@@ -181,6 +204,7 @@ class AsrModelManager {
     await _ready!.future;
     _warmModel = model;
     _bumpIdle();
+    if (kDebugMode) debugPrint('[asr] recognizer warm: ${model.spec.dir}');
   }
 
   Future<String> _decodeSamples(Float32List samples) async {
@@ -188,8 +212,15 @@ class AsrModelManager {
     if (tx == null) throw StateError('recognizer not warm');
     _bumpIdle();
     _decode = Completer<String>();
+    final sw = kDebugMode ? (Stopwatch()..start()) : null;
     tx.send(['decode', samples]);
-    return _decode!.future;
+    final text = await _decode!.future;
+    if (kDebugMode) {
+      final secs = (samples.length / 16000).toStringAsFixed(1);
+      debugPrint('[asr] decode ${sw!.elapsedMilliseconds}ms '
+          '(${secs}s audio) -> ${text.isEmpty ? "<BLANK>" : '"$text"'}');
+    }
+    return text;
   }
 
   void _bumpIdle() {
