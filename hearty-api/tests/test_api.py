@@ -354,6 +354,47 @@ def test_preferences_update_conversation_style(api_base, headers):
         httpx.put(f"{api_base}/api/preferences", headers=headers, json=current, timeout=30)
 
 
+def test_preferences_includes_voice_dictation_fields(api_base, headers):
+    # Plan D: the four voice-dictation fields must be present with the same
+    # defaults/keys the Flutter client uses, or a fresh install bootstrapping
+    # from this GET would diverge from the on-device defaults.
+    r = httpx.get(f"{api_base}/api/preferences", headers=headers, timeout=30)
+    assert r.status_code == 200
+    body = r.json()
+    assert isinstance(body["use_cloud_when_online"], bool)
+    assert isinstance(body["auto_submit"], bool)
+    assert isinstance(body["auto_submit_silence_seconds"], (int, float))
+    assert body["use_on_device_model"] in ("moonshine", "parakeet")
+
+
+def test_preferences_round_trip_voice_dictation_fields(api_base, headers):
+    # Proves the WRITE path persists all four (the update schema accepts them and
+    # the row mapping upserts them) — not just that the read model exposes them.
+    r = httpx.get(f"{api_base}/api/preferences", headers=headers, timeout=30)
+    current = r.json()
+    new_model = "parakeet" if current.get("use_on_device_model") == "moonshine" else "moonshine"
+    payload = {
+        **current,
+        "use_cloud_when_online": not current.get("use_cloud_when_online", False),
+        "auto_submit": not current.get("auto_submit", True),
+        "auto_submit_silence_seconds": 3.5,
+        "use_on_device_model": new_model,
+    }
+    try:
+        r2 = httpx.put(f"{api_base}/api/preferences", headers=headers, json=payload, timeout=30)
+        assert r2.status_code == 200
+        out = r2.json()
+        assert out["use_cloud_when_online"] == payload["use_cloud_when_online"]
+        assert out["auto_submit"] == payload["auto_submit"]
+        assert out["auto_submit_silence_seconds"] == 3.5
+        assert out["use_on_device_model"] == new_model
+        # And it actually landed in the DB, not just echoed back.
+        r3 = httpx.get(f"{api_base}/api/preferences", headers=headers, timeout=30)
+        assert r3.json()["use_on_device_model"] == new_model
+    finally:
+        httpx.put(f"{api_base}/api/preferences", headers=headers, json=current, timeout=30)
+
+
 def test_update_symptom_structured_fields(api_base, headers):
     # Create a symptom
     r = httpx.post(f"{api_base}/api/symptoms", headers=headers, json={

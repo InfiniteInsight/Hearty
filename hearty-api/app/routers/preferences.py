@@ -39,6 +39,13 @@ class UserPreferencesSchema(BaseModel):
     evening_checkin_minute: int = 0
     # Conversation style
     conversation_style: Literal['warm', 'concise'] = 'warm'
+    # Voice dictation (Plan D). Defaults MUST match the Flutter UserPreferences
+    # defaults — on a fresh install the client bootstraps from this GET, so a
+    # mismatched server default would silently override the local one.
+    use_cloud_when_online: bool = False
+    auto_submit: bool = True
+    auto_submit_silence_seconds: float = 2.5
+    use_on_device_model: Literal['moonshine', 'parakeet'] = 'moonshine'
 
 
 def _get_or_create_notif_prefs(user_id: str) -> dict:
@@ -102,6 +109,10 @@ def _row_to_schema(hp: dict, np: dict) -> UserPreferencesSchema:
         evening_checkin_hour=np.get("evening_checkin_hour") if np.get("evening_checkin_hour") is not None else 20,
         evening_checkin_minute=np.get("evening_checkin_minute") if np.get("evening_checkin_minute") is not None else 0,
         conversation_style=np.get("conversation_style") or "warm",
+        use_cloud_when_online=np.get("use_cloud_when_online") if np.get("use_cloud_when_online") is not None else False,
+        auto_submit=np.get("auto_submit") if np.get("auto_submit") is not None else True,
+        auto_submit_silence_seconds=np.get("auto_submit_silence_seconds") if np.get("auto_submit_silence_seconds") is not None else 2.5,
+        use_on_device_model=np.get("use_on_device_model") or "moonshine",
     )
 
 
@@ -139,6 +150,10 @@ async def update_preferences(
         "evening_checkin_hour": body.evening_checkin_hour,
         "evening_checkin_minute": body.evening_checkin_minute,
         "conversation_style": body.conversation_style,
+        "use_cloud_when_online": body.use_cloud_when_online,
+        "auto_submit": body.auto_submit,
+        "auto_submit_silence_seconds": body.auto_submit_silence_seconds,
+        "use_on_device_model": body.use_on_device_model,
     }
     notif_row = {k: v for k, v in notif_row.items() if v is not None or k == "fcm_token"}
     np_result = (

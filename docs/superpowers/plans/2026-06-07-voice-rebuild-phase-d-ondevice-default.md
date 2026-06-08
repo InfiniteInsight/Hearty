@@ -170,13 +170,17 @@ Future<SttEngine> _selectEngine() async {
 
 ## D4 — Settings UI
 
-### Task D4.1: `voice_settings_screen.dart`
+### Task D4.1: `dictation_settings_screen.dart`
 
-- [ ] **Step 1:** a real Settings screen (replaces the temp debug tiles) with:
-  - **Transcription model:** Moonshine (default, "smaller & faster") · Parakeet ("larger, most accurate — ~631 MB download"). Switching triggers `AsrModelManager.ensureModel` + re-warm (with the download progress UX).
+> Built as a **new** `dictation_settings_screen.dart` at `/settings/dictation`,
+> kept separate from the existing TTS-output picker at `/settings/voice`.
+
+- [x] **Step 1:** a real Settings screen with:
+  - **Transcription model:** Moonshine (default, "smaller & faster") · Parakeet ("larger, most accurate — ~631 MB download"). Switching downloads + warms via the shared `asrModelManagerProvider`; **persist-after-ready** so a failed download keeps the working model selected (snackbar + tiles disabled mid-switch + "limited until ready" progress row).
   - **Auto-submit:** on/off + the 2–5 s silence slider (default 2.5).
   - **Advanced → Use cloud when online:** default off; on = re-enable the dormant `CloudSttEngine`.
-- [ ] **Step 2:** widget tests for the toggles/persistence. Commit.
+- [x] **Step 1b (advisor — close the dead-UI gap):** wire *consumption* — `_selectEngine` reads `prefs.autoSubmitSilenceSeconds` (was hardcoded); `_openSession` gates `onAutoSubmit` on `_effectiveAutoSubmit` (`prefs.autoSubmit`), constructor values as no-prefs/test fallback. `asrModelManagerProvider` is keepAlive; `voiceProvider` shares it.
+- [x] **Step 2:** widget tests (toggles/persistence/model-switch success+failure, fake manager) + voice_provider auto-submit-consumption tests. 138 green. Committed.
 
 ---
 
