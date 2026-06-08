@@ -6,7 +6,8 @@ import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 /// Long-lived batch ASR isolate. Creates a sherpa `OfflineRecognizer` once
 /// (kept warm across decodes) and decodes whole utterances on demand. The
 /// `kind` parameter selects the model config — `'moonshine'` | `'transducer'`
-/// (Parakeet) | `'whisper'` — so one isolate serves every on-device model.
+/// (Parakeet / Zipformer) | `'nemo-ctc'` (Parakeet-CTC) | `'whisper'` — so one
+/// isolate serves every on-device model.
 ///
 /// Messages UI->isolate:
 ///   ['init', kind, Map<String,String> paths, numThreads]
@@ -101,6 +102,15 @@ class BatchAsrIsolate {
             encoder: p['encoder']!,
             decoder: p['decoder']!,
             joiner: p['joiner']!,
+          ),
+          tokens: p['tokens']!,
+          numThreads: numThreads,
+          debug: false,
+        );
+      case 'nemo-ctc':
+        return sherpa.OfflineModelConfig(
+          nemoCtc: sherpa.OfflineNemoEncDecCtcModelConfig(
+            model: p['model']!,
           ),
           tokens: p['tokens']!,
           numThreads: numThreads,

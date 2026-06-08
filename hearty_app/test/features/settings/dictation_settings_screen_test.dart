@@ -46,6 +46,10 @@ void main() {
     UserPreferences seed, {
     AsrModelManager? manager,
   }) async {
+    // Tall surface so all controls (now 4 model tiles + slider + toggles) are
+    // on-screen and hit-testable without scrolling.
+    await tester.binding.setSurfaceSize(const Size(1080, 2400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
