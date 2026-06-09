@@ -11,7 +11,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   flutter_tts
   permission_handler_windows
   record_windows
-  speech_to_text_windows
   sqlite3_flutter_libs
   url_launcher_windows
 )

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,22 +17,6 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
-          // TEMP (Plan B P0 gate): isolate-ASR no-ANR probe. Remove when B1 lands.
-          if (kDebugMode)
-            ListTile(
-              leading: const Icon(Icons.memory, color: Colors.deepPurple),
-              title: const Text('▶ ASR isolate probe (dev)'),
-              subtitle: const Text('no-ANR gate for the on-device engine'),
-              onTap: () => context.push('/isolate-probe'),
-            ),
-          // TEMP (Whisper/STT spike): on-device candidate benchmark.
-          if (kDebugMode)
-            ListTile(
-              leading: const Icon(Icons.speed, color: Colors.teal),
-              title: const Text('▶ Whisper/STT spike (dev)'),
-              subtitle: const Text('benchmark on-device STT candidates'),
-              onTap: () => context.push('/whisper-spike'),
-            ),
           // Account section
           ListTile(
             leading: const Icon(Icons.account_circle),

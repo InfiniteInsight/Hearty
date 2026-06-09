@@ -13,8 +13,6 @@ import '../core/auth/onboarding_provider.dart';
 import '../features/auth/screens/sign_in_screen.dart';
 import '../features/voice/providers/voice_provider.dart';
 import '../features/voice/screens/voice_overlay_screen.dart';
-import '../features/voice/screens/asr_isolate_probe_screen.dart'; // TEMP: Plan B P0 gate
-import '../features/voice/screens/whisper_spike_screen.dart'; // TEMP: Whisper STT spike
 import '../features/wake_word/providers/wake_word_provider.dart';
 import '../features/wake_word/wake_word_channel.dart';
 import '../features/logging/screens/home_screen.dart';
@@ -155,17 +153,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/sign-in',
         name: Routes.signIn,
         builder: (context, state) => const SignInScreen(),
-      ),
-      // TEMP (Plan B P0 gate): isolate-ASR no-ANR probe. Remove when B1 lands.
-      GoRoute(
-        path: '/isolate-probe',
-        builder: (context, state) => const AsrIsolateProbeScreen(),
-      ),
-      // TEMP (Whisper/STT spike): on-device candidate benchmark. Remove when the
-      // spike decision lands.
-      GoRoute(
-        path: '/whisper-spike',
-        builder: (context, state) => const WhisperSpikeScreen(),
       ),
       GoRoute(
         path: '/log',

@@ -186,7 +186,20 @@ Future<SttEngine> _selectEngine() async {
 
 ## D5 — Device verify, teardown, cleanup
 
-- [ ] **Step 1: DEVICE VERIFY (gate)** — `make run`, real flows on the Pixel 4a:
+> **RESOLVED 2026-06-08/09 (Pixel 4a).** Gate outcome: Moonshine FAILED the
+> short-word blank gate (blanked "bloating"/"eight"/"nausea" — seq2seq greedy
+> early-EOS, no sherpa config fix). Parakeet-0.6b was accurate but ~2.9 GB total
+> PSS warm → OOM-reaped under multitasking. The fix turned out to be the
+> **transducer/CTC architecture, not size** → trialled lighter models and shipped
+> **Parakeet-110m (`nemo-ctc`) as the default**: 0.6b-grade accuracy (casing +
+> punctuation, nailed bloating/nausea/brands), ~1.29 GB total PSS (1.83 GB free,
+> no swap, no reap), faster decode. 0.6b kept as the heavy max-accuracy option;
+> Moonshine + Zipformer-GigaSpeech dropped. Bugs surfaced (tracked separately):
+> prism waveform flat during dictation, off-topic refusal still logs a meal,
+> wake-word misbehaves after app reap/restart.
+
+- [x] **Step 1: DEVICE VERIFY (gate)** — done; see resolution above (preload fires
+  on launch + coalesces; RAM measured per-model; gate flipped default by data).
   - **Moonshine default, first run:** model downloads (~275 MB), then Flows 1/2/3 transcribe; keep-warm hides load after first launch.
   - **Proactive preload (wired in `_ScaffoldWithNavBar._prewarmDictation`, advisor pt 1):** confirm the background `ensureAndWarm(defaultModel)` actually fires on launch (mic-granted) so the **first** voice tap finds Moonshine ready (or, if the user beats the download, that it cleanly drops to manual — not a dead spinner). Watch logs to confirm the capture-path `ensureAndWarm` *coalesces* with the preload (no double 275 MB download) — this is the in-flight-guard path.
   - **BLANK-RATE GATE (default-flipping, measured on the REAL capture path — not replayed clips):** the spike's worst case was short symptom words — Moonshine blanked on "acid reflux"/"bloating" ~25% of takes *with* normalize+pad. Those are core journal utterances, so measure it for real: speak the short symptom set (**"bloating", "acid reflux", "nausea", "cramps", "a 2"**) **≥10 takes each across both household voices** through the actual Flow-1 mic path, and count empties. **If Moonshine's blank rate >10%, ship Parakeet as the default instead** (flip `OnDeviceModel.defaultModel` to `parakeet`; Moonshine becomes the selectable option). **When you flip it, also swap the two `OnDeviceModel.blurb` strings** — Moonshine's currently says "recommended" and Parakeet's "~631 MB download", which read backwards once Parakeet is the default. (The backend migration default + Pydantic Literal default would also need flipping to keep client/server parity.) *Counterweight to check:* production clips run until the 2.5 s trailing-silence auto-submit, so real audio is speech + ≥2.5 s — never the sub-second fragments the spike fast-tapped, so the real rate may be far below 25%. The gate decides it with data instead of assuming.
@@ -194,9 +207,9 @@ Future<SttEngine> _selectEngine() async {
   - **Keep-warm vs wake-word (RAM):** with the recognizer warm AND the wake-word foreground service running, confirm neither is killed under memory pressure (background the app, open a few others, return) — especially for Parakeet. If it gets killed, switch to warm-on-session + idle-release (D2.3).
   - **Steady-state launch burst (advisor pt 1):** the preload spawns the isolate + loads the model into RAM on **every** launch (a fresh process = a fresh keepAlive `AsrModelManager`), even sessions where voice is never used — and that burst coincides with the wake-word service. Verify an **everyday launch with voice unused** survives the 275 MB Moonshine warm (and the 631 MB Parakeet warm) without either being killed; the 3-min idle timer reclaims it but the launch-time spike is the risk. If it gets killed, that's the trigger for warm-on-session + idle-release (don't pre-empt — it's a device-data call).
   - No ANR; one ding; half-duplex; auto-submit ~2.5 s — all still hold.
-- [ ] **Step 2: teardown the spike** — delete `whisper_spike_screen.dart`, `whisper_spike_isolate.dart`, the `/whisper-spike` + `/isolate-probe` routes, the debug Settings tiles, `scripts/spike-download-push-models.sh`, and the on-device `spike-*` + `spike-wavs` dirs.
-- [ ] **Step 3: remove `speech_to_text`** from `pubspec.yaml` (now fully unused) and confirm `flutter analyze` + full test suite green.
-- [ ] **Step 4 (optional cleanup):** retire the streaming Zipformer (`OnDeviceSttEngine` + `asr_isolate.dart` + `asr_model_locator.dart`) if we're sure live partials aren't coming back; otherwise leave dormant. Commit.
+- [x] **Step 2: teardown the spike** — deleted `whisper_spike_screen.dart`, `whisper_spike_isolate.dart`, `asr_isolate_probe_screen.dart`, the `/whisper-spike` + `/isolate-probe` routes, the debug Settings tiles, `scripts/spike-download-push-models.sh`, and the on-device `spike-*` + `spike-wavs` dirs + logs.
+- [x] **Step 3: remove `speech_to_text`** from `pubspec.yaml` (fully unused). `flutter analyze` clean + 138 tests green.
+- [x] **Step 4: retire the streaming Zipformer** (Option A decided — no live partials) — deleted `on_device_stt_engine.dart` + `asr_isolate.dart` + `asr_model_locator.dart` (already orphaned, no importers) and the on-device `asr-model`/`asr-model-122` dirs.
 
 ---
 

@@ -17,10 +17,10 @@ class SttNotReadyException implements Exception {
   String toString() => 'SttNotReadyException: on-device model not ready';
 }
 
-/// Engine-agnostic streaming speech-to-text for one capture session.
+/// Engine-agnostic speech-to-text for one capture session.
 ///
-/// Implementations: [OnDeviceSttEngine] (sherpa on a background isolate) and,
-/// in Plan C, a cloud engine. The lifecycle in `VoiceNotifier` drives this
+/// Implementations: [OnDeviceBatchSttEngine] (sherpa on a background isolate)
+/// and [CloudSttEngine]. The lifecycle in `VoiceNotifier` drives this
 /// interface, so it never depends on a concrete engine.
 abstract class SttEngine {
   /// Begin capturing. Live interim text arrives on [partials]. If
