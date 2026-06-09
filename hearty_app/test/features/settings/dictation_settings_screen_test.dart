@@ -127,25 +127,25 @@ void main() {
         (tester) async {
       final mgr = _FakeManager();
       final c = await pumpScreen(tester, const UserPreferences(), manager: mgr);
-      // Default is parakeet; pick Moonshine.
-      await tester.tap(find.text('Moonshine'));
+      // Default is parakeet-110m; pick the heavier Parakeet 0.6B.
+      await tester.tap(find.text('Parakeet 0.6B'));
       await tester.pumpAndSettle();
       expect(mgr.calls, 1);
       expect(c.read(preferencesProvider).valueOrNull!.useOnDeviceModel,
-          'moonshine');
-      expect(find.text('Moonshine ready'), findsOneWidget);
+          'parakeet');
+      expect(find.text('Parakeet 0.6B ready'), findsOneWidget);
     });
 
     testWidgets('a failed model switch keeps the current model selected',
         (tester) async {
       final mgr = _FakeManager(fail: true);
       final c = await pumpScreen(tester, const UserPreferences(), manager: mgr);
-      await tester.tap(find.text('Moonshine'));
+      await tester.tap(find.text('Parakeet 0.6B'));
       await tester.pumpAndSettle();
       expect(mgr.calls, 1);
       // Pref must NOT have flipped to a model that never downloaded.
       expect(c.read(preferencesProvider).valueOrNull!.useOnDeviceModel,
-          'parakeet');
+          'parakeetCtc110m');
       expect(find.textContaining('keeping current model'), findsOneWidget);
     });
   });

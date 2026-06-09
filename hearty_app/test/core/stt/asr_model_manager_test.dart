@@ -25,16 +25,16 @@ void main() {
     }
 
     test('isReady is false when nothing is downloaded', () async {
-      expect(await mgr.isReady(OnDeviceModel.moonshine), isFalse);
-      expect(await mgr.resolvePaths(OnDeviceModel.moonshine.spec), isNull);
+      expect(await mgr.isReady(OnDeviceModel.parakeetCtc110m), isFalse);
+      expect(await mgr.resolvePaths(OnDeviceModel.parakeetCtc110m.spec), isNull);
     });
 
     test('resolvePaths returns all files once present', () async {
-      writeFiles(OnDeviceModel.moonshine);
-      final paths = await mgr.resolvePaths(OnDeviceModel.moonshine.spec);
+      writeFiles(OnDeviceModel.parakeetCtc110m);
+      final paths = await mgr.resolvePaths(OnDeviceModel.parakeetCtc110m.spec);
       expect(paths, isNotNull);
-      expect(paths!.keys, containsAll(OnDeviceModel.moonshine.spec.files.keys));
-      expect(await mgr.isReady(OnDeviceModel.moonshine), isTrue);
+      expect(paths!.keys, containsAll(OnDeviceModel.parakeetCtc110m.spec.files.keys));
+      expect(await mgr.isReady(OnDeviceModel.parakeetCtc110m), isTrue);
     });
 
     test('a partial model is not ready (one file missing)', () async {
@@ -44,8 +44,8 @@ void main() {
     });
 
     test('models resolve independently', () async {
-      writeFiles(OnDeviceModel.moonshine);
-      expect(await mgr.isReady(OnDeviceModel.moonshine), isTrue);
+      writeFiles(OnDeviceModel.parakeetCtc110m);
+      expect(await mgr.isReady(OnDeviceModel.parakeetCtc110m), isTrue);
       expect(await mgr.isReady(OnDeviceModel.parakeet), isFalse);
     });
 
@@ -55,9 +55,9 @@ void main() {
       // repeated mic taps don't spawn racing downloads/isolates. (Warming the
       // recognizer itself fails in the test host — no native lib — which is
       // fine: we only assert coalescing, then settle the shared error.)
-      writeFiles(OnDeviceModel.moonshine);
-      final f1 = mgr.ensureAndWarm(OnDeviceModel.moonshine);
-      final f2 = mgr.ensureAndWarm(OnDeviceModel.moonshine);
+      writeFiles(OnDeviceModel.parakeetCtc110m);
+      final f1 = mgr.ensureAndWarm(OnDeviceModel.parakeetCtc110m);
+      final f2 = mgr.ensureAndWarm(OnDeviceModel.parakeetCtc110m);
       expect(identical(f1, f2), isTrue);
       await f1.catchError((_) {});
       await f2.catchError((_) {});

@@ -3,12 +3,13 @@ import 'package:hearty_app/core/api/models/user_preferences.dart';
 
 void main() {
   group('UserPreferences voice settings', () {
-    test('defaults: cloud dormant, auto-submit on at 2.5s, parakeet model', () {
+    test('defaults: cloud dormant, auto-submit on at 2.5s, parakeet-110m model',
+        () {
       const p = UserPreferences();
       expect(p.useCloudWhenOnline, isFalse);
       expect(p.autoSubmit, isTrue);
       expect(p.autoSubmitSilenceSeconds, 2.5);
-      expect(p.useOnDeviceModel, 'parakeet');
+      expect(p.useOnDeviceModel, 'parakeetCtc110m');
     });
 
     test('round-trips through json', () {
@@ -30,7 +31,7 @@ void main() {
       expect(back.useCloudWhenOnline, isFalse);
       expect(back.autoSubmit, isTrue);
       expect(back.autoSubmitSilenceSeconds, 2.5);
-      expect(back.useOnDeviceModel, 'parakeet');
+      expect(back.useOnDeviceModel, 'parakeetCtc110m');
     });
   });
 }

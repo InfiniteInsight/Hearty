@@ -1,6 +1,6 @@
 /// On-disk + download spec for an on-device ASR model. `kind` selects the
-/// sherpa `OfflineModelConfig` branch (`'moonshine'` | `'transducer'` |
-/// `'nemo-ctc'`); `files` maps logical keys to the filenames inside the dir.
+/// sherpa `OfflineModelConfig` branch (`'transducer'` | `'nemo-ctc'`); `files`
+/// maps logical keys to the filenames inside the model dir.
 class OnDeviceModelSpec {
   const OnDeviceModelSpec({
     required this.kind,
@@ -17,21 +17,24 @@ class OnDeviceModelSpec {
   final int approxMb;
 }
 
-/// The selectable on-device transcription models. Parakeet is the default
-/// (highest accuracy — the only one that reliably transcribes short symptom
-/// words like "bloating"/digits; Moonshine blanked/mis-heard them on-device,
-/// D5 2026-06-08). Moonshine stays selectable as the smaller/faster option.
-/// Both run through one batch engine — `kind` is the only thing that differs.
+/// The selectable on-device transcription models.
+///
+/// Default is **Parakeet-110m** (NeMo FastConformer TDT-CTC): on the D5 device
+/// gate (2026-06-09) it matched Parakeet-0.6b accuracy on the short symptom
+/// words that broke Moonshine ("bloating"/"nausea"/digits) — with proper
+/// casing+punctuation and faster decode — at **~half the warm RAM** (~1.29 GB
+/// total PSS vs the 0.6b's ~2.9 GB, which left a 6 GB phone with only ~450 MB
+/// free and got the app OOM-reaped). The 0.6b stays selectable as a heavier
+/// maximum-accuracy option. (Moonshine — blanked short words — and Zipformer-
+/// GigaSpeech — mangled "nausea", all-caps — were trialled and dropped.)
+///
+/// All models run through one batch engine; `kind` is the only thing that
+/// differs (immune-to-short-blank transducer/CTC architectures only).
 enum OnDeviceModel {
-  moonshine,
-  parakeet,
-  // D5 (2026-06-08) candidates: lighter transducer/CTC models trialled to cut
-  // Parakeet-0.6b's ~1.36 GB warm RAM while keeping short-word accuracy (the
-  // fix is the architecture, not the size). Under evaluation on-device.
   parakeetCtc110m,
-  zipformerGigaspeech;
+  parakeet;
 
-  static const defaultModel = OnDeviceModel.parakeet;
+  static const defaultModel = OnDeviceModel.parakeetCtc110m;
 
   OnDeviceModelSpec get spec => _specs[this]!;
 
@@ -39,22 +42,16 @@ enum OnDeviceModel {
 
   /// Human label for the Settings model picker.
   String get label => switch (this) {
-        OnDeviceModel.moonshine => 'Moonshine',
-        OnDeviceModel.parakeet => 'Parakeet',
         OnDeviceModel.parakeetCtc110m => 'Parakeet 110m',
-        OnDeviceModel.zipformerGigaspeech => 'Zipformer (GigaSpeech)',
+        OnDeviceModel.parakeet => 'Parakeet 0.6B',
       };
 
   /// One-line trade-off shown under the label in Settings.
   String get blurb => switch (this) {
-        OnDeviceModel.moonshine =>
-          'Smaller & faster, but misses short words (~${spec.approxMb} MB)',
-        OnDeviceModel.parakeet =>
-          'Most accurate — recommended (~${spec.approxMb} MB)',
         OnDeviceModel.parakeetCtc110m =>
-          'Lighter, near-Parakeet accuracy (~${spec.approxMb} MB)',
-        OnDeviceModel.zipformerGigaspeech =>
-          'Lightest accurate option (~${spec.approxMb} MB)',
+          'Recommended — accurate & light (~${spec.approxMb} MB)',
+        OnDeviceModel.parakeet =>
+          'Maximum accuracy, heavier on memory (~${spec.approxMb} MB)',
       };
 
   static OnDeviceModel fromPrefString(String? s) {
@@ -68,21 +65,22 @@ enum OnDeviceModel {
 const _base =
     'https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models';
 
-// Filenames verified against the pushed spike models.
 const _specs = <OnDeviceModel, OnDeviceModelSpec>{
-  OnDeviceModel.moonshine: OnDeviceModelSpec(
-    kind: 'moonshine',
-    dir: 'asr-moonshine-base',
-    approxMb: 275,
-    downloadUrl: '$_base/sherpa-onnx-moonshine-base-en-int8.tar.bz2',
+  // NeMo FastConformer TDT-CTC 110M (CTC head). Single model file; ~1.29 GB
+  // total PSS warm. Default.
+  OnDeviceModel.parakeetCtc110m: OnDeviceModelSpec(
+    kind: 'nemo-ctc',
+    dir: 'asr-parakeet-ctc-110m',
+    approxMb: 126,
+    downloadUrl: '$_base/'
+        'sherpa-onnx-nemo-parakeet_tdt_ctc_110m-en-36000-int8.tar.bz2',
     files: {
-      'preprocessor': 'preprocess.onnx',
-      'encoder': 'encode.int8.onnx',
-      'uncachedDecoder': 'uncached_decode.int8.onnx',
-      'cachedDecoder': 'cached_decode.int8.onnx',
+      'model': 'model.int8.onnx',
       'tokens': 'tokens.txt',
     },
   ),
+  // NVIDIA Parakeet-TDT-0.6b transducer. Heaviest (~2.9 GB total PSS warm);
+  // kept as the maximum-accuracy option.
   OnDeviceModel.parakeet: OnDeviceModelSpec(
     kind: 'transducer',
     dir: 'asr-parakeet-tdt',
@@ -93,31 +91,6 @@ const _specs = <OnDeviceModel, OnDeviceModelSpec>{
       'encoder': 'encoder.int8.onnx',
       'decoder': 'decoder.int8.onnx',
       'joiner': 'joiner.int8.onnx',
-      'tokens': 'tokens.txt',
-    },
-  ),
-  // NeMo FastConformer TDT-CTC 110M (CTC head). Single model file; ~300 MB warm.
-  OnDeviceModel.parakeetCtc110m: OnDeviceModelSpec(
-    kind: 'nemo-ctc',
-    dir: 'asr-parakeet-ctc-110m',
-    approxMb: 120,
-    downloadUrl: '$_base/'
-        'sherpa-onnx-nemo-parakeet_tdt_ctc_110m-en-36000-int8.tar.bz2',
-    files: {
-      'model': 'model.int8.onnx',
-      'tokens': 'tokens.txt',
-    },
-  ),
-  // icefall Zipformer transducer, GigaSpeech. Drop-in to the `transducer` kind.
-  OnDeviceModel.zipformerGigaspeech: OnDeviceModelSpec(
-    kind: 'transducer',
-    dir: 'asr-zipformer-gigaspeech',
-    approxMb: 290,
-    downloadUrl: '$_base/sherpa-onnx-zipformer-gigaspeech-2023-12-12.tar.bz2',
-    files: {
-      'encoder': 'encoder-epoch-30-avg-1.int8.onnx',
-      'decoder': 'decoder-epoch-30-avg-1.int8.onnx',
-      'joiner': 'joiner-epoch-30-avg-1.int8.onnx',
       'tokens': 'tokens.txt',
     },
   ),

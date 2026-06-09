@@ -38,7 +38,7 @@ class UserPreferences {
     this.useCloudWhenOnline = false,
     this.autoSubmit = true,
     this.autoSubmitSilenceSeconds = 2.5,
-    this.useOnDeviceModel = 'parakeet',
+    this.useOnDeviceModel = 'parakeetCtc110m',
   });
 
   static List<String> _toStringList(dynamic raw) {
@@ -71,7 +71,7 @@ class UserPreferences {
       autoSubmitSilenceSeconds:
           (json['auto_submit_silence_seconds'] as num?)?.toDouble() ?? 2.5,
       useOnDeviceModel:
-          (json['use_on_device_model'] as String?) ?? 'parakeet',
+          (json['use_on_device_model'] as String?) ?? 'parakeetCtc110m',
     );
   }
 
