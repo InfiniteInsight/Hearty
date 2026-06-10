@@ -155,14 +155,6 @@ void main() {
       );
     });
 
-    test('normalizeSoundLevel maps the recognizer dB range to 0..1', () {
-      expect(VoiceNotifier.normalizeSoundLevel(-2.0), 0.0);
-      expect(VoiceNotifier.normalizeSoundLevel(10.0), 1.0);
-      expect(VoiceNotifier.normalizeSoundLevel(4.0), 0.5);
-      expect(VoiceNotifier.normalizeSoundLevel(-100.0), 0.0); // clamps low
-      expect(VoiceNotifier.normalizeSoundLevel(100.0), 1.0); // clamps high
-    });
-
     test('soundLevel resets to 0 when listening stops (setThinking)', () {
       final notifier = container.read(voiceProvider.notifier);
       notifier.startListening();
@@ -213,6 +205,21 @@ void main() {
       await pump();
       expect(container.read(voiceProvider).transcript, 'i had a');
       expect(container.read(voiceProvider).micPhase, MicPhase.listening);
+    });
+
+    test('engine amplitude drives soundLevel and resets on stop (#13)', () async {
+      final n = c(container);
+      n.startListening();
+      await pump();
+      // Raw linear RMS flows through untouched (no dB remap).
+      h.latest!.emitAmplitude(0.08);
+      await pump();
+      expect(n.soundLevel.value, 0.08);
+      // Auto-submit ends capture → prism drops back to a calm beam.
+      h.latest!.nextTranscript = 'pizza';
+      h.latest!.fireAutoSubmit();
+      await pump();
+      expect(n.soundLevel.value, 0.0);
     });
 
     test('opens with exactly one ding per session', () async {

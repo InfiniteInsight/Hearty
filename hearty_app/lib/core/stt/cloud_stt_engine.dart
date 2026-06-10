@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:record/record.dart';
@@ -30,6 +31,7 @@ class CloudSttEngine implements SttEngine {
   // `record`, so deferring it keeps the buffer/transcribe logic unit-testable.
   AudioRecorder? _recorder;
   final _partials = StreamController<String>.broadcast();
+  final _amplitude = StreamController<double>.broadcast();
   final _buffer = BytesBuilder(copy: false);
   SilenceDetector? _silence;
   StreamSubscription? _micSub;
@@ -39,6 +41,9 @@ class CloudSttEngine implements SttEngine {
 
   @override
   Stream<String> get partials => _partials.stream;
+
+  @override
+  Stream<double> get amplitude => _amplitude.stream;
 
   @override
   Future<void> start({void Function()? onAutoSubmit}) async {
@@ -81,8 +86,12 @@ class CloudSttEngine implements SttEngine {
       return;
     }
     _buffer.add(bytes);
+    final floats = _pcm16ToFloat32(bytes);
+    // Raw linear RMS for the prism visualiser (shader owns gate + smoothing).
+    // Guard: a mic callback can land after dispose() closes the controller.
+    if (!_amplitude.isClosed) _amplitude.add(_rms(floats));
     final silence = _silence;
-    if (silence != null && silence.addPcm(_pcm16ToFloat32(bytes))) {
+    if (silence != null && silence.addPcm(floats)) {
       _capped = true; // stop feeding the detector after it fires
       _onAutoSubmit?.call();
     }
@@ -113,6 +122,7 @@ class CloudSttEngine implements SttEngine {
     await _micSub?.cancel();
     _micSub = null;
     if (!_partials.isClosed) await _partials.close();
+    if (!_amplitude.isClosed) await _amplitude.close();
     _recorder?.dispose();
   }
 
@@ -124,5 +134,14 @@ class CloudSttEngine implements SttEngine {
       out[i] = bd.getInt16(i * 2, Endian.little) / 32768.0;
     }
     return out;
+  }
+
+  static double _rms(Float32List s) {
+    if (s.isEmpty) return 0.0;
+    var sum = 0.0;
+    for (final v in s) {
+      sum += v * v;
+    }
+    return math.sqrt(sum / s.length);
   }
 }

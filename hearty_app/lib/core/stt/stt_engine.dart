@@ -32,6 +32,12 @@ abstract class SttEngine {
   /// Live interim transcript. Empty strings are allowed; never null.
   Stream<String> get partials;
 
+  /// Live mic amplitude as a normalised linear RMS (~0 at silence .. ~1 loud),
+  /// one value per captured PCM chunk. Drives the prism visualiser. The prism
+  /// shader applies its own noise gate + smoothing, so this is the *raw* linear
+  /// RMS — do not pre-scale it. Empty for engines that don't capture a mic.
+  Stream<double> get amplitude;
+
   /// Stop capturing and return the final transcript.
   Future<SttResult> stop();
 

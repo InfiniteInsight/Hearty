@@ -35,6 +35,36 @@ void main() {
       expect(decoded!.length, greaterThanOrEqualTo(24000));
     });
 
+    test('emits per-chunk RMS on the amplitude stream (#13 prism)', () async {
+      final engine = OnDeviceBatchSttEngine(
+        silenceSeconds: 2.5,
+        decode: (_) async => '',
+      );
+      final seen = <double>[];
+      final sub = engine.amplitude.listen(seen.add);
+      engine.ingestForTest(_pcmBytes(1600)); // silence -> rms 0
+      engine.ingestForTest(_pcmTone(1600, 0.25)); // tone -> rms ~0.25
+      await Future<void>.delayed(Duration.zero); // let the broadcast deliver
+      expect(seen.length, 2);
+      expect(seen[0], closeTo(0.0, 1e-6));
+      expect(seen[1], closeTo(0.25, 0.01));
+      await sub.cancel();
+    });
+
+    test('amplitude stream closes on dispose without throwing', () async {
+      final engine = OnDeviceBatchSttEngine(
+        silenceSeconds: 2.5,
+        decode: (_) async => '',
+      );
+      var closed = false;
+      engine.amplitude.listen(null, onDone: () => closed = true);
+      await engine.dispose();
+      await Future<void>.delayed(Duration.zero);
+      expect(closed, isTrue);
+      // A late mic callback after dispose must not throw (guarded by isClosed).
+      engine.ingestForTest(_pcmTone(160, 0.2));
+    });
+
     test('caps the buffer at maxBufferSeconds and fires auto-submit', () async {
       var autoSubmits = 0;
       final engine = OnDeviceBatchSttEngine(

@@ -104,6 +104,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   final Future<bool> Function() _isOnline;
   SttEngine? _engine;
   StreamSubscription<String>? _partialSub;
+  StreamSubscription<double>? _amplitudeSub;
 
   static Future<bool> _defaultIsOnline() async {
     final r = await Connectivity().checkConnectivity();
@@ -175,16 +176,12 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   final Duration _micHandoffDelay;
   bool _wakeWordMicReleased = false;
 
-  // Live mic amplitude (0..1) for the prism visualiser. The on-device engine
-  // does not yet surface RMS, so this stays at 0 for now (flat beam) — wiring an
-  // amplitude stream off the engine is a follow-up. Kept so the overlay and the
-  // pure normalize helper keep compiling/working.
+  // Live mic amplitude (raw linear RMS, ~0 silence) for the prism visualiser,
+  // fed from the active engine's amplitude stream in _openSession and reset to 0
+  // in _closeEngine. The prism shader (PrismShaderState) owns the noise gate +
+  // smoothing, so the raw RMS flows through untouched. Read each frame by
+  // PrismWaveform via this ValueNotifier.
   final ValueNotifier<double> soundLevel = ValueNotifier<double>(0.0);
-
-  /// Maps a recognizer's rms-dB-ish sound level (~-2 silence .. ~10 loud) to a
-  /// 0..1 amplitude for the visualiser.
-  static double normalizeSoundLevel(double raw) =>
-      ((raw + 2.0) / 12.0).clamp(0.0, 1.0);
 
   Future<void> _initTts() async {
     _tts = _injectedTts ?? await createTtsEngine();
@@ -209,6 +206,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   /// a path that can run while Hearty is speaking.
   Future<void> _openSession({required bool isFollowUp}) async {
     await _closeEngine();
+    // _closeEngine awaits; the notifier may have been disposed in the meantime
+    // (caller fired this without awaiting). Bail before touching state.
+    if (!mounted) return;
     _wakeWordMicReleased = false;
     // Preserve the listening vs awaitingFollowUp distinction: the overlay routes
     // the submit on the pre-thinking status (awaitingFollowUp → sendFollowUpToApi
@@ -263,6 +263,15 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       if (state.status == VoiceStatus.listening ||
           state.status == VoiceStatus.awaitingFollowUp) {
         setTranscript(text);
+      }
+    });
+    // Drive the prism visualiser from the engine's live mic RMS. The value is
+    // raw linear RMS; PrismShaderState owns the noise gate + smoothing, so it
+    // flows through untouched.
+    _amplitudeSub = engine.amplitude.listen((rms) {
+      if (state.status == VoiceStatus.listening ||
+          state.status == VoiceStatus.awaitingFollowUp) {
+        soundLevel.value = rms;
       }
     });
 
@@ -328,9 +337,16 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   Future<void> _closeEngine() async {
     final sub = _partialSub;
     _partialSub = null;
+    final ampSub = _amplitudeSub;
+    _amplitudeSub = null;
     final e = _engine;
     _engine = null;
+    // Drop the prism back to a calm beam once capture ends. Done synchronously
+    // before any await: dispose() calls this unawaited and then synchronously
+    // disposes soundLevel, so a post-await write would hit a disposed notifier.
+    if (mounted) soundLevel.value = 0.0;
     await sub?.cancel();
+    await ampSub?.cancel();
     await e?.dispose();
   }
 
