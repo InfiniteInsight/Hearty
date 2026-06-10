@@ -288,20 +288,30 @@ async def chat(
                     inferred_meal_type = extracted.get("inferred_meal_type")
                     normalized_description = extracted.get("normalized_description")
                 except Exception as extract_err:
-                    logger.warning("Meal extraction failed (inserting raw): %s", extract_err)
+                    logger.warning("Meal extraction failed; not logging: %s", extract_err)
 
-                row = {
-                    "user_id": user["id"],
-                    "description": normalized_description or body.message,
-                    "meal_type": inferred_meal_type,
-                    "foods": foods,
-                    "logged_at": (body.logged_at or datetime.now(timezone.utc)).isoformat(),
-                    "input_method": "voice",
-                }
-                row = {k: v for k, v in row.items() if v is not None}
-                result = supabase.table("meals").insert(row).execute()
-                meal_id = result.data[0]["id"] if result.data else None
-                logger.info("Meal inserted: %s", result.data)
+                # Only log a meal when the extractor actually found food. This is
+                # the off-topic guard: a message the keyword pre-filter missed
+                # (e.g. "this is a transcription test") yields no foods, so we must
+                # NOT insert a junk meal row even though the LLM reply below will
+                # decline. Mirrors the follow-up branch's `if foods:` gate. (A
+                # symptom-only first turn with no food also logs nothing here — see
+                # the separate first-turn-symptom gap.)
+                if foods:
+                    row = {
+                        "user_id": user["id"],
+                        "description": normalized_description or body.message,
+                        "meal_type": inferred_meal_type,
+                        "foods": foods,
+                        "logged_at": (body.logged_at or datetime.now(timezone.utc)).isoformat(),
+                        "input_method": "voice",
+                    }
+                    row = {k: v for k, v in row.items() if v is not None}
+                    result = supabase.table("meals").insert(row).execute()
+                    meal_id = result.data[0]["id"] if result.data else None
+                    logger.info("Meal inserted: %s", result.data)
+                else:
+                    logger.info("No food extracted; no meal logged for: %r", body.message)
             except Exception as e:
                 logger.error("Meal insert failed: %s", e, exc_info=True)
 
