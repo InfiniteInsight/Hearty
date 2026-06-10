@@ -141,6 +141,44 @@ def _is_off_topic(message: str) -> bool:
     return False
 
 
+def _symptom_extraction_input(message: str, history: Optional[list[dict]]) -> str:
+    """The message plus the last few turns as context, so the extractor can
+    resolve a bare rating ("about a 7") back to the symptom it refers to."""
+    recent = (history or [])[-4:]
+    if not recent:
+        return message
+    lines = [
+        f"{'Hearty' if m['role'] == 'assistant' else 'User'}: {m['content']}"
+        for m in recent
+    ]
+    lines.append(f"User: {message}")
+    return "\n".join(lines)
+
+
+def _insert_ready_symptoms(
+    user_id: str, symptoms_ready: list[dict], raw_description: str
+) -> None:
+    """Insert symptoms that have a confirmed severity. Shared by the first-turn
+    and meal-follow-up paths."""
+    rows = [
+        {
+            "user_id": user_id,
+            "symptom_type": s.get("symptom_type", "other"),
+            "severity": s.get("severity"),
+            "onset_minutes": s.get("onset_minutes"),
+            "duration_minutes": s.get("duration_minutes"),
+            "bathroom_urgency": s.get("bathroom_urgency"),
+            "bathroom_visits": s.get("bathroom_visits"),
+            "stool_consistency": s.get("stool_consistency"),
+            "raw_description": raw_description,
+            "logged_at": datetime.now(timezone.utc).isoformat(),
+        }
+        for s in symptoms_ready
+    ]
+    rows = [{k: v for k, v in r.items() if v is not None} for r in rows]
+    supabase.table("symptoms").insert(rows).execute()
+
+
 @router.post("/api/chat", status_code=200)
 async def chat(
     body: ChatRequest,
@@ -177,21 +215,11 @@ async def chat(
             logger.warning("Follow-up meal fetch failed: %s", e)
 
         # Extract symptoms first to determine intent before touching the meal.
-        # Build a context string from the last few turns so the extractor can
-        # resolve bare ratings ("about a 7") back to the symptom they refer to.
         symptoms = []
         try:
-            recent_turns = (body.history or [])[-4:]
-            if recent_turns:
-                ctx_lines = [
-                    f"{'Hearty' if m['role'] == 'assistant' else 'User'}: {m['content']}"
-                    for m in recent_turns
-                ]
-                ctx_lines.append(f"User: {body.message}")
-                extraction_input = "\n".join(ctx_lines)
-            else:
-                extraction_input = body.message
-            symptoms = ai_extraction.extract_symptoms(extraction_input)
+            symptoms = ai_extraction.extract_symptoms(
+                _symptom_extraction_input(body.message, body.history)
+            )
         except Exception as e:
             logger.error("Follow-up symptom extraction failed: %s", e, exc_info=True)
 
@@ -205,23 +233,7 @@ async def chat(
         elif symptoms_ready:
             # Feelings/symptom response — log symptoms, do NOT update the meal
             try:
-                rows = [
-                    {
-                        "user_id": user["id"],
-                        "symptom_type": s.get("symptom_type", "other"),
-                        "severity": s.get("severity"),
-                        "onset_minutes": s.get("onset_minutes"),
-                        "duration_minutes": s.get("duration_minutes"),
-                        "bathroom_urgency": s.get("bathroom_urgency"),
-                        "bathroom_visits": s.get("bathroom_visits"),
-                        "stool_consistency": s.get("stool_consistency"),
-                        "raw_description": body.message,
-                        "logged_at": datetime.now(timezone.utc).isoformat(),
-                    }
-                    for s in symptoms_ready
-                ]
-                rows = [{k: v for k, v in r.items() if v is not None} for r in rows]
-                supabase.table("symptoms").insert(rows).execute()
+                _insert_ready_symptoms(user["id"], symptoms_ready, body.message)
             except Exception as e:
                 logger.error("Follow-up symptom insert failed: %s", e, exc_info=True)
         elif body.symptom_followup:
@@ -311,7 +323,33 @@ async def chat(
                     meal_id = result.data[0]["id"] if result.data else None
                     logger.info("Meal inserted: %s", result.data)
                 else:
-                    logger.info("No food extracted; no meal logged for: %r", body.message)
+                    # No food → this fresh turn may be a symptom, not a meal
+                    # ("I'm bloated, about a 7"). Log it here too — without this,
+                    # a symptom-only voice entry was recorded nowhere. Uses the
+                    # conversation so far to resolve a bare rating to its symptom.
+                    # (No symptom + no food → off-topic; the LLM reply declines.)
+                    try:
+                        symptoms = ai_extraction.extract_symptoms(
+                            _symptom_extraction_input(body.message, body.history)
+                        )
+                        symptoms_ready = [
+                            s for s in symptoms if s.get("severity") is not None
+                        ]
+                        if symptoms_ready:
+                            _insert_ready_symptoms(
+                                user["id"], symptoms_ready, body.message
+                            )
+                            logger.info(
+                                "First-turn symptom(s) logged: %d", len(symptoms_ready)
+                            )
+                        else:
+                            logger.info(
+                                "No food or rated symptom for: %r", body.message
+                            )
+                    except Exception as e:
+                        logger.error(
+                            "First-turn symptom extraction failed: %s", e, exc_info=True
+                        )
             except Exception as e:
                 logger.error("Meal insert failed: %s", e, exc_info=True)
 
