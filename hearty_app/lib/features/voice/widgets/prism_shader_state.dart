@@ -49,7 +49,9 @@ double prismChannelOffset({
 /// the analyser returns near-identical values across adjacent frames.
 ///
 /// All constants are the spec §3 values, kept as mutable fields so they stay
-/// tunable per device (spec §4 sanctions retuning [gateMargin]/[speechSpan]).
+/// tunable per device (spec §4 sanctions retuning the audio-stage gate/span).
+/// The fixed prototype span was replaced with peak-relative scaling — see the
+/// "Peak-relative span" fields below.
 class PrismShaderState {
   // ── Audio stage (§3 "Audio → visual mapping", §4 gate) ──
   /// Fast attack so speech onset registers within a frame or two.
@@ -59,10 +61,47 @@ class PrismShaderState {
   double releaseAlpha = 0.12;
 
   /// RMS must exceed `noiseFloor + gateMargin` before any split appears.
-  double gateMargin = 0.012;
+  /// Calibrated from on-device captures (Pixel 4a, voiceRecognition source):
+  /// AGC noise suppression floors silence/pauses at ~0.002 (measured p75 of
+  /// pauses ~0.006), so a 0.006 margin puts the gate (~0.008) just above the
+  /// quiet floor — inter-word pauses and steady ambient/breath stay a calm beam
+  /// while speech clears it. Tightened to 0.003 after on-device traces showed
+  /// this speaker's voiced speech sits at ~0.009–0.016 RMS (quiet on the AGC
+  /// mic) — a 0.006 margin put the gate mid-band and only loud syllables split.
+  /// Measured inter-word pauses stay ≤0.005, so 0.003 keeps silence calm.
+  double gateMargin = 0.003;
 
-  /// RMS range above the gate that maps to the full prism.
-  double speechSpan = 0.16;
+  // ── Peak-relative span (§4 retune) ──
+  // Why relative, not an absolute span: on-device AGC compresses speech into a
+  // narrow band that sits right on top of ambient, and its absolute level
+  // varies by device/mic/speaker volume. Three rounds of fixed-`speechSpan`
+  // tuning all left the prism needing a shout. So instead of a magic absolute
+  // span, the split is scaled to the SPEAKER'S OWN recent peak RMS (the same
+  // trick SilenceDetector.relativeThreshold uses for the auto-submit cut): the
+  // prism reaches a full split at `fullScalePeak` of the running peak, so a
+  // normal voice fills it whether it reads 0.015 or 0.08 on the wire.
+
+  /// Running peak rises instantly to new highs, decays slowly (~5s) so the
+  /// scale tracks the speaker's level without a single loud syllable pinning
+  /// it high for the rest of the turn.
+  double peakDecay = 0.003;
+
+  /// Floor on the tracked peak so a quiet room can't shrink the span to where
+  /// mic hiss fills the prism. Also the effective span when speech is quiet.
+  /// 0.012 so the running peak actually tracks this speaker's ~0.016–0.02
+  /// syllables instead of being pinned at a floor above their whole voice.
+  double peakFloor = 0.012;
+
+  /// A full prism at this fraction of the recent peak, so typical speech (which
+  /// sits below its own peak) still drives a strong split, and only the loudest
+  /// syllables clamp to 1.
+  double fullScalePeak = 0.7;
+
+  /// Lower bound on the span (peak*fullScalePeak − gate) so it never collapses
+  /// to near-zero and turn every flicker into a full split. 0.005 so quiet
+  /// voiced speech (~0.009–0.012 RMS, just above the gate) still drives a
+  /// strong split rather than a faint one.
+  double minSpan = 0.005;
 
   /// Slight low-end boost so normal speech reaches a good split.
   double normExponent = 0.75;
@@ -70,7 +109,10 @@ class PrismShaderState {
   /// Adaptive-floor clamp + slow rise rate (it drops instantly to any new
   /// quiet minimum, rises only very slowly to learn the mic hiss).
   double floorMin = 0.002;
-  double floorMax = 0.06;
+  // Capped low: measured on-device speech is ~0.01–0.03, so a high cap let the
+  // floor chase speech upward (dragging the gate to yell-only levels). Kept
+  // just above ambient (~0.002–0.006) so silence/pauses gate out, no higher.
+  double floorMax = 0.015;
   double floorRise = 0.002;
 
   // ── Visual stage (§5 two-stage smoothing) ──
@@ -88,6 +130,7 @@ class PrismShaderState {
   // ── State ──
   double _smoothRms = 0.0;
   double _noiseFloor = 0.02; // adaptive — tracks the quietest recent level
+  double _peak = 0.0; // adaptive — tracks the speaker's recent loudest level
   double _visDistort = 0.0;
   double _visYScale = 0.05;
   double _visNorm = 0.0;
@@ -121,13 +164,26 @@ class PrismShaderState {
     }
     _noiseFloor = _noiseFloor.clamp(floorMin, floorMax);
 
-    // Absolute gate: only RMS above (floor + margin) produces signal. Below →
-    // exactly 0, so silence shows the calm single beam with no prism.
+    // Adaptive peak: jump up to new highs instantly, decay slowly. This is the
+    // speaker's own recent loudness, used to scale the split (below) so a normal
+    // voice fills the prism regardless of absolute on-device level.
+    if (_smoothRms > _peak) {
+      _peak = _smoothRms;
+    } else {
+      _peak += (_smoothRms - _peak) * peakDecay;
+    }
+    _peak = _peak.clamp(peakFloor, 1.0);
+
+    // Gate: only RMS above (floor + margin) produces signal. Below → exactly 0,
+    // so silence shows the calm single beam with no prism.
     final gate = _noiseFloor + gateMargin;
+    // Span is relative to the speaker's recent peak (not a fixed constant): a
+    // full split at `fullScalePeak` of the peak, floored at `minSpan`.
+    final span = math.max(minSpan, _peak * fullScalePeak - gate);
     final above = _smoothRms - gate;
     final norm = above <= 0
         ? 0.0
-        : math.min(math.pow(above / speechSpan, normExponent).toDouble(), 1.0);
+        : math.min(math.pow(above / span, normExponent).toDouble(), 1.0);
 
     // Stage 2 — visual lerp on shader params (prevents loud spikes snapping).
     final targetDistort = norm * distortionPeak;

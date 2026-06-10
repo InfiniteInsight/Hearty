@@ -92,13 +92,16 @@ class _PrismPainter extends CustomPainter {
   ];
 
   // Glow stack: widest+faintest first, narrowest+brightest last (spec §3).
+  // Inner (bright) layers widened ~2x from the prototype so the core beam reads
+  // as a thicker line on-device; the two widest glow layers are left as-is so
+  // the soft halo doesn't bloom.
   static const List<_GlowLayer> _glow = [
     _GlowLayer(0.120, 0.016),
-    _GlowLayer(0.050, 0.040),
-    _GlowLayer(0.018, 0.110),
-    _GlowLayer(0.006, 0.360),
-    _GlowLayer(0.0025, 0.780),
-    _GlowLayer(0.001, 1.000),
+    _GlowLayer(0.055, 0.040),
+    _GlowLayer(0.030, 0.110),
+    _GlowLayer(0.016, 0.360),
+    _GlowLayer(0.007, 0.780),
+    _GlowLayer(0.0028, 1.000),
   ];
 
   // Horizontal sampling step in logical pixels — far fewer points than the

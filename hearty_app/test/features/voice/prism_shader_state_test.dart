@@ -37,13 +37,31 @@ void main() {
           reason: 'wave grows taller than the calm baseline');
     });
 
-    test('a steady low-level signal (mic hiss) never opens the prism', () {
-      // The adaptive floor must learn the quiet level so a constant hiss
-      // stays below the gate (floor + margin) → no split.
+    test('on-device normal speech opens the prism without shouting (#13 calib)',
+        () {
+      // Measured on a Pixel 4a (voiceRecognition source): silence/pauses floor
+      // at ~0.002 and normal speech sits at ~0.02–0.05 RMS. Inter-word pauses
+      // pin the adaptive floor low (it drops instantly to quiet minimums), so
+      // warm with silence then feed a normal-speech burst — the prism must
+      // clearly split, not sit flat as it did before the gate/span calibration.
       final s = PrismShaderState();
-      _run(s, 0.01, 800);
+      _run(s, 0.002, 200); // quiet floor learns the AGC-suppressed silence
+      _run(s, 0.03, 30); // a normal speaking level
+      expect(s.norm, greaterThan(0.5),
+          reason: 'normal ~0.03 RMS speech must drive a strong split');
+      expect(s.distortion, greaterThan(0.2));
+    });
+
+    test('steady on-device ambient (mic hiss) never opens the prism', () {
+      // The adaptive floor must learn the quiet level so constant ambient
+      // stays below the gate (floor + margin) → no split. 0.005 is the measured
+      // resting ambient on the Pixel 4a (voiceRecognition source, AGC), which
+      // the gate must reject even after the gateMargin was tightened to 0.003
+      // to register this speaker's quiet voiced speech.
+      final s = PrismShaderState();
+      _run(s, 0.005, 800);
       expect(s.norm, 0.0,
-          reason: 'steady hiss is absorbed by the adaptive noise floor');
+          reason: 'steady ambient is absorbed by the adaptive noise floor');
       expect(s.distortion, 0.0);
     });
 
