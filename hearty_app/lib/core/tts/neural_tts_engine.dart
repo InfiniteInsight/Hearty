@@ -75,6 +75,13 @@ class NeuralTtsEngine implements TtsEngine {
     }
   }
 
+  /// Leading silence prepended to every utterance. The Android audio output
+  /// (AudioTrack) has a startup ramp — worse right after the mic was recording,
+  /// when the audio HAL switches from input to output — that clips the first
+  /// ~100-200ms of playback ("you're offline" → "offline"). Padding the front
+  /// with silence lets the warm-up consume the pad instead of the first word.
+  static const int _leadSilenceMs = 200;
+
   @override
   Future<void> speak(String text) async {
     final tts = _tts;
@@ -83,13 +90,22 @@ class NeuralTtsEngine implements TtsEngine {
     final speed = _style == TtsStyle.concise ? 1.18 : 1.08;
     final audio =
         tts.generate(text: _applyPronunciationFixes(text), sid: 0, speed: speed);
-    final wav = pcmToWav(audio.samples, audio.sampleRate);
+    final wav = pcmToWav(_padLead(audio.samples, audio.sampleRate), audio.sampleRate);
     final tmp = File('${Directory.systemTemp.path}/hearty_tts.wav');
     await tmp.writeAsBytes(wav, flush: true);
     _completedSignaled = false;
     await _player.stop();
     await _player.setFilePath(tmp.path);
     await _player.play();
+  }
+
+  /// Prepend [_leadSilenceMs] of silence so output warm-up doesn't clip word 1.
+  Float32List _padLead(Float32List samples, int sampleRate) {
+    final lead = _leadSilenceMs * sampleRate ~/ 1000;
+    if (lead <= 0) return samples;
+    final out = Float32List(lead + samples.length);
+    out.setRange(lead, lead + samples.length, samples);
+    return out;
   }
 
   @override
