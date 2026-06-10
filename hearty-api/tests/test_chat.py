@@ -189,6 +189,38 @@ def test_first_turn_unrated_symptom_waits_logs_nothing(harness):
     assert r.json()["meal_id"] is None
 
 
+def test_followup_turn_rated_symptom_inserts_via_helper(harness):
+    # #16 refactor coverage: the meal_id follow-up branch is the path that was
+    # changed to share _insert_ready_symptoms. A rated symptom on a follow-up
+    # turn must insert a symptom row (and never re-extract/overwrite the meal).
+    rec, monkeypatch = harness
+
+    def _meal_must_not_run(msg):
+        raise AssertionError("extract_meal must not run when a symptom is rated")
+
+    monkeypatch.setattr(c.ai_extraction, "extract_meal", _meal_must_not_run)
+    monkeypatch.setattr(
+        c.ai_extraction,
+        "extract_symptoms",
+        lambda text: [{"symptom_type": "bloating", "severity": 7}],
+    )
+    r = TestClient(app).post(
+        "/api/chat",
+        json={
+            "message": "about a 7",
+            "meal_id": "M1",
+            "history": [
+                {"role": "user", "content": "I feel bloated"},
+                {"role": "assistant", "content": "On a scale of 1-10, how bad?"},
+            ],
+        },
+    )
+    assert r.status_code == 200
+    assert _meals_inserted(rec) == []
+    syms = _symptoms_inserted(rec)
+    assert len(syms) == 1 and syms[0]["symptom_type"] == "bloating" and syms[0]["severity"] == 7
+
+
 def test_meal_turn_does_not_extract_symptoms(harness):
     # When food IS logged we stay a meal turn — no extra symptom call/insert.
     rec, monkeypatch = harness
