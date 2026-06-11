@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hearty_app/features/voice/models/voice_state.dart';
@@ -5,10 +7,45 @@ import 'package:hearty_app/features/voice/providers/voice_provider.dart';
 import 'package:hearty_app/core/audio/audio_beep_channel.dart';
 import 'package:hearty_app/core/stt/stt_engine.dart';
 import 'package:hearty_app/core/stt/asr_model_manager.dart';
+import 'package:hearty_app/core/stt/on_device_model.dart';
 import 'package:hearty_app/core/api/models/user_preferences.dart';
 import 'package:hearty_app/core/api/providers/preferences_provider.dart';
 import 'fake_tts_engine.dart';
 import '../../core/stt/fake_stt_engine.dart';
+
+/// Records call patterns and simulates a cold→warm transition so the
+/// warm-on-demand path (#18) can be exercised without native sherpa/mic.
+class _FakeModelManager extends AsrModelManager {
+  _FakeModelManager({required this.downloaded});
+  final bool downloaded;
+  int warmDecodeCalls = 0;
+  int isReadyCalls = 0;
+  int ensureCalls = 0;
+
+  // Always reports cold (warmDecodeOrNull == null). We deliberately never flip
+  // to warm: a warm result makes _selectEngine build a real OnDeviceBatchSttEngine
+  // whose native `record` mic can't run in a unit test. Reporting cold both
+  // before AND after the warm lets us assert the *decision* the fix makes — does
+  // it check isReady, await the warm, and re-check the decoder — without needing
+  // the native engine. The success-then-listen path is verified on-device (#18).
+  @override
+  Future<String> Function(Float32List)? warmDecodeOrNull(OnDeviceModel model) {
+    warmDecodeCalls++;
+    return null;
+  }
+
+  @override
+  Future<bool> isReady(OnDeviceModel model) async {
+    isReadyCalls++;
+    return downloaded;
+  }
+
+  @override
+  Future<void> ensureAndWarm(OnDeviceModel model,
+      {void Function(double progress)? onProgress}) async {
+    ensureCalls++;
+  }
+}
 
 /// Seeds [preferencesProvider] with fixed prefs so engine selection / capture
 /// config read real user settings instead of the test DB.
@@ -576,6 +613,72 @@ void main() {
       c(container).startListening();
       await pump();
       expect(h.latest!.autoSubmit, isNull);
+    });
+  });
+
+  group('on-device warm-on-demand (#18)', () {
+    ProviderContainer makeContainer(_FakeModelManager mgr) => ProviderContainer(
+          overrides: [
+            preferencesProvider.overrideWith(() => _SeedPrefs(_defaultPrefs)),
+            voiceProvider.overrideWith(
+              (ref) => VoiceNotifier(
+                ref: ref,
+                ttsForTesting: FakeTtsEngine(fireCompletionOnSpeak: false),
+                beepChannelForTesting: FakeBeepChannel(),
+                releaseWakeWordMic: () async {},
+                micHandoffDelay: Duration.zero,
+                modelManager: mgr,
+                isOnline: () async => false, // force the on-device branch
+                // no engineFactory → exercises the real _selectEngine
+              ),
+            ),
+          ],
+        );
+
+    test('cold-but-downloaded model warms on demand and re-checks the decoder',
+        () async {
+      // The bug: first tap finds the warm isolate idle-released, so the old
+      // code threw SttNotReadyException immediately → manual, forcing a second
+      // tap. The fix: when the model is on disk, await the warm and re-check the
+      // decoder (then build the engine + listen — that last step is verified
+      // on-device, since it needs the native mic). Here the fake stays cold, so
+      // we assert the decision: isReady checked, warm awaited, decoder re-read.
+      final mgr = _FakeModelManager(downloaded: true);
+      final container = makeContainer(mgr);
+      addTearDown(container.dispose);
+      await container.read(preferencesProvider.future);
+
+      container.read(voiceProvider.notifier).startListening();
+      await pump(20);
+
+      expect(mgr.isReadyCalls, greaterThan(0),
+          reason: 'cold path must check whether the model is downloaded');
+      expect(mgr.ensureCalls, greaterThan(0),
+          reason: 'must await the warm on demand, not skip it');
+      expect(mgr.warmDecodeCalls, greaterThanOrEqualTo(2),
+          reason: 're-reads the decoder after warming (vs old immediate throw)');
+    });
+
+    test('not-downloaded model does NOT block (background fetch, manual now)',
+        () async {
+      // A model that still needs a multi-minute download must not be awaited on
+      // the capture path — it stays the old behavior: kick off the fetch, drop
+      // to manual immediately (no warm re-check).
+      final mgr = _FakeModelManager(downloaded: false);
+      final container = makeContainer(mgr);
+      addTearDown(container.dispose);
+      await container.read(preferencesProvider.future);
+
+      container.read(voiceProvider.notifier).startListening();
+      await pump(20);
+
+      expect(mgr.isReadyCalls, greaterThan(0));
+      expect(mgr.ensureCalls, greaterThan(0),
+          reason: 'background fetch is still kicked off');
+      expect(mgr.warmDecodeCalls, 1,
+          reason: 'not-downloaded path throws without re-checking the decoder');
+      expect(container.read(voiceProvider).micPhase, MicPhase.paused,
+          reason: 'drops to manual for this turn');
     });
   });
 }

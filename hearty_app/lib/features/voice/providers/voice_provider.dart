@@ -133,15 +133,33 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     final model = prefs != null
         ? OnDeviceModel.fromPrefString(prefs.useOnDeviceModel)
         : _onDeviceModelFallback;
-    final decode = _modelManager.warmDecodeOrNull(model);
-    if (decode == null) {
-      // Not downloaded/warm yet — fetch + warm in the background (swallow bg
-      // errors), and fall back to manual for this turn.
-      unawaited(_modelManager.ensureAndWarm(model).catchError((_) {}));
+    final warm = _modelManager.warmDecodeOrNull(model);
+    if (warm != null) {
+      return OnDeviceBatchSttEngine(silenceSeconds: silenceSeconds, decode: warm);
+    }
+    // Not warm. If the model is already downloaded — the warm isolate just
+    // self-released after its 3-min idle timeout (a deliberate RAM choice), or
+    // is still warming from the launch preload — warm it now and WAIT. The
+    // overlay shows "getting ready", then listens, instead of silently dropping
+    // to manual and forcing a second tap (that was this bug). An on-disk model
+    // warms in seconds; the timeout is only a safety net against a hung isolate.
+    if (await _modelManager.isReady(model)) {
+      try {
+        await _modelManager
+            .ensureAndWarm(model)
+            .timeout(const Duration(seconds: 20));
+        final warmed = _modelManager.warmDecodeOrNull(model);
+        if (warmed != null) {
+          return OnDeviceBatchSttEngine(
+              silenceSeconds: silenceSeconds, decode: warmed);
+        }
+      } catch (_) {/* warm failed/timed out → manual */}
       throw const SttNotReadyException();
     }
-    return OnDeviceBatchSttEngine(
-        silenceSeconds: silenceSeconds, decode: decode);
+    // Not downloaded — a multi-minute fetch. Don't block the capture path: warm
+    // in the background (swallow bg errors) and fall back to manual this turn.
+    unawaited(_modelManager.ensureAndWarm(model).catchError((_) {}));
+    throw const SttNotReadyException();
   }
 
   /// Auto-submit (trailing-silence turn end) honors the user's pref; the
@@ -199,12 +217,28 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   // Capture session lifecycle
   // ---------------------------------------------------------------------------
 
+  // Guards against two capture sessions opening at once. Matters now that a
+  // cold-model open awaits the warm (~seconds): a second mic tap / follow-up
+  // timer firing mid-warm would otherwise run a second _openSession, adopt a
+  // second engine, and leak the first (mic held). One session opens at a time.
+  bool _opening = false;
+
   /// Opens a single capture session. CRITICAL: every caller of this is reached
   /// only after any TTS has completed (startListening = no TTS; setAwaitingFollowUp
   /// = TTS-completion handler; primeForSymptomFollowUp/resumeFollowUpListening =
   /// no TTS), which is what keeps the lifecycle half-duplex. Do not call it from
   /// a path that can run while Hearty is speaking.
   Future<void> _openSession({required bool isFollowUp}) async {
+    if (_opening) return;
+    _opening = true;
+    try {
+      await _openSessionImpl(isFollowUp: isFollowUp);
+    } finally {
+      _opening = false;
+    }
+  }
+
+  Future<void> _openSessionImpl({required bool isFollowUp}) async {
     await _closeEngine();
     // _closeEngine awaits; the notifier may have been disposed in the meantime
     // (caller fired this without awaiting). Bail before touching state.

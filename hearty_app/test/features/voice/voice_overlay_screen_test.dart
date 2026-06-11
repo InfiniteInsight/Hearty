@@ -10,7 +10,12 @@ import '../../core/stt/fake_stt_engine.dart';
 
 void main() {
   group('VoiceOverlayScreen', () {
-    testWidgets('shows waveform when status is listening', (tester) async {
+    testWidgets('listening before the mic is live shows "getting ready", not '
+        'a flat waveform (#18)', (tester) async {
+      // status=listening with the default (pre-capture) micPhase means the mic
+      // isn't live yet — e.g. a cold on-device model is warming. The overlay
+      // must show the getting-ready indicator, not a dead flat prism. The live
+      // waveform is covered by 'listening phase shows waveform' below.
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -22,7 +27,8 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(find.byType(PrismWaveform), findsOneWidget);
+      expect(find.byKey(const Key('getting_ready_hint')), findsOneWidget);
+      expect(find.byType(PrismWaveform), findsNothing);
       expect(find.byKey(const Key('thinking_animation')), findsNothing);
     });
 

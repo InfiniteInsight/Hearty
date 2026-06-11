@@ -117,31 +117,30 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
   Widget _buildAnimation(VoiceState state) {
     switch (state.status) {
       case VoiceStatus.listening:
-        return _voiceVisualizer();
+        // Mirror the awaitingFollowUp handling: the mic isn't always live the
+        // instant the overlay opens. A cold on-device model warms for a few
+        // seconds first (preparing → spinner); if it can't, we drop to manual
+        // (paused → tap-to-talk) instead of showing a dead flat prism.
+        switch (state.micPhase) {
+          case MicPhase.listening:
+            return _voiceVisualizer();
+          case MicPhase.paused:
+            return _tapToTalkButton(
+                () => ref.read(voiceProvider.notifier).startListening());
+          case MicPhase.preparing:
+          case MicPhase.none:
+            return _gettingReadyIndicator();
+        }
       case VoiceStatus.awaitingFollowUp:
         switch (state.micPhase) {
           case MicPhase.listening:
             return _voiceVisualizer();
           case MicPhase.paused:
-            return IconButton(
-              key: const Key('tap_to_talk_button'),
-              iconSize: 56,
-              icon: const Icon(Icons.mic_none, color: Colors.white),
-              tooltip: 'Tap to talk',
-              onPressed: () =>
-                  ref.read(voiceProvider.notifier).resumeFollowUpListening(),
-            );
+            return _tapToTalkButton(
+                () => ref.read(voiceProvider.notifier).resumeFollowUpListening());
           case MicPhase.preparing:
           case MicPhase.none:
-            return SizedBox(
-              key: const Key('getting_ready_hint'),
-              height: 56,
-              width: 56,
-              child: Semantics(
-                label: 'Getting ready',
-                child: const CircularProgressIndicator(color: Colors.white70),
-              ),
-            );
+            return _gettingReadyIndicator();
         }
       case VoiceStatus.thinking:
         return const ThinkingAnimation();
@@ -151,6 +150,24 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
         return const SizedBox.shrink();
     }
   }
+
+  Widget _gettingReadyIndicator() => SizedBox(
+        key: const Key('getting_ready_hint'),
+        height: 56,
+        width: 56,
+        child: Semantics(
+          label: 'Getting ready',
+          child: const CircularProgressIndicator(color: Colors.white70),
+        ),
+      );
+
+  Widget _tapToTalkButton(VoidCallback onPressed) => IconButton(
+        key: const Key('tap_to_talk_button'),
+        iconSize: 56,
+        icon: const Icon(Icons.mic_none, color: Colors.white),
+        tooltip: 'Tap to talk',
+        onPressed: onPressed,
+      );
 
   Widget _buildTextDisplay(VoiceState state) {
     if (state.status == VoiceStatus.awaitingFollowUp) {
