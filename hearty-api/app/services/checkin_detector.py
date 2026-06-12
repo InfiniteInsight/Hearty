@@ -31,8 +31,14 @@ def _detect_missing_chunks(meals, now, waking_start_hour, waking_end_hour):
                              second=0, microsecond=0)
     window_end_cap = min(now, waking_end)
 
-    times = sorted(_parse(m["logged_at"]) for m in meals
-                   if _parse(m["logged_at"]).date() == day)
+    # Clamp meal times into [waking_start, window_end_cap]. A meal logged before
+    # the waking window starts (e.g. 6am coffee) or after the cap must not be
+    # spliced between the boundary endpoints — that would make `boundaries`
+    # non-monotonic and flag a spurious gap. Outside-window meals don't define
+    # in-window stretches, so they're excluded from the scan.
+    times = sorted(t for t in (_parse(m["logged_at"]) for m in meals
+                               if _parse(m["logged_at"]).date() == day)
+                   if waking_start <= t <= window_end_cap)
     boundaries = [waking_start] + times + [window_end_cap]
 
     gaps = []

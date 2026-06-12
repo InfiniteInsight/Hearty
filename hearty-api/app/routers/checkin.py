@@ -72,9 +72,14 @@ async def get_checkin_gaps(
 
 @router.post("/api/checkin/resolve/symptom", status_code=200)
 async def resolve_symptom_gap(body: dict, user=Depends(get_current_user)) -> dict:
-    """A-gap answer: create a symptom linked to the meal, mark the meal answered."""
+    """A-gap answer: create a symptom linked to the meal, mark the meal answered.
+
+    Day-anchored: `logged_at` must carry the target day (the spec stamps every
+    write-back to the reviewed day, not the tap day). Falls back to now only when
+    the caller omits it.
+    """
     user_id = user["id"]
-    now = datetime.now(timezone.utc).isoformat()
+    logged_at = body.get("logged_at") or datetime.now(timezone.utc).isoformat()
     row = {k: v for k, v in {
         "user_id": user_id,
         "raw_description": body.get("raw_description", ""),
@@ -82,7 +87,7 @@ async def resolve_symptom_gap(body: dict, user=Depends(get_current_user)) -> dic
         "symptom_type": body.get("symptom_type"),
         "severity": body.get("severity"),
         "onset_minutes": body.get("onset_minutes"),
-        "logged_at": now,
+        "logged_at": logged_at,
     }.items() if v is not None}
     supabase.table("symptoms").insert(row).execute()
     supabase.table("meals").update({"followup_status": "answered"}) \

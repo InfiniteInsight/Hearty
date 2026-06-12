@@ -308,6 +308,7 @@ class HeartyApiClient {
     String? symptomType,
     int? severity,
     int? onsetMinutes,
+    DateTime? loggedAt,
   }) {
     return _call(() async {
       await _dio.post<Map<String, dynamic>>(
@@ -318,6 +319,8 @@ class HeartyApiClient {
           'symptom_type': ?symptomType,
           'severity': ?severity,
           'onset_minutes': ?onsetMinutes,
+          // Day-anchored: stamp the symptom to the reviewed day, not the tap day.
+          'logged_at': ?loggedAt?.toUtc().toIso8601String(),
         },
       );
     });

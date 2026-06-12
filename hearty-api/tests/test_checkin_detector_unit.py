@@ -105,3 +105,32 @@ def test_dismissed_followup_resurfaces_once():
 def test_resurfaced_followup_excluded():
     gaps = detect_gaps([_meal("m1", 13, "resurfaced")], symptoms=[], now=_dt(22))
     assert [g for g in gaps if g["type"] == "symptom_gap"] == []
+
+
+def test_meal_before_waking_window_does_not_flag_spurious_gap():
+    # 6am coffee (before waking_start 8am) + lunch 12:30, now 10pm. The pre-waking
+    # meal must NOT splice into the boundary scan and create a phantom 6:00->12:30
+    # gap (the non-monotonic-boundary bug).
+    meals = [
+        {"id": "m1", "logged_at": _dt(6).isoformat(), "foods": [{"name": "coffee"}]},
+        {"id": "m2", "logged_at": _dt(12, 30).isoformat(), "foods": [{"name": "salad"}]},
+    ]
+    gaps = detect_gaps(meals, symptoms=[], now=_dt(22),
+                       waking_start_hour=8, waking_end_hour=22)
+    d = [g for g in gaps if g["type"] == "missing_chunk"]
+    # Only the legitimate trailing 12:30->22:00 (9.5h) gap; no phantom morning one.
+    assert len(d) == 1
+    assert (d[0]["window_start"], d[0]["window_end"]) == \
+        (_dt(12, 30).isoformat(), _dt(22).isoformat())
+
+
+def test_interval_exactly_at_threshold_is_not_flagged():
+    # 8:00 and 13:00 = exactly 5h; strict `>` means no gap. (8:00 == waking_start,
+    # so no leading gap; trailing 13:00->14:00 is 1h.)
+    meals = [
+        {"id": "m1", "logged_at": _dt(8).isoformat(), "foods": [{"name": "a"}]},
+        {"id": "m2", "logged_at": _dt(13).isoformat(), "foods": [{"name": "b"}]},
+    ]
+    gaps = detect_gaps(meals, symptoms=[], now=_dt(14),
+                       waking_start_hour=8, waking_end_hour=22)
+    assert [g for g in gaps if g["type"] == "missing_chunk"] == []

@@ -157,6 +157,22 @@ def test_resolve_symptom_gap_inserts_symptom_and_marks_meal(monkeypatch):
     _clear()
 
 
+def test_resolve_symptom_gap_stamps_target_day_logged_at(monkeypatch):
+    # Day-anchored: the symptom must be stamped to the reviewed day passed in
+    # logged_at, not "now" (the tap day).
+    rec = _Recorder()
+    _auth()
+    monkeypatch.setattr(checkin_module, "supabase", _RecSupa(rec))
+    client = TestClient(app)
+    target_ts = "2026-06-03T13:30:00+00:00"
+    r = client.post("/api/checkin/resolve/symptom", json={
+        "meal_id": "m1", "raw_description": "bloated", "logged_at": target_ts})
+    assert r.status_code == 200
+    _, row = next((t, r_) for t, r_ in rec.inserts if t == "symptoms")
+    assert row["logged_at"] == target_ts
+    _clear()
+
+
 def test_skip_symptom_gap_marks_resurfaced(monkeypatch):
     rec = _Recorder()
     _auth()
