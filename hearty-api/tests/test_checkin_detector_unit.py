@@ -65,3 +65,43 @@ def test_food_without_confidence_is_not_flagged():
               "foods": [{"name": "apple"}]}]
     gaps = detect_gaps(meals, symptoms=[], now=_dt(22))
     assert [g for g in gaps if g["type"] == "low_confidence"] == []
+
+
+def _meal(mid, hour, status=None):
+    return {"id": mid, "logged_at": _dt(hour).isoformat(),
+            "foods": [{"name": "x"}], "followup_status": status}
+
+
+def test_symptom_gap_for_meal_without_symptom():
+    meals = [_meal("m1", 13)]
+    gaps = detect_gaps(meals, symptoms=[], now=_dt(22))
+    a = [g for g in gaps if g["type"] == "symptom_gap"]
+    assert len(a) == 1 and a[0]["meal_id"] == "m1"
+
+
+def test_no_symptom_gap_when_symptom_logged_within_window():
+    meals = [_meal("m1", 13)]
+    symptoms = [{"meal_id": "m1", "logged_at": _dt(14).isoformat()}]
+    gaps = detect_gaps(meals, symptoms=symptoms, now=_dt(22))
+    assert [g for g in gaps if g["type"] == "symptom_gap"] == []
+
+
+def test_answered_followup_excluded():
+    gaps = detect_gaps([_meal("m1", 13, "answered")], symptoms=[], now=_dt(22))
+    assert [g for g in gaps if g["type"] == "symptom_gap"] == []
+
+
+def test_pending_followup_excluded():
+    gaps = detect_gaps([_meal("m1", 13, "pending")], symptoms=[], now=_dt(22))
+    assert [g for g in gaps if g["type"] == "symptom_gap"] == []
+
+
+def test_dismissed_followup_resurfaces_once():
+    gaps = detect_gaps([_meal("m1", 13, "dismissed")], symptoms=[], now=_dt(22))
+    a = [g for g in gaps if g["type"] == "symptom_gap"]
+    assert len(a) == 1 and a[0]["meal_id"] == "m1"
+
+
+def test_resurfaced_followup_excluded():
+    gaps = detect_gaps([_meal("m1", 13, "resurfaced")], symptoms=[], now=_dt(22))
+    assert [g for g in gaps if g["type"] == "symptom_gap"] == []

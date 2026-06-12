@@ -49,6 +49,34 @@ def _detect_missing_chunks(meals, now, waking_start_hour, waking_end_hour):
     return gaps
 
 
+def _detect_symptom_gaps(meals, symptoms):
+    gap_window = timedelta(hours=SYMPTOM_GAP_HOURS)
+    sym_by_meal = {}
+    for s in symptoms:
+        mid = s.get("meal_id")
+        if mid:
+            t = _parse(s["logged_at"])
+            sym_by_meal.setdefault(mid, []).append(t)
+
+    gaps = []
+    for m in meals:
+        status = m.get("followup_status")
+        if status in ("answered", "pending", "resurfaced"):
+            continue
+        meal_time = _parse(m["logged_at"])
+        sym_times = sym_by_meal.get(m["id"], [])
+        has_symptom = any(meal_time <= t <= meal_time + gap_window
+                          for t in sym_times)
+        if has_symptom:
+            continue
+        gaps.append({
+            "type": "symptom_gap",
+            "meal_id": m["id"],
+            "prompt": "How did your stomach feel after that meal?",
+        })
+    return gaps
+
+
 def _detect_low_confidence(meals):
     gaps = []
     for m in meals:
@@ -72,6 +100,7 @@ def detect_gaps(meals, symptoms, now, *, waking_start_hour=8,
     follow_up_status: optional dict meal_id -> 'answered'|'dismissed'|'pending'
     (used by gap A; ignored until then)."""
     gaps = []
+    gaps += _detect_symptom_gaps(meals, symptoms)
     gaps += _detect_low_confidence(meals)
     gaps += _detect_missing_chunks(meals, now, waking_start_hour, waking_end_hour)
     gaps.sort(key=lambda g: _PRIORITY[g["type"]])
