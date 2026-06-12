@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/auth_interceptor.dart';
 import 'models/chat_result.dart';
+import 'models/checkin_gap.dart';
 import 'models/meal_log.dart';
 import 'models/symptom_log.dart';
 import 'models/trends_data.dart';
@@ -278,6 +279,93 @@ class HeartyApiClient {
         data: prefs.toJson(),
       );
       return UserPreferences.fromJson(response.data!);
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Daily check-in
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Fetches the outstanding check-in gaps for [date] (formatted YYYY-MM-DD).
+  Future<CheckinGapsResult> fetchCheckinGaps(DateTime date) {
+    return _call(() async {
+      final ymd = '${date.year.toString().padLeft(4, '0')}-'
+          '${date.month.toString().padLeft(2, '0')}-'
+          '${date.day.toString().padLeft(2, '0')}';
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/checkin/gaps',
+        queryParameters: {'date': ymd},
+      );
+      return CheckinGapsResult.fromJson(response.data!);
+    });
+  }
+
+  /// Resolves a symptom gap for a meal with a free-text description and
+  /// optional structured fields.
+  Future<void> resolveSymptomGap({
+    required String mealId,
+    required String rawDescription,
+    String? symptomType,
+    int? severity,
+    int? onsetMinutes,
+  }) {
+    return _call(() async {
+      await _dio.post<Map<String, dynamic>>(
+        '/api/checkin/resolve/symptom',
+        data: <String, dynamic>{
+          'meal_id': mealId,
+          'raw_description': rawDescription,
+          'symptom_type': ?symptomType,
+          'severity': ?severity,
+          'onset_minutes': ?onsetMinutes,
+        },
+      );
+    });
+  }
+
+  /// Marks a symptom gap as skipped (no symptoms to report).
+  Future<void> skipSymptomGap({required String mealId}) {
+    return _call(() async {
+      await _dio.post<Map<String, dynamic>>(
+        '/api/checkin/skip/symptom',
+        data: <String, dynamic>{'meal_id': mealId},
+      );
+    });
+  }
+
+  /// Resolves a low-confidence food gap — confirm or correct the food guess.
+  Future<void> resolveFoodGap({
+    required String mealId,
+    String? foodName,
+    bool? confirmed,
+    String? correctedDescription,
+  }) {
+    return _call(() async {
+      await _dio.post<Map<String, dynamic>>(
+        '/api/checkin/resolve/food',
+        data: <String, dynamic>{
+          'meal_id': mealId,
+          'food_name': ?foodName,
+          'confirmed': ?confirmed,
+          'corrected_description': ?correctedDescription,
+        },
+      );
+    });
+  }
+
+  /// Resolves a missing-chunk gap by logging a meal for the target day.
+  Future<void> resolveMealGap({
+    required String description,
+    required DateTime loggedAt,
+  }) {
+    return _call(() async {
+      await _dio.post<Map<String, dynamic>>(
+        '/api/checkin/resolve/meal',
+        data: <String, dynamic>{
+          'description': description,
+          'logged_at': loggedAt.toUtc().toIso8601String(),
+        },
+      );
     });
   }
 
