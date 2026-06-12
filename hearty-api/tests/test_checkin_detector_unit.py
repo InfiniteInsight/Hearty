@@ -40,3 +40,28 @@ def test_missing_chunk_only_counts_up_to_now():
     d_gaps = [g for g in gaps if g["type"] == "missing_chunk"]
     assert len(d_gaps) == 1
     assert d_gaps[0]["window_end"] == _dt(14).isoformat()
+
+
+def test_low_confidence_food_flagged():
+    meals = [{"id": "m1", "logged_at": _dt(13).isoformat(),
+              "foods": [{"name": "buldak ramen", "confidence": 0.45}]}]
+    gaps = detect_gaps(meals, symptoms=[], now=_dt(22))
+    c = [g for g in gaps if g["type"] == "low_confidence"]
+    assert len(c) == 1
+    assert c[0]["meal_id"] == "m1"
+    assert c[0]["food_name"] == "buldak ramen"
+
+
+def test_confident_food_not_flagged():
+    meals = [{"id": "m1", "logged_at": _dt(13).isoformat(),
+              "foods": [{"name": "apple", "confidence": 0.97}]}]
+    gaps = detect_gaps(meals, symptoms=[], now=_dt(22))
+    assert [g for g in gaps if g["type"] == "low_confidence"] == []
+
+
+def test_food_without_confidence_is_not_flagged():
+    # Legacy meals (pre-confidence) must not all light up as gaps.
+    meals = [{"id": "m1", "logged_at": _dt(13).isoformat(),
+              "foods": [{"name": "apple"}]}]
+    gaps = detect_gaps(meals, symptoms=[], now=_dt(22))
+    assert [g for g in gaps if g["type"] == "low_confidence"] == []

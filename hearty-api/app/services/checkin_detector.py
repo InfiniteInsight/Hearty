@@ -49,6 +49,22 @@ def _detect_missing_chunks(meals, now, waking_start_hour, waking_end_hour):
     return gaps
 
 
+def _detect_low_confidence(meals):
+    gaps = []
+    for m in meals:
+        for food in m.get("foods") or []:
+            conf = food.get("confidence")
+            if conf is not None and float(conf) < CONFIDENCE_THRESHOLD:
+                gaps.append({
+                    "type": "low_confidence",
+                    "meal_id": m["id"],
+                    "food_name": food.get("name", ""),
+                    "prompt": f"I logged \"{food.get('name','')}\" but wasn't "
+                              "sure I got it right — did I?",
+                })
+    return gaps
+
+
 def detect_gaps(meals, symptoms, now, *, waking_start_hour=8,
                 waking_end_hour=22, follow_up_status=None):
     """Return gaps ordered by priority (A -> C -> D), then by recency within type.
@@ -56,6 +72,7 @@ def detect_gaps(meals, symptoms, now, *, waking_start_hour=8,
     follow_up_status: optional dict meal_id -> 'answered'|'dismissed'|'pending'
     (used by gap A; ignored until then)."""
     gaps = []
+    gaps += _detect_low_confidence(meals)
     gaps += _detect_missing_chunks(meals, now, waking_start_hour, waking_end_hour)
     gaps.sort(key=lambda g: _PRIORITY[g["type"]])
     return gaps
