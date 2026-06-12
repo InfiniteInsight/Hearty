@@ -193,3 +193,18 @@ class MealWithSymptoms(MealResponse):
 class MealsListResponse(BaseModel):
     total: int
     meals: List[MealWithSymptoms]
+
+# ─── Daily Check-in ───────────────────────────────────────────────────────────
+
+class CheckinGap(BaseModel):
+    type: Literal["symptom_gap", "low_confidence", "missing_chunk"]
+    prompt: str
+    meal_id: Optional[str] = None
+    food_name: Optional[str] = None
+    window_start: Optional[str] = None
+    window_end: Optional[str] = None
+
+class CheckinGapsResponse(BaseModel):
+    target_date: str           # YYYY-MM-DD, the anchored day
+    expired: bool = False
+    gaps: List[CheckinGap] = Field(default_factory=list)
