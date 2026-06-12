@@ -23,13 +23,15 @@ Return ONLY valid JSON with this shape:
       "name": "food item name",
       "quantity": "serving size or null",
       "estimated_calories": number_or_null,
-      "preparation": "cooking method or null"
+      "preparation": "cooking method or null",
+      "confidence": number_between_0_and_1
     }
   ],
   "inferred_meal_type": "breakfast|lunch|dinner|snack|drink|supplement|other"
 }
 
 normalized_description should be a clean, concise meal label — not a transcript of what the user said.
+confidence is your certainty (0-1) that you correctly identified this food from the description; lower it when the wording was ambiguous or misspelled.
 Be conservative with calorie estimates — omit them rather than guess wildly.
 If the description is not actually about food or drink (e.g. an unrelated sentence, a test phrase, a question, or only a symptom/feeling with no food mentioned), return an empty "foods" array and an empty string for "normalized_description". Do NOT invent a food.
 Do not add commentary. Return only the JSON object.
