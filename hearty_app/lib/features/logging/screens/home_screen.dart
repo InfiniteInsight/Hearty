@@ -13,6 +13,7 @@ import '../../../core/offline/local_meal_dao.dart';
 import '../../../core/offline/local_symptom_dao.dart';
 import '../../../core/offline/offline_database.dart';
 import '../../../core/sync/sync_service.dart';
+import '../../checkin/widgets/home_checkin_banner.dart';
 
 // ---------------------------------------------------------------------------
 // Top-level helpers
@@ -136,6 +137,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Column(
             children: [
               if (hasFailed) _failedBanner(context),
+              const HomeCheckinBanner(),
               Expanded(
                 child: _buildBody(
                     context, mealsAsync, symptomsAsync, voiceQueueAsync),

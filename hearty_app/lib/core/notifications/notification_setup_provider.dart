@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/hearty_api_client.dart';
 import '../auth/auth_repository.dart';
+import 'notification_service.dart';
 
 /// Keeps FCM token in sync with the API. Watch this in HeartyApp.build
 /// to keep it alive for the lifetime of the app.
@@ -25,6 +26,22 @@ Future<void> _syncToken(Ref ref) async {
     if (token == null) return;
     final client = ref.read(heartyApiClientProvider);
     final prefs = await client.fetchPreferences();
+
+    // Schedule the evening daily check-in (defer-to-tap). Done BEFORE the
+    // fcmToken short-circuit below so it reschedules on every normal launch
+    // (token-unchanged is the common case), and in its own try/catch so a
+    // scheduling failure can't break token sync and vice-versa.
+    try {
+      if (prefs.dailyCheckinEnabled) {
+        await NotificationService.scheduleCheckinNotification(
+          hour: prefs.dailyCheckinHour,
+          minute: prefs.dailyCheckinMinute,
+        );
+      }
+    } catch (_) {
+      // Best-effort — never block token sync or startup.
+    }
+
     if (prefs.fcmToken == token) return;
     await client.savePreferences(prefs.copyWith(fcmToken: token));
   } catch (_) {

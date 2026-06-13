@@ -21,12 +21,17 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
 class NotificationService {
   // 1001 is reserved by HeartyWakeWordService — use a non-colliding range.
   static const _kFollowUpNotifId  = 3010;
+  static const int _kCheckinNotifId = 3011; // distinct from follow-up (3010)
 
   /// Post-meal check-in notification copy. The body tells the user the app will
   /// listen for a spoken reply, so the listen "ding" doesn't catch them off guard.
   static const String followUpTitle = 'How are you feeling?';
   static const String followUpBody =
       "Tap to check in on your last meal — I'll listen for your reply.";
+
+  /// Evening daily check-in notification copy.
+  static const String checkinTitle = 'Review your day';
+  static const String checkinBody  = 'Tap to check in on what you logged today.';
 
   static final _localNotifs = FlutterLocalNotificationsPlugin();
 
@@ -95,6 +100,11 @@ class NotificationService {
       'Sync & System',
       importance: Importance.low,
     ));
+    await plugin.createNotificationChannel(const AndroidNotificationChannel(
+      'hearty_daily_checkin',
+      'Daily Check-in',
+      importance: Importance.high,
+    ));
   }
 
   static Future<void> _showForegroundMessage(RemoteMessage message) async {
@@ -160,6 +170,53 @@ class NotificationService {
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       payload: '/log?followup=true',
+    );
+  }
+
+  /// Schedules the evening daily check-in for [hour]:[minute] today (or, if that
+  /// time already passed, tomorrow). Day-anchored: the payload carries the target
+  /// date so a late tap still reviews the right day. GATE-4 = defer-to-tap: the
+  /// /checkin screen runs gap detection on open (silent on clean days because the
+  /// screen shows "nothing to review"); we do not pre-detect in the background.
+  static Future<void> scheduleCheckinNotification({
+    int hour = 20,
+    int minute = 0,
+  }) async {
+    await _localNotifs.cancel(_kCheckinNotifId);
+
+    final now = tz.TZDateTime.now(tz.local);
+    var target = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    if (target.isBefore(now)) target = target.add(const Duration(days: 1));
+
+    // Payload date is the reviewed day = the day the notification fires (post
+    // day-rollover adjustment above), formatted zero-padded like the router helper.
+    final ymd = '${target.year.toString().padLeft(4, '0')}-'
+        '${target.month.toString().padLeft(2, '0')}-'
+        '${target.day.toString().padLeft(2, '0')}';
+
+    final androidPlugin = _localNotifs
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    final canExact =
+        await androidPlugin?.canScheduleExactNotifications() ?? false;
+
+    await _localNotifs.zonedSchedule(
+      _kCheckinNotifId,
+      checkinTitle,
+      checkinBody,
+      target,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'hearty_daily_checkin',
+          'Daily Check-in',
+        ),
+      ),
+      androidScheduleMode: canExact
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexact,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: '/checkin?date=$ymd',
     );
   }
 }
