@@ -32,6 +32,7 @@ import '../features/settings/screens/conversation_style_screen.dart';
 import '../features/logging/screens/edit_meal_screen.dart';
 import '../features/logging/screens/edit_symptom_screen.dart';
 import '../features/setup/screens/setup_screen.dart';
+import '../features/checkin/screens/daily_checkin_screen.dart';
 import '../features/setup/screens/notification_setup_screen.dart';
 import '../features/setup/screens/conversation_style_setup_screen.dart';
 import '../core/api/providers/preferences_provider.dart';
@@ -66,6 +67,16 @@ class Routes {
   static const String notificationSetup = 'notification-setup';
   static const String conversationStyleSetup = 'conversation-style-setup';
   static const String conversationStyle = 'conversation-style';
+  static const String checkin = 'checkin';
+}
+
+/// Today as `YYYY-MM-DD` in local time — the default reviewed day for /checkin
+/// when no `?date=` query param is supplied.
+String _todayYmd() {
+  final d = DateTime.now();
+  return '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
 }
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -230,6 +241,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             initialOnsetMinutes: extra['onsetMinutes'] as int?,
           );
         },
+      ),
+      GoRoute(
+        path: '/checkin',
+        name: Routes.checkin,
+        builder: (context, state) => DailyCheckinScreen(
+          date: state.uri.queryParameters['date'] ?? _todayYmd(),
+        ),
       ),
       GoRoute(
         path: '/setup',
