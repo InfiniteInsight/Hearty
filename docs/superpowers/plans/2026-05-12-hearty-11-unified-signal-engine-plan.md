@@ -1,7 +1,7 @@
 # Hearty — Plan 11: Unified Signal Engine
 
-**Plan Status:** 🟡 Ready for implementation
-**Last Updated:** 2026-05-12
+**Plan Status:** ✅ Completed — shipped as `app/services/signal_engine.py` (counterfactual base rate, multi-window onset discovery, wellbeing integration); wired to `POST /api/trends/analyze` and consumed by `GET /api/trends` + the monthly trends conversation. `trend_engine.py` is deprecated in its favor. Analysis now auto-runs on signal reads when new data exists (see `ensure_fresh_signals`).
+**Last Updated:** 2026-06-13
 
 ---
 

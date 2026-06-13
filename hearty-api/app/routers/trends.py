@@ -33,6 +33,11 @@ async def get_signals(
     """Return ranked food signals from the unified signal engine."""
     user_id = user["id"]
 
+    # Automatic refresh: recompute signals when new data has been logged since the
+    # last run, so viewing Trends always reflects current data. The manual
+    # "Analyse now" button (POST /api/trends/analyze) remains as a force-refresh.
+    ensure_fresh_signals(user_id)
+
     rows = (
         supabase.table("food_signals")
         .select("*")
@@ -141,13 +146,12 @@ async def trigger_analysis(
     )
 
 
-@router.get("/api/trends/analyze/status", status_code=200)
-async def get_analysis_status(
-    user=Depends(get_current_user),
-) -> AnalyzeStatusResponse:
-    """Return last_analyzed_at and whether new data exists since then."""
-    user_id = user["id"]
+def _analysis_status(user_id: str) -> tuple[Optional[str], bool]:
+    """Return (last_analyzed_at, has_new_data) for a user.
 
+    has_new_data is True when meals/wellbeing have been logged since the last
+    analysis, or when nothing has been analyzed yet but some data exists.
+    """
     profile = (
         supabase.table("health_profile")
         .select("last_analyzed_at")
@@ -160,7 +164,6 @@ async def get_analysis_status(
     if profile and profile.get("last_analyzed_at"):
         last_analyzed_at = profile["last_analyzed_at"]
 
-    has_new_data = False
     if last_analyzed_at:
         meals_since = (
             supabase.table("meals")
@@ -189,6 +192,32 @@ async def get_analysis_status(
         ).count or 0
         has_new_data = any_meals > 0
 
+    return last_analyzed_at, has_new_data
+
+
+def ensure_fresh_signals(user_id: str) -> bool:
+    """Auto-run the signal analysis when new data has been logged since the last
+    run. Called on signal reads so trends/conversation reflect fresh data without
+    requiring a manual tap. Returns True if an analysis was run. Best-effort —
+    a failure here must not break the read, so the caller still serves whatever
+    signals already exist.
+    """
+    try:
+        _, has_new_data = _analysis_status(user_id)
+        if has_new_data:
+            signal_engine.run_analysis(user_id, period_days=90)
+            return True
+    except Exception as e:  # pragma: no cover - defensive
+        logger.error("ensure_fresh_signals failed: %s", e, exc_info=True)
+    return False
+
+
+@router.get("/api/trends/analyze/status", status_code=200)
+async def get_analysis_status(
+    user=Depends(get_current_user),
+) -> AnalyzeStatusResponse:
+    """Return last_analyzed_at and whether new data exists since then."""
+    last_analyzed_at, has_new_data = _analysis_status(user["id"])
     return AnalyzeStatusResponse(
         last_analyzed_at=last_analyzed_at,
         has_new_data=has_new_data,
@@ -205,6 +234,11 @@ async def trends_conversation_turn(
     """Generate Hearty's next turn in the monthly trends conversation, grounded
     in the user's overlay-filtered signals."""
     user_id = user["id"]
+    # First turn: ensure the signals are fresh before opening the conversation so
+    # the (possibly notification-triggered) chat never discusses stale patterns.
+    # Later turns reuse what the first turn computed.
+    if not body.history:
+        ensure_fresh_signals(user_id)
     signals = signal_presenter.load_presented_signals(supabase, user_id)
     return trends_conversation.generate_turn(signals, body.history)
 
