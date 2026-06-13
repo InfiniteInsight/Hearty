@@ -208,3 +208,49 @@ class CheckinGapsResponse(BaseModel):
     target_date: str           # YYYY-MM-DD, the anchored day
     expired: bool = False
     gaps: List[CheckinGap] = Field(default_factory=list)
+
+# ─── Trends Conversation ────────────────────────────────────────────────────
+
+VerdictType = Literal["confirmed", "disputed", "snoozed"]
+
+class PresentedSignal(BaseModel):
+    """A food_signal after the feedback overlay has been applied."""
+    category: str
+    outcome_type: Literal["symptom", "wellbeing"]
+    outcome_name: str
+    direction: Literal["harmful", "beneficial"]
+    unified_score: float
+    relative_risk: Optional[float] = None
+    evidence_count: int
+    is_new: bool = False
+    is_confirmed: bool = False
+    is_resurfaced: bool = False
+
+class ConversationTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+class ProposedVerdict(BaseModel):
+    """A verdict Hearty inferred from the user's words, for client confirmation.
+    NEVER written without an explicit client confirmation step."""
+    category: str
+    outcome_type: Literal["symptom", "wellbeing"]
+    outcome_name: str
+    verdict: VerdictType
+
+class TrendsConversationRequest(BaseModel):
+    history: List[ConversationTurn] = Field(default_factory=list)
+
+class TrendsConversationResponse(BaseModel):
+    reply: str
+    proposed_verdict: Optional[ProposedVerdict] = None
+    is_closing: bool = False
+
+class SignalVerdictRequest(BaseModel):
+    category: str
+    outcome_type: Literal["symptom", "wellbeing"]
+    outcome_name: str
+    verdict: VerdictType
+
+class SignalVerdictResponse(BaseModel):
+    ok: bool
