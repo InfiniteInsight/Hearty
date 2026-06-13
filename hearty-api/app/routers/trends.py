@@ -11,8 +11,13 @@ from app.models.schemas import (
     TrendsResponse, TriggerFood, SummaryResponse,
     SignalsResponse, FoodSignal, SignalChannel,
     AnalyzeResponse, AnalyzeStatusResponse,
+    TrendsConversationRequest, TrendsConversationResponse,
+    SignalVerdictRequest, SignalVerdictResponse,
 )
-from app.services import ai_extraction, trend_engine, signal_engine
+from app.services import (
+    ai_extraction, trend_engine, signal_engine,
+    signal_presenter, trends_conversation,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -188,6 +193,57 @@ async def get_analysis_status(
         last_analyzed_at=last_analyzed_at,
         has_new_data=has_new_data,
     )
+
+
+# ── Monthly Trends Conversation ──────────────────────────────────────────────
+
+@router.post("/api/trends/conversation", status_code=200)
+async def trends_conversation_turn(
+    body: TrendsConversationRequest,
+    user=Depends(get_current_user),
+) -> TrendsConversationResponse:
+    """Generate Hearty's next turn in the monthly trends conversation, grounded
+    in the user's overlay-filtered signals."""
+    user_id = user["id"]
+    signals = signal_presenter.load_presented_signals(supabase, user_id)
+    return trends_conversation.generate_turn(signals, body.history)
+
+
+@router.post("/api/trends/signal-verdict", status_code=200)
+async def submit_signal_verdict(
+    body: SignalVerdictRequest,
+    user=Depends(get_current_user),
+) -> SignalVerdictResponse:
+    """Record a user's verdict (confirm/dispute/snooze) on a signal. Captures the
+    signal's current unified_score so a disputed signal only resurfaces when the
+    evidence later grows materially stronger."""
+    user_id = user["id"]
+
+    current = (
+        supabase.table("food_signals")
+        .select("unified_score")
+        .eq("user_id", user_id)
+        .eq("category", body.category)
+        .eq("outcome_type", body.outcome_type)
+        .eq("outcome_name", body.outcome_name)
+        .limit(1)
+        .execute()
+    ).data
+    score_at_verdict = current[0]["unified_score"] if current else None
+
+    row = {
+        "user_id": user_id,
+        "category": body.category,
+        "outcome_type": body.outcome_type,
+        "outcome_name": body.outcome_name,
+        "verdict": body.verdict,
+        "score_at_verdict": score_at_verdict,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    supabase.table("signal_feedback").upsert(
+        row, on_conflict="user_id,category,outcome_type,outcome_name"
+    ).execute()
+    return SignalVerdictResponse(ok=True)
 
 
 # ── Legacy endpoints (kept until Plan 11 Phase 7 cleanup) ────────────────────
