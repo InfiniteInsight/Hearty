@@ -11,6 +11,7 @@ import 'models/checkin_gap.dart';
 import 'models/meal_log.dart';
 import 'models/symptom_log.dart';
 import 'models/trends_data.dart';
+import 'models/trends_turn.dart';
 import 'models/user_preferences.dart';
 import 'offline_exception.dart';
 import '../../features/photos/models/photo_upload_response.dart';
@@ -258,6 +259,38 @@ class HeartyApiClient {
       final response =
           await _dio.get<Map<String, dynamic>>('/api/trends/analyze/status');
       return response.data!;
+    });
+  }
+
+  /// One turn of the monthly trends conversation. [history] is the prior turns
+  /// as {'role': 'user'|'assistant', 'content': '...'} maps.
+  Future<TrendsTurn> trendsConversation(List<Map<String, String>> history) {
+    return _call(() async {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/trends/conversation',
+        data: {'history': history},
+      );
+      return TrendsTurn.fromJson(response.data!);
+    });
+  }
+
+  /// Record a confirmed verdict on a signal.
+  Future<void> submitSignalVerdict({
+    required String category,
+    required String outcomeType,
+    required String outcomeName,
+    required String verdict, // 'confirmed' | 'disputed' | 'snoozed'
+  }) {
+    return _call(() async {
+      await _dio.post<Map<String, dynamic>>(
+        '/api/trends/signal-verdict',
+        data: {
+          'category': category,
+          'outcome_type': outcomeType,
+          'outcome_name': outcomeName,
+          'verdict': verdict,
+        },
+      );
     });
   }
 
