@@ -34,4 +34,28 @@ void main() {
       expect(back.useOnDeviceModel, 'parakeetCtc110m');
     });
   });
+
+  group('UserPreferences trendsConversationEnabled', () {
+    test('defaults to true', () {
+      const p = UserPreferences();
+      expect(p.trendsConversationEnabled, isTrue);
+    });
+
+    test('round-trips through json', () {
+      const p = UserPreferences(trendsConversationEnabled: false);
+      final back = UserPreferences.fromJson(p.toJson());
+      expect(back.trendsConversationEnabled, isFalse);
+    });
+
+    test('absent json key falls back to true', () {
+      final back = UserPreferences.fromJson({});
+      expect(back.trendsConversationEnabled, isTrue);
+    });
+
+    test('copyWith overrides the field', () {
+      const p = UserPreferences();
+      expect(p.copyWith(trendsConversationEnabled: false).trendsConversationEnabled,
+          isFalse);
+    });
+  });
 }

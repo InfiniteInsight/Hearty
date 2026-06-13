@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/models/trends_data.dart';
 import '../../../core/api/providers/trends_provider.dart';
+import '../widgets/trends_conversation_entry.dart';
 
 // ---------------------------------------------------------------------------
 // Color palette for symptom lines
@@ -119,23 +120,32 @@ class _TrendsScreenState extends ConsumerState<TrendsScreen> {
             ),
         ],
       ),
-      body: asyncTrends.when(
-        loading: () => const _LoadingSkeleton(),
-        error: (err, _) => Center(
-          child: GestureDetector(
-            onTap: () => ref.invalidate(trendsProvider),
-            child: const Text(
-              'Failed to load trends — tap to retry',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.red),
+      body: Column(
+        children: [
+          // Defer-to-tap entry into the monthly trends conversation. Shown
+          // regardless of trends load state, gated on the prefs flag inside.
+          const TrendsConversationEntry(),
+          Expanded(
+            child: asyncTrends.when(
+              loading: () => const _LoadingSkeleton(),
+              error: (err, _) => Center(
+                child: GestureDetector(
+                  onTap: () => ref.invalidate(trendsProvider),
+                  child: const Text(
+                    'Failed to load trends — tap to retry',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              ),
+              data: (trends) => _TrendsBody(
+                trends: trends,
+                onAnalyse: _runAnalysis,
+                analysisLoading: _analysisLoading,
+              ),
             ),
           ),
-        ),
-        data: (trends) => _TrendsBody(
-          trends: trends,
-          onAnalyse: _runAnalysis,
-          analysisLoading: _analysisLoading,
-        ),
+        ],
       ),
     );
   }

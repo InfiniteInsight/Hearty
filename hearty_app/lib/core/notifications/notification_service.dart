@@ -22,6 +22,7 @@ class NotificationService {
   // 1001 is reserved by HeartyWakeWordService — use a non-colliding range.
   static const _kFollowUpNotifId  = 3010;
   static const int _kCheckinNotifId = 3011; // distinct from follow-up (3010)
+  static const int _kTrendsNotifId  = 3012; // monthly trends conversation
 
   /// Post-meal check-in notification copy. The body tells the user the app will
   /// listen for a spoken reply, so the listen "ding" doesn't catch them off guard.
@@ -32,6 +33,11 @@ class NotificationService {
   /// Evening daily check-in notification copy.
   static const String checkinTitle = 'Review your day';
   static const String checkinBody  = 'Tap to check in on what you logged today.';
+
+  /// Monthly trends conversation notification copy.
+  static const String trendsTitle = 'Your monthly trends';
+  static const String trendsBody  =
+      "Let's talk through what your data showed this month.";
 
   static final _localNotifs = FlutterLocalNotificationsPlugin();
 
@@ -104,6 +110,11 @@ class NotificationService {
       'hearty_daily_checkin',
       'Daily Check-in',
       importance: Importance.high,
+    ));
+    await plugin.createNotificationChannel(const AndroidNotificationChannel(
+      'hearty_trends',
+      'Monthly Trends',
+      importance: Importance.defaultImportance,
     ));
   }
 
@@ -217,6 +228,57 @@ class NotificationService {
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       payload: '/checkin?date=$ymd',
+    );
+  }
+
+  /// Schedules a recurring monthly trends notification on [dayOfMonth] at
+  /// [hour]:[minute]. Recurs via [DateTimeComponents.dayOfMonthAndTime] so it
+  /// fires the same day each month. GATE-2 = defer-to-tap: the payload routes
+  /// to /trends-conversation, which loads signals on open — there is no
+  /// background WorkManager precompute.
+  static Future<void> scheduleTrendsNotification({
+    int dayOfMonth = 1,
+    int hour = 18,
+    int minute = 0,
+  }) async {
+    await _localNotifs.cancel(_kTrendsNotifId);
+
+    final now = tz.TZDateTime.now(tz.local);
+    var target =
+        tz.TZDateTime(tz.local, now.year, now.month, dayOfMonth, hour, minute);
+    // If this month's occurrence already passed, advance to next month so the
+    // first fire is in the future (dayOfMonthAndTime then keeps it monthly).
+    if (target.isBefore(now)) {
+      final nextMonth = now.month == 12 ? 1 : now.month + 1;
+      final nextYear = now.month == 12 ? now.year + 1 : now.year;
+      target =
+          tz.TZDateTime(tz.local, nextYear, nextMonth, dayOfMonth, hour, minute);
+    }
+
+    final androidPlugin = _localNotifs
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    final canExact =
+        await androidPlugin?.canScheduleExactNotifications() ?? false;
+
+    await _localNotifs.zonedSchedule(
+      _kTrendsNotifId,
+      trendsTitle,
+      trendsBody,
+      target,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'hearty_trends',
+          'Monthly Trends',
+        ),
+      ),
+      androidScheduleMode: canExact
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexact,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
+      payload: '/trends-conversation',
     );
   }
 }

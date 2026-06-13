@@ -21,6 +21,7 @@ class UserPreferencesSchema(BaseModel):
     nudge_delay_minutes: int = 45
     post_meal_nudge_enabled: bool = True
     daily_checkin_enabled: bool = True
+    trends_conversation_enabled: bool = True
     weekly_digest_enabled: bool = True
     sync_error_alerts_enabled: bool = True
     wake_word_enabled: bool = True
@@ -93,6 +94,7 @@ def _row_to_schema(hp: dict, np: dict) -> UserPreferencesSchema:
         nudge_delay_minutes=np.get("post_meal_delay_minutes") or 45,
         post_meal_nudge_enabled=np.get("post_meal_enabled") if np.get("post_meal_enabled") is not None else True,
         daily_checkin_enabled=np.get("daily_checkin_enabled") if np.get("daily_checkin_enabled") is not None else True,
+        trends_conversation_enabled=np.get("trends_conversation_enabled") if np.get("trends_conversation_enabled") is not None else True,
         weekly_digest_enabled=np.get("weekly_digest_enabled") if np.get("weekly_digest_enabled") is not None else True,
         sync_error_alerts_enabled=np.get("sync_error_alerts_enabled") if np.get("sync_error_alerts_enabled") is not None else True,
         wake_word_enabled=np.get("wake_word_enabled") if np.get("wake_word_enabled") is not None else True,
@@ -141,6 +143,7 @@ async def update_preferences(
         "post_meal_enabled": body.post_meal_nudge_enabled,
         "post_meal_delay_minutes": body.nudge_delay_minutes,
         "daily_checkin_enabled": body.daily_checkin_enabled,
+        "trends_conversation_enabled": body.trends_conversation_enabled,
         "daily_checkin_time": checkin_time,
         "weekly_digest_enabled": body.weekly_digest_enabled,
         "sync_error_alerts_enabled": body.sync_error_alerts_enabled,

@@ -42,6 +42,17 @@ Future<void> _syncToken(Ref ref) async {
       // Best-effort — never block token sync or startup.
     }
 
+    // Schedule the monthly trends conversation (defer-to-tap). Same pre-early-
+    // return placement as the check-in above so it reschedules on the common
+    // token-unchanged launch, and isolated in its own try/catch.
+    try {
+      if (prefs.trendsConversationEnabled) {
+        await NotificationService.scheduleTrendsNotification();
+      }
+    } catch (_) {
+      // Best-effort — never block token sync or startup.
+    }
+
     if (prefs.fcmToken == token) return;
     await client.savePreferences(prefs.copyWith(fcmToken: token));
   } catch (_) {

@@ -6,6 +6,7 @@ class UserPreferences {
   final int nudgeDelayMinutes;
   final bool postMealNudgeEnabled;
   final bool dailyCheckinEnabled;
+  final bool trendsConversationEnabled;
   final bool weeklyDigestEnabled;
   final bool syncErrorAlertsEnabled;
   final bool wakeWordEnabled;
@@ -28,6 +29,7 @@ class UserPreferences {
     this.nudgeDelayMinutes = 45,
     this.postMealNudgeEnabled = true,
     this.dailyCheckinEnabled = true,
+    this.trendsConversationEnabled = true,
     this.weeklyDigestEnabled = true,
     this.syncErrorAlertsEnabled = true,
     this.wakeWordEnabled = true,
@@ -57,6 +59,8 @@ class UserPreferences {
           (json['post_meal_nudge_enabled'] as bool?) ?? true,
       dailyCheckinEnabled:
           (json['daily_checkin_enabled'] as bool?) ?? true,
+      trendsConversationEnabled:
+          (json['trends_conversation_enabled'] as bool?) ?? true,
       weeklyDigestEnabled:
           (json['weekly_digest_enabled'] as bool?) ?? true,
       syncErrorAlertsEnabled:
@@ -83,6 +87,7 @@ class UserPreferences {
         'nudge_delay_minutes': nudgeDelayMinutes,
         'post_meal_nudge_enabled': postMealNudgeEnabled,
         'daily_checkin_enabled': dailyCheckinEnabled,
+        'trends_conversation_enabled': trendsConversationEnabled,
         'weekly_digest_enabled': weeklyDigestEnabled,
         'sync_error_alerts_enabled': syncErrorAlertsEnabled,
         'wake_word_enabled': wakeWordEnabled,
@@ -104,6 +109,7 @@ class UserPreferences {
     int? nudgeDelayMinutes,
     bool? postMealNudgeEnabled,
     bool? dailyCheckinEnabled,
+    bool? trendsConversationEnabled,
     bool? weeklyDigestEnabled,
     bool? syncErrorAlertsEnabled,
     bool? wakeWordEnabled,
@@ -124,6 +130,8 @@ class UserPreferences {
       nudgeDelayMinutes: nudgeDelayMinutes ?? this.nudgeDelayMinutes,
       postMealNudgeEnabled: postMealNudgeEnabled ?? this.postMealNudgeEnabled,
       dailyCheckinEnabled: dailyCheckinEnabled ?? this.dailyCheckinEnabled,
+      trendsConversationEnabled:
+          trendsConversationEnabled ?? this.trendsConversationEnabled,
       weeklyDigestEnabled: weeklyDigestEnabled ?? this.weeklyDigestEnabled,
       syncErrorAlertsEnabled:
           syncErrorAlertsEnabled ?? this.syncErrorAlertsEnabled,
