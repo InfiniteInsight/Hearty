@@ -218,3 +218,31 @@ def test_followup_with_food_updates_meal(harness):
     updates = _meal_updates(recorder)
     assert len(updates) == 1
     assert "tuna sandwich" in updates[0]["description"].lower()
+
+
+def test_symptom_followup_logs_symptom_and_marks_meal_answered(harness):
+    client, recorder, mp = harness
+    # A real symptom answer to a meal follow-up: a severity-bearing symptom is
+    # logged AND the meal's follow-up is recorded as answered so the evening
+    # daily check-in (gap A) doesn't re-ask.
+    mp.setattr(
+        chat_module.ai_extraction,
+        "extract_symptoms",
+        lambda _t: [{"symptom_type": "bloating", "severity": 7}],
+    )
+
+    r = client.post(
+        "/api/chat",
+        json={
+            "message": "pretty bloated, about a 7",
+            "meal_id": "meal-1",
+            "history": [
+                {"role": "assistant", "content": "How did that meal sit with you?"}
+            ],
+        },
+    )
+    assert r.status_code == 200
+    # The symptom was inserted...
+    assert any(name == "symptoms" for (name, _rows) in recorder["insert"])
+    # ...and the meal was flipped to answered.
+    assert any(u.get("followup_status") == "answered" for u in _meal_updates(recorder))

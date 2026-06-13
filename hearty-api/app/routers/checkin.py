@@ -104,6 +104,16 @@ async def skip_symptom_gap(body: dict, user=Depends(get_current_user)) -> dict:
     return {"ok": True}
 
 
+@router.post("/api/checkin/dismiss/symptom", status_code=200)
+async def dismiss_symptom_gap(body: dict, user=Depends(get_current_user)) -> dict:
+    """The user closed an in-the-moment symptom follow-up without answering. Mark
+    it dismissed so the evening check-in can resurface it once (gap A)."""
+    user_id = user["id"]
+    supabase.table("meals").update({"followup_status": "dismissed"}) \
+        .eq("id", body["meal_id"]).eq("user_id", user_id).execute()
+    return {"ok": True}
+
+
 @router.post("/api/checkin/resolve/food", status_code=200)
 async def resolve_food_gap(body: dict, user=Depends(get_current_user)) -> dict:
     """C-gap resolution.

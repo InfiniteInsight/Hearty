@@ -109,6 +109,18 @@ void main() {
       expect((req.data as Map<String, dynamic>)['meal_id'], 'meal-789');
     });
 
+    test('dismissSymptomFollowUp posts meal_id to the dismiss endpoint',
+        () async {
+      final harness = _build(<String, dynamic>{'ok': true});
+
+      await harness.client.dismissSymptomFollowUp(mealId: 'meal-789');
+
+      final req = harness.interceptor.lastRequest!;
+      expect(req.path, '/api/checkin/dismiss/symptom');
+      expect(req.method, 'POST');
+      expect((req.data as Map<String, dynamic>)['meal_id'], 'meal-789');
+    });
+
     test('resolveFoodGap posts only the provided fields', () async {
       final harness = _build(<String, dynamic>{'ok': true});
 

@@ -336,6 +336,17 @@ class HeartyApiClient {
     });
   }
 
+  /// Marks an in-the-moment symptom follow-up as dismissed (user closed it
+  /// without answering) so the evening check-in resurfaces it once.
+  Future<void> dismissSymptomFollowUp({required String mealId}) {
+    return _call(() async {
+      await _dio.post<Map<String, dynamic>>(
+        '/api/checkin/dismiss/symptom',
+        data: <String, dynamic>{'meal_id': mealId},
+      );
+    });
+  }
+
   /// Resolves a low-confidence food gap — confirm or correct the food guess.
   Future<void> resolveFoodGap({
     required String mealId,

@@ -186,6 +186,19 @@ def test_skip_symptom_gap_marks_resurfaced(monkeypatch):
     _clear()
 
 
+def test_dismiss_symptom_gap_marks_dismissed(monkeypatch):
+    rec = _Recorder()
+    _auth()
+    monkeypatch.setattr(checkin_module, "supabase", _RecSupa(rec))
+    client = TestClient(app)
+    r = client.post("/api/checkin/dismiss/symptom", json={"meal_id": "m1"})
+    assert r.status_code == 200
+    assert any(t == "meals" and v.get("followup_status") == "dismissed"
+               for t, v in rec.updates)
+    assert rec.inserts == []  # dismiss never writes a symptom
+    _clear()
+
+
 # ─────────────────────────── write-backs (C) ────────────────────────────────
 
 def test_resolve_food_confirm_bumps_confidence_to_one(monkeypatch):

@@ -234,6 +234,10 @@ async def chat(
             # Feelings/symptom response — log symptoms, do NOT update the meal
             try:
                 _insert_ready_symptoms(user["id"], symptoms_ready, body.message)
+                # The meal's symptom follow-up is now satisfied — record it so the
+                # evening daily check-in (gap A) doesn't re-ask.
+                supabase.table("meals").update({"followup_status": "answered"}) \
+                    .eq("id", meal_id).eq("user_id", user["id"]).execute()
             except Exception as e:
                 logger.error("Follow-up symptom insert failed: %s", e, exc_info=True)
         elif body.symptom_followup:
