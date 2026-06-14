@@ -16,12 +16,14 @@ from app.models.schemas import (
 )
 from app.services import (
     ai_extraction, trend_engine, signal_engine,
-    signal_presenter, trends_conversation,
+    signal_presenter, trends_conversation, signal_persistence,
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"])
+
+TRENDS_MIN_RECOMPUTE_MINUTES = float(os.environ.get("TRENDS_MIN_RECOMPUTE_MINUTES", "10"))
 
 
 # ── Signal endpoints (Plan 11) ────────────────────────────────────────────────
@@ -36,7 +38,11 @@ async def get_signals(
     # Automatic refresh: recompute signals when new data has been logged since the
     # last run, so viewing Trends always reflects current data. The manual
     # "Analyse now" button (POST /api/trends/analyze) remains as a force-refresh.
-    ensure_fresh_signals(user_id)
+    did_refresh = ensure_fresh_signals(user_id)
+    try:
+        signal_engine.ensure_yearly_backfill(user_id, recompute_current=did_refresh)
+    except Exception as e:  # pragma: no cover - defensive
+        logger.error("ensure_yearly_backfill failed: %s", e, exc_info=True)
 
     rows = (
         supabase.table("food_signals")
@@ -81,6 +87,21 @@ async def get_signals(
         ))
 
     signals.sort(key=lambda s: s.unified_score, reverse=True)
+
+    try:
+        yearly_rows = (
+            supabase.table("food_signals_yearly")
+            .select("category, year, outcome_type, outcome_name, unified_score")
+            .eq("user_id", user_id)
+            .execute()
+        ).data or []
+        persistence = signal_persistence.compute_persistence(
+            {s.category for s in signals}, yearly_rows,
+            current_year=datetime.now(timezone.utc).year,
+        )
+        signals = [s.model_copy(update=persistence.get(s.category, {})) for s in signals]
+    except Exception as e:  # pragma: no cover - defensive
+        logger.error("persistence annotation failed: %s", e, exc_info=True)
 
     # Get last_analyzed_at from health_profile
     profile = (
@@ -138,7 +159,11 @@ async def trigger_analysis(
 ) -> AnalyzeResponse:
     """Run the full signal analysis for the authenticated user."""
     user_id = user["id"]
-    result = signal_engine.run_analysis(user_id, period_days=90)
+    result = signal_engine.run_analysis(user_id, period_days=365)
+    try:
+        signal_engine.ensure_yearly_backfill(user_id, recompute_current=True)
+    except Exception as e:  # pragma: no cover - defensive
+        logger.error("ensure_yearly_backfill (manual) failed: %s", e, exc_info=True)
     return AnalyzeResponse(
         status="completed",
         analyzed_at=datetime.now(timezone.utc),
@@ -196,20 +221,23 @@ def _analysis_status(user_id: str) -> tuple[Optional[str], bool]:
 
 
 def ensure_fresh_signals(user_id: str) -> bool:
-    """Auto-run the signal analysis when new data has been logged since the last
-    run. Called on signal reads so trends/conversation reflect fresh data without
-    requiring a manual tap. Returns True if an analysis was run. Best-effort —
-    a failure here must not break the read, so the caller still serves whatever
-    signals already exist.
-    """
+    """Auto-run the live analysis when new data exists AND the last run is older
+    than the debounce window. Returns True if an analysis was run. Best-effort."""
     try:
-        _, has_new_data = _analysis_status(user_id)
-        if has_new_data:
-            signal_engine.run_analysis(user_id, period_days=90)
-            return True
+        last_analyzed_at, has_new_data = _analysis_status(user_id)
+        if not has_new_data:
+            return False
+        if last_analyzed_at:
+            last_dt = datetime.fromisoformat(last_analyzed_at.replace("Z", "+00:00"))
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) - last_dt < timedelta(minutes=TRENDS_MIN_RECOMPUTE_MINUTES):
+                return False
+        signal_engine.run_analysis(user_id)
+        return True
     except Exception as e:  # pragma: no cover - defensive
         logger.error("ensure_fresh_signals failed: %s", e, exc_info=True)
-    return False
+        return False
 
 
 @router.get("/api/trends/analyze/status", status_code=200)

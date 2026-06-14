@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Dict
 from datetime import datetime
 from uuid import UUID
 
@@ -138,6 +138,11 @@ class FoodSignal(BaseModel):
     unified_score: float
     channels: List[SignalChannel]
     convergent: bool
+    # Multi-year persistence (defaults keep older responses valid).
+    years_seen: List[int] = Field(default_factory=list)
+    recurring: bool = False
+    is_new: bool = False
+    strength_by_year: Dict[str, float] = Field(default_factory=dict)
 
 class SignalsResponse(BaseModel):
     signals: List[FoodSignal]
