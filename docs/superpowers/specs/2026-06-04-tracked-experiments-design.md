@@ -1,9 +1,10 @@
 # Tracked Experiments — Design Spec
 
-**Date:** 2026-06-04
-**Status:** Design approved (brainstorming). **STRETCH GOAL.** Implementation
-deferred — depends on the Monthly Trends Conversation feature and on the
-dictation/voice rework. Build only after those land and only if capacity allows.
+**Date:** 2026-06-04 (amended 2026-06-14: added the mid-experiment adherence nudge)
+**Status:** Design approved (brainstorming). Dependencies (Monthly Trends
+Conversation, dictation/voice rework) have since shipped; ready for implementation
+planning. Background execution uses **defer-to-tap** (consistent with the daily
+check-in and trends notifications) — no WorkManager.
 
 ## Goal
 
@@ -36,10 +37,12 @@ is the strongest possible input to the signal feedback overlay.
 ## Scope
 
 **In scope (v1):** elimination experiments (cut one harmful category), started from
-the trends conversation, auto-tracked adherence from normal logs, baseline-vs-
-experiment outcome comparison with honest inconclusive guardrails, an end-of-window
-result delivered via notification → result view/conversation, and an optional
-write-back of a `confirmed` verdict on a clean positive result.
+the trends conversation, auto-tracked adherence from normal logs, **a one-time
+mid-course nudge if the user drifts off-protocol** (see "Mid-experiment adherence
+nudge"), baseline-vs-experiment outcome comparison with honest inconclusive
+guardrails, an end-of-window result delivered via notification → result
+view/conversation, and an optional write-back of a `confirmed` verdict on a clean
+positive result.
 
 **Explicitly NOT in scope:**
 - **Addition experiments** ("add ginger to improve energy") — the data model
@@ -47,7 +50,9 @@ write-back of a `confirmed` verdict on a clean positive result.
   implements only `eliminate`.
 - **Manual experiment creation** outside the trends conversation — the data model
   does not preclude it, but v1 only starts experiments from the conversation.
-- **Daily adherence prompts** — adherence is inferred, never asked (option A).
+- **Daily adherence prompts** — adherence is inferred from logs, not asked daily.
+  The single exception is the one-time mid-course nudge below; there is no
+  recurring "did you stay off it?" prompting.
 - **Multiple concurrent experiments** on the same category/outcome — one active
   experiment per (category, outcome) at a time (see Data model constraint).
 
@@ -62,6 +67,10 @@ write-back of a `confirmed` verdict on a clean positive result.
 2. **Run.** Default duration **14 days** (`EXPERIMENT_DAYS`, adjustable). The
    experiment rides on the user's normal logging — no new prompts, no behavior
    change required beyond the elimination itself.
+2a. **Mid-course nudge (one-time).** If the running adherence drifts low while the
+   experiment is active, Hearty sends exactly **one** gentle nudge so the user can
+   course-correct instead of wasting the window (see "Mid-experiment adherence
+   nudge"). Options: keep going, restart the clock, or stop.
 3. **Evaluate & deliver.** At `experiment_end`, a notification invites the user to
    see the result; tapping opens a short result view / conversation turn.
 4. **Feed back.** A clean, positive result offers to write a `confirmed` verdict to
@@ -90,6 +99,7 @@ New table `experiments` (Supabase migration; mirror the RLS/owner pattern of
 | `experiment_end` | TIMESTAMPTZ | `experiment_start + EXPERIMENT_DAYS` |
 | `status` | TEXT CHECK in (`'active'`,`'completed'`,`'abandoned'`) | |
 | `result` | JSONB nullable | the computed evaluation (see below), written at completion |
+| `nudged_at` | TIMESTAMPTZ nullable | set when the one-time mid-course nudge fires; guarantees one nudge per active window (cleared by a "restart the clock") |
 | `created_at` | TIMESTAMPTZ default now() | |
 
 **Constraint:** a partial unique index on `(user_id, category, outcome_type,
@@ -116,6 +126,38 @@ No prompts. Adherence is computed from the user's normally-logged meals in
 - `adherence = clean_days / logged_days` (days with at least one meal).
 
 This rides entirely on existing logged data; it adds no logging burden.
+
+---
+
+## Mid-experiment adherence nudge (one-time)
+
+Adherence is still never *asked* daily, but a drifting experiment shouldn't run two
+silent weeks only to end `inconclusive`. While an experiment is `active`, Hearty
+sends **exactly one** gentle nudge if the user is clearly off-protocol:
+
+- **Trigger:** running adherence (over logged days so far) `< NUDGE_ADHERENCE`
+  (default **0.5** — deliberately looser than the final `ADHERENCE_MIN` of 0.7, so
+  it only fires on real drift) **and** at least `NUDGE_MIN_DAYS` logged days have
+  elapsed (default **4**, so a single early slip never triggers it) **and**
+  `nudged_at IS NULL` (one per active window).
+- **Detection:** a meal that contains the eliminated `category` is a violation; this
+  is computed from the same `food_category_service` classification used for
+  adherence, evaluated on the meal-logging path (no new logging burden, no polling).
+- **Delivery:** defer-to-tap (same mechanism as the check-in / trends notifications)
+  — a notification → a short prompt. On firing, set `nudged_at = now`.
+- **Actions offered (confirmable, never automatic):**
+  - **Keep going** — dismiss; no further nudges this window.
+  - **Restart the clock** — reset `experiment_start = now`,
+    `experiment_end = now + EXPERIMENT_DAYS`, shift the baseline window accordingly,
+    and clear `nudged_at` (a fresh window may nudge again if they drift again). The
+    drifted days are discarded.
+  - **Stop** — abandon the experiment (`status = 'abandoned'`).
+- **Tone:** supportive, not scolding — e.g. *"I've noticed dairy in a few meals.
+  This test needs you mostly off it to give a clean read — want to keep going,
+  restart the two weeks, or stop?"*
+
+If the user ignores the nudge and adherence is still low at `experiment_end`, the
+end-of-window evaluation falls through to its existing `inconclusive` guardrail.
 
 ---
 
@@ -164,13 +206,18 @@ any), `adherence`, `baseline_rate`, `experiment_rate`, `logged_days` per window.
 - **Experiment store** — create / get-active / list / mark-abandoned (thin DB layer).
 - **Adherence calculator** — pure: `(meals in window, category) → {clean_days,
   logged_days, adherence}` using `food_category_service`. Unit-testable with
-  fixture meals.
+  fixture meals. Reused both for the final evaluation and the running mid-course
+  adherence check.
+- **Nudge trigger** — pure decision: `(running adherence, logged_days_elapsed,
+  nudged_at, thresholds) → should_nudge: bool`. Wired on the meal-logging path so a
+  violation re-checks it; delivery is defer-to-tap. Unit-testable.
 - **Experiment evaluator** — pure: `(baseline meals+symptoms+wellbeing, experiment
   meals+symptoms+wellbeing, adherence, thresholds) → result dict` with the
   guardrails. Unit-testable; reuses the rate-computation style from `signal_engine`.
 - **Endpoints:** `POST /api/experiments` (create from a signal), `GET
   /api/experiments/active`, `POST /api/experiments/{id}/evaluate` (compute + store
-  result), `POST /api/experiments/{id}/abandon`.
+  result), `POST /api/experiments/{id}/abandon`, `POST /api/experiments/{id}/restart`
+  (reset the window + clear `nudged_at` for the "restart the clock" nudge action).
 - **Scheduler** — fire the end-of-window evaluation + result notification (shares
   the trends/check-in Android background-execution gate).
 - **Flutter (contracts):** the start chip inside the trends conversation; an
@@ -190,24 +237,33 @@ any), `adherence`, `baseline_rate`, `experiment_rate`, `logged_days` per window.
 - **Rate computation:** symptom-frequency and wellbeing-mean deltas across windows.
 - **Active-experiment uniqueness:** creating a second active experiment for the
   same (category, outcome) is rejected.
+- **Mid-course nudge trigger:** fires once when running adherence < `NUDGE_ADHERENCE`
+  after ≥ `NUDGE_MIN_DAYS` logged days; does NOT fire on a single early slip (too
+  few days), when adherence is fine, or twice (`nudged_at` already set); "restart"
+  clears `nudged_at` so a re-drift can nudge again.
 - **Feedback tie-in:** only `improved` + adherent results offer a verdict; the
   verdict write is never automatic (requires the confirm chip).
 
 ---
 
-## Open dependencies (must be resolved before/within implementation)
+## Dependencies (status as of 2026-06-14)
 
-1. **Monthly Trends Conversation feature** — must exist (experiments are launched
-   from it and write to its `signal_feedback` overlay).
-2. **Dictation/voice rework** — the start chip and result conversation are
-   voice-adjacent; finalize against the reworked pipeline.
-3. **Android background-execution mechanism** — for the end-of-window evaluation +
-   notification (shared decision with the daily check-in and trends triggers).
-4. Confirm `food_category_service`'s category vocabulary so experiment `category`
-   values align with what classification produces.
+1. **Monthly Trends Conversation feature** — ✅ shipped (incl. `signal_feedback`
+   overlay with the exact `(category, outcome_type, outcome_name)` identity this
+   feature writes to). Experiments launch from it and write a `confirmed` verdict.
+2. **Dictation/voice rework** — ✅ shipped. Per the sibling features, the chips and
+   result turn are built **text-first**; voice wiring onto the controllers is a
+   device-verified follow-up.
+3. **Android background-execution mechanism** — ✅ decided: **defer-to-tap** (no
+   WorkManager), consistent with the daily check-in and trends notifications. The
+   end-of-window evaluation and the mid-course nudge both fire as notifications and
+   compute on tap / on the meal-logging path.
+4. **`food_category_service` category vocabulary** — in use by `signal_engine`;
+   experiment `category` values reuse the originating signal's category (already
+   produced by classification), so they align by construction.
 
 ---
 
-**Stretch-goal reminder:** this is the lowest-priority of the three planned
-conversational features. Ship the daily check-in and trends conversation first;
-take on experiments only with remaining capacity.
+**Sequencing note:** this was the lowest-priority of the three conversational
+features; the daily check-in and the monthly trends conversation have both shipped,
+so its prerequisites are met and it is now the next feature to build.
