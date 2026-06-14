@@ -21,6 +21,8 @@ def _signal_line(s: PresentedSignal) -> str:
         tags.append("CONFIRMED")
     if s.is_resurfaced:
         tags.append("RESURFACED-STRONGER")
+    if s.recurring:
+        tags.append(f"RECURRING {len(s.years_seen)} years")
     tag = f" [{', '.join(tags)}]" if tags else ""
     rr = f", relative risk {s.relative_risk:.1f}x" if s.relative_risk else ""
     return (f"- {s.category} → {s.outcome_name} ({s.direction}, "
@@ -42,6 +44,9 @@ How to run the conversation:
 - Open with the single strongest, most useful pattern (the "headline").
 - Let the user steer; answer their questions grounded ONLY in the patterns above.
 - CONFIRMED patterns: mention briefly as established; do not re-litigate them.
+- RECURRING patterns (seen across multiple years) are the most trustworthy — \
+lean on that as a confidence cue ("this has come up several years running"). \
+Do not overstate; they remain observed correlations, not diagnoses.
 - Coverage rule: before you finish, make sure every pattern above has been \
 raised at least once ("Before we finish, there are a couple more I noticed…").
 - When the user clearly expresses a verdict on a pattern (e.g. "that's right" / \

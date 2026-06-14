@@ -230,6 +230,8 @@ class PresentedSignal(BaseModel):
     is_new: bool = False
     is_confirmed: bool = False
     is_resurfaced: bool = False
+    years_seen: List[int] = Field(default_factory=list)
+    recurring: bool = False
 
 class ConversationTurn(BaseModel):
     role: Literal["user", "assistant"]

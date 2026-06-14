@@ -54,3 +54,37 @@ def test_new_since_last_conversation_is_flagged():
     by_cat = {s.category: s for s in out}
     assert by_cat["dairy"].is_new is False
     assert by_cat["gluten"].is_new is True
+
+
+def test_load_presented_signals_attaches_recurrence(monkeypatch):
+    from app.services import signal_presenter as sp
+
+    class _R:
+        def __init__(self, data): self.data = data
+    class _Q:
+        def __init__(self, rows): self._rows = rows
+        def select(self, *a, **k): return self
+        def eq(self, *a, **k): return self
+        def execute(self): return _R(self._rows)
+    class _S:
+        def table(self, name):
+            if name == "food_signals":
+                return _Q([{"category": "dairy", "outcome_type": "symptom",
+                            "outcome_name": "bloating", "direction": "harmful",
+                            "unified_score": 0.8, "relative_risk": 2.0,
+                            "evidence_count": 9}])
+            if name == "signal_feedback":
+                return _Q([])
+            if name == "food_signals_yearly":
+                return _Q([
+                    {"category": "dairy", "year": 2024, "outcome_type": "symptom",
+                     "outcome_name": "bloating", "unified_score": 0.7},
+                    {"category": "dairy", "year": 2025, "outcome_type": "symptom",
+                     "outcome_name": "bloating", "unified_score": 0.8},
+                ])
+            return _Q([])
+
+    out = sp.load_presented_signals(_S(), "u1")
+    dairy = next(s for s in out if s.category == "dairy")
+    assert dairy.recurring is True
+    assert dairy.years_seen == [2024, 2025]

@@ -3,8 +3,10 @@ and rank them for the monthly trends conversation. Pure logic — DB access is
 isolated in load_presented_signals()."""
 
 import os
+from datetime import datetime, timezone
 
 from app.models.schemas import PresentedSignal
+from app.services import signal_persistence
 
 # A disputed signal only resurfaces if its unified_score has grown by at least
 # this much beyond the score at the time of dispute.
@@ -90,4 +92,25 @@ def load_presented_signals(supabase, user_id: str) -> list[PresentedSignal]:
     ).data or []
 
     previously_surfaced = {_key(f) for f in feedback}
-    return apply_overlay(signals, feedback, previously_surfaced)
+    presented = apply_overlay(signals, feedback, previously_surfaced)
+
+    # Attach cross-year recurrence (years_seen + recurring) from the frozen
+    # per-year sets. Only those two fields — PresentedSignal.is_new keeps the
+    # overlay's "never-verdicted" meaning, distinct from calendar-year newness.
+    yearly_rows = (
+        supabase.table("food_signals_yearly")
+        .select("category, year, outcome_type, outcome_name, unified_score")
+        .eq("user_id", user_id)
+        .execute()
+    ).data or []
+    persistence = signal_persistence.compute_persistence(
+        {p.category for p in presented}, yearly_rows,
+        current_year=datetime.now(timezone.utc).year,
+    )
+    return [
+        p.model_copy(update={
+            "years_seen": persistence.get(p.category, {}).get("years_seen", []),
+            "recurring": persistence.get(p.category, {}).get("recurring", False),
+        })
+        for p in presented
+    ]

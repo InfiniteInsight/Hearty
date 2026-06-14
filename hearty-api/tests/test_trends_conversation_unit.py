@@ -40,6 +40,23 @@ def test_generate_turn_parses_envelope():
     assert out.is_closing is False
 
 
+def test_signal_line_tags_recurring():
+    s = PresentedSignal(category="dairy", outcome_type="symptom",
+                        outcome_name="bloating", direction="harmful",
+                        unified_score=0.8, relative_risk=2.0, evidence_count=9,
+                        recurring=True, years_seen=[2024, 2025, 2026])
+    line = tc._signal_line(s)
+    assert "RECURRING 3 years" in line
+
+
+def test_system_prompt_mentions_recurrence_confidence():
+    from app.models.schemas import PresentedSignal as PS
+    prompt = tc.build_system_prompt([PS(category="dairy", outcome_type="symptom",
+        outcome_name="bloating", direction="harmful", unified_score=0.8,
+        relative_risk=2.0, evidence_count=9)])
+    assert "recurring" in prompt.lower()
+
+
 def test_generate_turn_parses_proposed_verdict():
     fake = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
         content=json.dumps({
