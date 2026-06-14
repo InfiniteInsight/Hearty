@@ -413,6 +413,71 @@ def run_analysis(user_id: str, period_days: int = 365) -> dict:
     }
 
 
+def analyze_year(user_id: str, year: int) -> int:
+    """Compute one calendar year's signals and replace that year's frozen rows.
+    Returns the number of signal rows written."""
+    start = datetime(year, 1, 1, tzinfo=timezone.utc).isoformat()
+    end = datetime(year, 12, 31, 23, 59, 59, tzinfo=timezone.utc).isoformat()
+    meals, symptoms, wellbeing = _load_between(user_id, start, end)
+    signals = _compute_signals(user_id, meals, symptoms, wellbeing)
+
+    rows = [{
+        "user_id": user_id,
+        "year": year,
+        "category": s["category"],
+        "outcome_type": s["outcome_type"],
+        "outcome_name": s["outcome_name"],
+        "direction": s["direction"],
+        "unified_score": s.get("unified_score"),
+        "relative_risk": s.get("relative_risk"),
+        "evidence_count": s.get("evidence_count") or 0,
+    } for s in signals]
+
+    supabase.table("food_signals_yearly").delete() \
+        .eq("user_id", user_id).eq("year", year).execute()
+    if rows:
+        supabase.table("food_signals_yearly").insert(rows).execute()
+    return len(rows)
+
+
+def ensure_yearly_backfill(user_id: str, recompute_current: bool = True) -> None:
+    """Compute any missing PAST calendar years once (frozen), and recompute the
+    CURRENT year when recompute_current is True. Cheap when already backfilled:
+    past years with an existing row are skipped."""
+    current_year = datetime.now(timezone.utc).year
+
+    earliest = (
+        supabase.table("meals")
+        .select("logged_at")
+        .eq("user_id", user_id)
+        .order("logged_at")
+        .limit(1)
+        .execute()
+    ).data
+    if not earliest:
+        return
+    first_dt = _parse_dt(earliest[0]["logged_at"])
+    if first_dt is None:
+        return
+    first_year = first_dt.year
+
+    existing_years = {
+        r["year"] for r in (
+            supabase.table("food_signals_yearly")
+            .select("year")
+            .eq("user_id", user_id)
+            .execute()
+        ).data or []
+    }
+
+    for year in range(first_year, current_year):  # past years only
+        if year not in existing_years:
+            analyze_year(user_id, year)
+
+    if recompute_current:
+        analyze_year(user_id, current_year)
+
+
 def _update_last_analyzed(user_id: str) -> None:
     supabase.table("health_profile").upsert(
         {"user_id": user_id, "last_analyzed_at": datetime.now(timezone.utc).isoformat()},
