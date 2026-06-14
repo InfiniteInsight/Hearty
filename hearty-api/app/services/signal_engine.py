@@ -35,18 +35,14 @@ _LOWER_IS_BETTER = {"stress_level"}
 
 # ── Data loading ──────────────────────────────────────────────────────────────
 
-def load_data(user_id: str, period_days: int) -> tuple[list, list, list]:
-    """Return (meals, symptoms, wellbeing_snapshots) for the analysis window."""
-    now = datetime.now(timezone.utc)
-    start = (now - timedelta(days=period_days)).isoformat()
-    end = now.isoformat()
-
+def _load_between(user_id: str, start_iso: str, end_iso: str) -> tuple[list, list, list]:
+    """Return (meals, symptoms, wellbeing_snapshots) logged within [start, end]."""
     meals = (
         supabase.table("meals")
         .select("id, foods, logged_at, meal_type")
         .eq("user_id", user_id)
-        .gte("logged_at", start)
-        .lte("logged_at", end)
+        .gte("logged_at", start_iso)
+        .lte("logged_at", end_iso)
         .execute()
     ).data or []
 
@@ -54,8 +50,8 @@ def load_data(user_id: str, period_days: int) -> tuple[list, list, list]:
         supabase.table("symptoms")
         .select("id, meal_id, logged_at, symptom_type, severity, onset_minutes")
         .eq("user_id", user_id)
-        .gte("logged_at", start)
-        .lte("logged_at", end)
+        .gte("logged_at", start_iso)
+        .lte("logged_at", end_iso)
         .execute()
     ).data or []
 
@@ -63,12 +59,19 @@ def load_data(user_id: str, period_days: int) -> tuple[list, list, list]:
         supabase.table("wellbeing_snapshots")
         .select("id, logged_at, period, energy_level, mood, stress_level, sleep_quality, sleep_hours")
         .eq("user_id", user_id)
-        .gte("logged_at", start)
-        .lte("logged_at", end)
+        .gte("logged_at", start_iso)
+        .lte("logged_at", end_iso)
         .execute()
     ).data or []
 
     return meals, symptoms, wellbeing
+
+
+def load_data(user_id: str, period_days: int) -> tuple[list, list, list]:
+    """Return (meals, symptoms, wellbeing_snapshots) for the trailing window."""
+    now = datetime.now(timezone.utc)
+    start = (now - timedelta(days=period_days)).isoformat()
+    return _load_between(user_id, start, now.isoformat())
 
 
 # ── Category exposure ─────────────────────────────────────────────────────────
@@ -344,24 +347,14 @@ def compute_unified_score(
 
 # ── Run analysis ──────────────────────────────────────────────────────────────
 
-def run_analysis(user_id: str, period_days: int = 90) -> dict:
-    """Full analysis pipeline: load → classify → signals → upsert → update state.
-
-    Returns a summary dict with counts and duration.
-    """
-    t0 = time.time()
-
-    meals, symptoms, wellbeing = load_data(user_id, period_days)
-
+def _compute_signals(user_id: str, meals: list, symptoms: list,
+                     wellbeing: list) -> list[dict]:
+    """Classify foods, build exposure, compute per-category signals. Returns
+    signal rows (with user_id, unified_score, analyzed_at) ready to insert. No DB
+    writes. Returns [] when there are no meals."""
     if not meals:
-        _update_last_analyzed(user_id)
-        return {
-            "categories_analysed": 0,
-            "signals_found": 0,
-            "duration_seconds": round(time.time() - t0, 2),
-        }
+        return []
 
-    # Collect all unique food names across meals
     all_food_names: list[str] = []
     for meal in meals:
         for food_item in (meal.get("foods") or []):
@@ -369,55 +362,52 @@ def run_analysis(user_id: str, period_days: int = 90) -> dict:
             if name:
                 all_food_names.append(name)
 
-    # Classify with per-run cache
     classification_cache: dict[str, list[str]] = {}
     category_map = classify_foods_cached(list(set(all_food_names)), classification_cache)
 
-    # Normalize food names to lowercase in meals for consistent lookup
     for meal in meals:
         for food_item in (meal.get("foods") or []):
             if food_item.get("name"):
                 food_item["name"] = food_item["name"].strip().lower()
 
     exposure = build_category_exposure(meals, category_map)
-
     all_meal_ids = {m["id"] for m in meals}
     all_signals: list[dict] = []
-    categories_analysed = 0
 
     for category, exposed_ids in exposure.items():
         unexposed_ids = all_meal_ids - exposed_ids
-
         symptom_sigs = compute_symptom_signals(
             category, exposed_ids, unexposed_ids, meals, symptoms
         )
         wellbeing_sigs = compute_wellbeing_signals(
             category, exposed_ids, unexposed_ids, meals, wellbeing
         )
-
         if not symptom_sigs and not wellbeing_sigs:
             continue
-
-        categories_analysed += 1
         unified = compute_unified_score(symptom_sigs, wellbeing_sigs)
         analyzed_at = datetime.now(timezone.utc).isoformat()
-
         for sig in symptom_sigs + wellbeing_sigs:
             sig["unified_score"] = unified
             sig["analyzed_at"] = analyzed_at
             sig["user_id"] = user_id
             all_signals.append(sig)
 
-    # Delete all existing signals then batch insert fresh ones (avoids functional-index
-    # conflict target issues with nullable columns and PostgREST on_conflict).
+    return all_signals
+
+
+def run_analysis(user_id: str, period_days: int = 365) -> dict:
+    """Full live analysis: load trailing window → compute → replace food_signals."""
+    t0 = time.time()
+    meals, symptoms, wellbeing = load_data(user_id, period_days)
+    all_signals = _compute_signals(user_id, meals, symptoms, wellbeing)
+
     supabase.table("food_signals").delete().eq("user_id", user_id).execute()
     if all_signals:
         supabase.table("food_signals").insert(all_signals).execute()
 
     _update_last_analyzed(user_id)
-
     return {
-        "categories_analysed": categories_analysed,
+        "categories_analysed": len({s["category"] for s in all_signals}),
         "signals_found": len(all_signals),
         "duration_seconds": round(time.time() - t0, 2),
     }
