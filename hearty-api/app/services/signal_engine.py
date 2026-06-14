@@ -441,9 +441,13 @@ def analyze_year(user_id: str, year: int) -> int:
 
 
 def ensure_yearly_backfill(user_id: str, recompute_current: bool = True) -> None:
-    """Compute any missing PAST calendar years once (frozen), and recompute the
-    CURRENT year when recompute_current is True. Cheap when already backfilled:
-    past years with an existing row are skipped."""
+    """Compute any not-yet-backfilled PAST calendar years once (frozen), and
+    recompute the CURRENT year when recompute_current is True.
+
+    A past year is skipped once it has been analyzed, tracked via
+    health_profile.yearly_backfilled_years — NOT via the presence of signal rows,
+    so a past year that produced zero signals (gap/sparse year) still freezes
+    once instead of re-analyzing on every read."""
     current_year = datetime.now(timezone.utc).year
 
     earliest = (
@@ -461,18 +465,27 @@ def ensure_yearly_backfill(user_id: str, recompute_current: bool = True) -> None
         return
     first_year = first_dt.year
 
-    existing_years = {
-        r["year"] for r in (
-            supabase.table("food_signals_yearly")
-            .select("year")
-            .eq("user_id", user_id)
-            .execute()
-        ).data or []
-    }
+    profile = (
+        supabase.table("health_profile")
+        .select("yearly_backfilled_years")
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+    ).data
+    backfilled = set(profile.get("yearly_backfilled_years") or []) if profile else set()
 
+    newly: list[int] = []
     for year in range(first_year, current_year):  # past years only
-        if year not in existing_years:
+        if year not in backfilled:
             analyze_year(user_id, year)
+            newly.append(year)
+
+    if newly:
+        supabase.table("health_profile").upsert(
+            {"user_id": user_id,
+             "yearly_backfilled_years": sorted(backfilled | set(newly))},
+            on_conflict="user_id",
+        ).execute()
 
     if recompute_current:
         analyze_year(user_id, current_year)
