@@ -3,12 +3,14 @@ class TrendsData {
   final List<FoodSignal> signals;
   final Map<String, int> mealTypeDistribution;
   final DateTime? analyzedAt;
+  final List<ResolvedSignal> resolved;
 
   const TrendsData({
     required this.symptomFrequency,
     required this.signals,
     required this.mealTypeDistribution,
     this.analyzedAt,
+    this.resolved = const [],
   });
 
   factory TrendsData.fromSignalsJson(Map<String, dynamic> json) {
@@ -25,6 +27,9 @@ class TrendsData {
       signals: signals,
       mealTypeDistribution: {},
       analyzedAt: analyzedAt,
+      resolved: ((json['resolved'] as List<dynamic>?) ?? const [])
+          .map((e) => ResolvedSignal.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -32,6 +37,29 @@ class TrendsData {
         'signals': signals.map((s) => s.toJson()).toList(),
         'analyzed_at': analyzedAt?.toIso8601String(),
       };
+}
+
+// ── Resolved (no longer flagging) signals ────────────────────────────────────
+
+class ResolvedSignal {
+  final String category;
+  final int lastYear;
+  final double strength;
+  final String status; // 'resolved' | 'potentially_resolved'
+
+  const ResolvedSignal({
+    required this.category,
+    required this.lastYear,
+    required this.strength,
+    required this.status,
+  });
+
+  factory ResolvedSignal.fromJson(Map<String, dynamic> json) => ResolvedSignal(
+        category: (json['category'] as String?) ?? '',
+        lastYear: (json['last_year'] as num?)?.toInt() ?? 0,
+        strength: (json['strength'] as num?)?.toDouble() ?? 0.0,
+        status: (json['status'] as String?) ?? 'potentially_resolved',
+      );
 }
 
 // ── Signal models (Plan 11) ──────────────────────────────────────────────────

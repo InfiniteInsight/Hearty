@@ -237,6 +237,10 @@ class _TrendsBody extends StatelessWidget {
           analysisLoading: analysisLoading,
         ),
         const SizedBox(height: 16),
+        if (trends.resolved.isNotEmpty) ...[
+          ResolvedSection(resolved: trends.resolved),
+          const SizedBox(height: 16),
+        ],
         if (trends.symptomFrequency.isNotEmpty) ...[
           _SymptomFrequencyChart(data: trends.symptomFrequency),
           const SizedBox(height: 16),
@@ -418,6 +422,33 @@ class SignalCard extends StatelessWidget {
                   ],
                 ),
               ],
+              if (signal.recurring && signal.strengthByYear.length >= 2) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  key: const Key('signal-sparkline'),
+                  height: 24,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      for (final entry in (signal.strengthByYear.entries
+                          .toList()
+                        ..sort((a, b) => a.key.compareTo(b.key))))
+                        Padding(
+                          padding: const EdgeInsets.only(right: 3),
+                          child: Container(
+                            width: 8,
+                            height: (4 + 20 * entry.value.clamp(0.0, 1.0))
+                                .toDouble(),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade300,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               // Strength bar
               Row(
@@ -521,6 +552,79 @@ class _ChannelRow extends StatelessWidget {
       ),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Resolved section — "No longer flagging"
+// ---------------------------------------------------------------------------
+
+class ResolvedSection extends StatelessWidget {
+  const ResolvedSection({super.key, required this.resolved});
+
+  final List<ResolvedSignal> resolved;
+
+  @override
+  Widget build(BuildContext context) {
+    if (resolved.isEmpty) return const SizedBox.shrink();
+    final firm = resolved.where((r) => r.status == 'resolved').toList();
+    final maybe =
+        resolved.where((r) => r.status == 'potentially_resolved').toList();
+    return Card(
+      key: const Key('trends-resolved-section'),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('No longer flagging',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            for (final r in firm)
+              _ResolvedRow(
+                  category: r.category,
+                  label: 'Resolved',
+                  color: Colors.green,
+                  key: Key('resolved-firm-${r.category}')),
+            for (final r in maybe)
+              _ResolvedRow(
+                  category: r.category,
+                  label: 'Possibly resolved',
+                  color: Colors.amber.shade800,
+                  key: Key('resolved-maybe-${r.category}')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ResolvedRow extends StatelessWidget {
+  const _ResolvedRow(
+      {super.key,
+      required this.category,
+      required this.label,
+      required this.color});
+
+  final String category;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(children: [
+          Expanded(
+              child: Text(_formatCategory(category),
+                  style: const TextStyle(fontSize: 13))),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4)),
+            child: Text(label, style: TextStyle(fontSize: 11, color: color)),
+          ),
+        ]),
+      );
 }
 
 // ---------------------------------------------------------------------------
