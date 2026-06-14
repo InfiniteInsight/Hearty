@@ -36,6 +36,8 @@ class TrendsData {
   Map<String, dynamic> toJson() => {
         'signals': signals.map((s) => s.toJson()).toList(),
         'analyzed_at': analyzedAt?.toIso8601String(),
+        // Persisted so the 'No longer flagging' section survives an offline reload.
+        'resolved': resolved.map((r) => r.toJson()).toList(),
       };
 }
 
@@ -60,6 +62,13 @@ class ResolvedSignal {
         strength: (json['strength'] as num?)?.toDouble() ?? 0.0,
         status: (json['status'] as String?) ?? 'potentially_resolved',
       );
+
+  Map<String, dynamic> toJson() => {
+        'category': category,
+        'last_year': lastYear,
+        'strength': strength,
+        'status': status,
+      };
 }
 
 // ── Signal models (Plan 11) ──────────────────────────────────────────────────
@@ -154,6 +163,12 @@ class FoodSignal {
         'unified_score': unifiedScore,
         'channels': channels.map((c) => c.toJson()).toList(),
         'convergent': convergent,
+        // Persistence fields included so the offline cache round-trip
+        // (toJson -> fromSignalsJson) keeps badges + sparkline.
+        'years_seen': yearsSeen,
+        'recurring': recurring,
+        'is_new': isNew,
+        'strength_by_year': strengthByYear,
       };
 }
 
