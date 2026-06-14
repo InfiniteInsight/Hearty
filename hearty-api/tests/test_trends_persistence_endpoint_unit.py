@@ -55,6 +55,37 @@ def test_get_trends_annotates_recurrence(monkeypatch):
     app.dependency_overrides.clear()
 
 
+def test_get_trends_returns_resolved(monkeypatch):
+    from datetime import datetime, timezone
+    last_year = datetime.now(timezone.utc).year - 1
+
+    class _Q2:
+        def __init__(self, rows): self._rows = rows
+        def __getattr__(self, _n): return lambda *a, **k: self
+        def execute(self): return _Result(self._rows, 0)
+    class _Supa2:
+        def table(self, name):
+            if name == "food_signals":
+                return _Q2([])  # no live signals
+            if name == "food_signals_yearly":
+                return _Q2([{"category": "gluten", "year": last_year,
+                             "outcome_type": "symptom", "outcome_name": "bloating",
+                             "unified_score": 0.7}])
+            return _Q2([])  # signal_feedback, health_profile, counts
+    app.dependency_overrides[get_current_user] = lambda: {"id": "u1", "email": "e"}
+    monkeypatch.setattr(trends_module, "supabase", _Supa2())
+    monkeypatch.setattr(trends_module, "ensure_fresh_signals", lambda uid: False)
+    monkeypatch.setattr(trends_module.signal_engine, "ensure_yearly_backfill",
+                        lambda uid, recompute_current=True: None)
+    client = TestClient(app)
+    r = client.get("/api/trends")
+    assert r.status_code == 200
+    res = r.json()["resolved"]
+    assert any(x["category"] == "gluten" and x["status"] == "potentially_resolved"
+               for x in res)
+    app.dependency_overrides.clear()
+
+
 def test_ensure_fresh_debounced_within_window(monkeypatch):
     ran = []
     recent = datetime.now(timezone.utc).isoformat()

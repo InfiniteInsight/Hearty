@@ -144,12 +144,19 @@ class FoodSignal(BaseModel):
     is_new: bool = False
     strength_by_year: Dict[str, float] = Field(default_factory=dict)
 
+class ResolvedSignal(BaseModel):
+    category: str
+    last_year: int
+    strength: float
+    status: Literal["resolved", "potentially_resolved"]
+
 class SignalsResponse(BaseModel):
     signals: List[FoodSignal]
     analyzed_at: Optional[datetime]
     total_meals_analyzed: int
     total_symptoms_analyzed: int
     total_wellbeing_analyzed: int
+    resolved: List[ResolvedSignal] = Field(default_factory=list)
 
 class AnalyzeResponse(BaseModel):
     status: Literal["started", "completed"]

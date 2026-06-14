@@ -9,7 +9,7 @@ from supabase import create_client
 from app.auth import get_current_user
 from app.models.schemas import (
     TrendsResponse, TriggerFood, SummaryResponse,
-    SignalsResponse, FoodSignal, SignalChannel,
+    SignalsResponse, FoodSignal, SignalChannel, ResolvedSignal,
     AnalyzeResponse, AnalyzeStatusResponse,
     TrendsConversationRequest, TrendsConversationResponse,
     SignalVerdictRequest, SignalVerdictResponse,
@@ -103,6 +103,28 @@ async def get_signals(
     except Exception as e:  # pragma: no cover - defensive
         logger.error("persistence annotation failed: %s", e, exc_info=True)
 
+    resolved: list[dict] = []
+    try:
+        yearly_rows = (
+            supabase.table("food_signals_yearly")
+            .select("category, year, outcome_type, outcome_name, unified_score")
+            .eq("user_id", user_id)
+            .execute()
+        ).data or []
+        feedback_rows = (
+            supabase.table("signal_feedback")
+            .select("category, verdict")
+            .eq("user_id", user_id)
+            .execute()
+        ).data or []
+        resolved = signal_persistence.compute_resolved(
+            yearly_rows, {s.category for s in signals}, feedback_rows,
+            current_year=datetime.now(timezone.utc).year,
+        )
+    except Exception as e:  # pragma: no cover - defensive
+        logger.error("compute_resolved failed: %s", e, exc_info=True)
+        resolved = []
+
     # Get last_analyzed_at from health_profile
     profile = (
         supabase.table("health_profile")
@@ -150,6 +172,7 @@ async def get_signals(
         total_meals_analyzed=meals_count,
         total_symptoms_analyzed=symptoms_count,
         total_wellbeing_analyzed=wellbeing_count,
+        resolved=[ResolvedSignal(**r) for r in resolved],
     )
 
 

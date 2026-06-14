@@ -39,3 +39,37 @@ def compute_persistence(
             "strength_by_year": {str(y): d["strength"][y] for y in years} if d else {},
         }
     return out
+
+
+def compute_resolved(
+    yearly_rows: list[dict],
+    live_categories: set[str],
+    feedback: list[dict],
+    current_year: int,
+) -> list[dict]:
+    """Categories that had a signal LAST calendar year but are absent from the
+    current live set. status='resolved' if the user confirmed it (signal_feedback
+    verdict='confirmed'), else 'potentially_resolved'. Sorted by last-year
+    strength, descending."""
+    last_year = current_year - 1
+    last_year_strength: dict[str, float] = {}
+    for r in yearly_rows:
+        if int(r["year"]) == last_year:
+            cat = r["category"]
+            score = float(r["unified_score"]) if r.get("unified_score") is not None else 0.0
+            last_year_strength[cat] = max(last_year_strength.get(cat, 0.0), score)
+
+    confirmed = {f["category"] for f in feedback if f.get("verdict") == "confirmed"}
+
+    out = []
+    for cat, strength in last_year_strength.items():
+        if cat in live_categories:
+            continue  # still active — not resolved
+        out.append({
+            "category": cat,
+            "last_year": last_year,
+            "strength": strength,
+            "status": "resolved" if cat in confirmed else "potentially_resolved",
+        })
+    out.sort(key=lambda r: r["strength"], reverse=True)
+    return out
