@@ -87,12 +87,20 @@ class FoodSignal {
   final double unifiedScore;
   final List<SignalChannel> channels;
   final bool convergent;
+  final List<int> yearsSeen;
+  final bool recurring;
+  final bool isNew;
+  final Map<String, double> strengthByYear;
 
   const FoodSignal({
     required this.category,
     required this.unifiedScore,
     required this.channels,
     required this.convergent,
+    this.yearsSeen = const [],
+    this.recurring = false,
+    this.isNew = false,
+    this.strengthByYear = const {},
   });
 
   factory FoodSignal.fromJson(Map<String, dynamic> json) {
@@ -103,6 +111,13 @@ class FoodSignal {
           .map((c) => SignalChannel.fromJson(c as Map<String, dynamic>))
           .toList(),
       convergent: json['convergent'] as bool? ?? false,
+      yearsSeen: ((json['years_seen'] as List<dynamic>?) ?? const [])
+          .map((e) => (e as num).toInt())
+          .toList(),
+      recurring: (json['recurring'] as bool?) ?? false,
+      isNew: (json['is_new'] as bool?) ?? false,
+      strengthByYear: ((json['strength_by_year'] as Map<dynamic, dynamic>?) ?? const {})
+          .map((k, v) => MapEntry(k.toString(), (v as num).toDouble())),
     );
   }
 

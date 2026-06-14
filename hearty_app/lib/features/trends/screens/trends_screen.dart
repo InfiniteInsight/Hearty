@@ -50,6 +50,14 @@ String _formatCategory(String slug) {
   return labels[slug] ?? slug.replaceAll('_', ' ').toUpperCase();
 }
 
+String _recurringLabel(List<int> yearsSeen) {
+  final base = 'Seen ${yearsSeen.length} years';
+  if (yearsSeen.isEmpty) return base;
+  final years =
+      yearsSeen.map((y) => "'${(y % 100).toString().padLeft(2, '0')}").join(' · ');
+  return '$base · $years';
+}
+
 String _formatOutcomeName(String name) =>
     name.replaceAll('_', ' ').replaceFirstMapped(
       RegExp(r'^\w'),
@@ -316,7 +324,7 @@ class _SignalsSection extends StatelessWidget {
                 ),
               )
             else
-              ...signals.map((sig) => _SignalCard(signal: sig)),
+              ...signals.map((sig) => SignalCard(signal: sig)),
           ],
         ),
       ),
@@ -328,8 +336,8 @@ class _SignalsSection extends StatelessWidget {
 // Individual signal card
 // ---------------------------------------------------------------------------
 
-class _SignalCard extends StatelessWidget {
-  const _SignalCard({required this.signal});
+class SignalCard extends StatelessWidget {
+  const SignalCard({super.key, required this.signal});
 
   final FoodSignal signal;
 
@@ -378,6 +386,38 @@ class _SignalCard extends StatelessWidget {
                     ),
                 ],
               ),
+              if (signal.recurring || signal.isNew) ...[
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    if (signal.recurring)
+                      Container(
+                        key: const Key('signal-recurring-badge'),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          _recurringLabel(signal.yearsSeen),
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                      ),
+                    if (signal.isNew)
+                      Container(
+                        key: const Key('signal-new-chip'),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text('New this year', style: TextStyle(fontSize: 11)),
+                      ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 8),
               // Strength bar
               Row(
