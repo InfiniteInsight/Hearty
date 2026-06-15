@@ -48,9 +48,51 @@ def test_active_includes_adherence_and_nudge_flag(monkeypatch):
 def test_abandon(monkeypatch):
     app.dependency_overrides[get_current_user] = lambda: {"id": "u1", "email": "e"}
     called = {}
+    monkeypatch.setattr(ex.experiment_store, "get_one", lambda u, i: {"id": i})
     monkeypatch.setattr(ex.experiment_store, "abandon_experiment",
                         lambda u, i: called.setdefault("id", i))
     client = TestClient(app)
     r = client.post("/api/experiments/e1/abandon")
     assert r.status_code == 200 and called["id"] == "e1"
+    app.dependency_overrides.clear()
+
+
+def test_restart_missing_returns_404(monkeypatch):
+    app.dependency_overrides[get_current_user] = lambda: {"id": "u1", "email": "e"}
+    monkeypatch.setattr(ex.experiment_store, "get_one", lambda u, i: None)
+    client = TestClient(app)
+    r = client.post("/api/experiments/nope/restart")
+    assert r.status_code == 404
+    app.dependency_overrides.clear()
+
+
+def test_abandon_missing_returns_404(monkeypatch):
+    app.dependency_overrides[get_current_user] = lambda: {"id": "u1", "email": "e"}
+    monkeypatch.setattr(ex.experiment_store, "get_one", lambda u, i: None)
+    client = TestClient(app)
+    r = client.post("/api/experiments/nope/abandon")
+    assert r.status_code == 404
+    app.dependency_overrides.clear()
+
+
+def test_evaluate_happy_path_marks_completed(monkeypatch):
+    app.dependency_overrides[get_current_user] = lambda: {"id": "u1", "email": "e"}
+    monkeypatch.setattr(ex.experiment_store, "get_one", lambda u, i: {
+        "id": "e1", "category": "dairy", "direction": "eliminate",
+        "outcome_type": "symptom", "outcome_name": "bloating",
+        "baseline_start": "2026-05-31T00:00:00+00:00", "baseline_end": "2026-06-14T00:00:00+00:00",
+        "experiment_start": "2026-06-14T00:00:00+00:00", "experiment_end": "2026-06-28T00:00:00+00:00",
+        "status": "active", "result": None, "nudged_at": None})
+    monkeypatch.setattr(ex.signal_engine, "_load_between", lambda u, s, e: ([], [], []))
+    monkeypatch.setattr(ex.experiment_adherence, "compute_adherence",
+                        lambda meals, cat, classify=None: {"clean_days": 9, "logged_days": 10, "adherence": 0.9})
+    completed = {}
+    monkeypatch.setattr(ex.experiment_store, "mark_completed",
+                        lambda u, i, result: completed.update({"id": i, "result": result}))
+    client = TestClient(app)
+    r = client.post("/api/experiments/e1/evaluate")
+    assert r.status_code == 200
+    assert r.json()["status"] == "completed"
+    assert completed["id"] == "e1"
+    assert "verdict" in completed["result"]
     app.dependency_overrides.clear()

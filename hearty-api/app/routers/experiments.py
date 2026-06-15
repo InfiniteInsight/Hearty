@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,6 +11,8 @@ from app.services import experiment_store, experiment_adherence, experiment_eval
 from app.services import signal_engine
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 
 def _to_response(row: dict, **extra) -> ExperimentResponse:
@@ -28,8 +31,9 @@ async def create_experiment(body: CreateExperimentRequest,
     try:
         row = experiment_store.create_experiment(
             user["id"], body.category, body.outcome_type, body.outcome_name)
-    except Exception:
+    except Exception as e:
         # partial-unique violation = an active experiment already exists for this pattern
+        logger.warning("create_experiment failed, returning 409: %s", e)
         raise HTTPException(status_code=409, detail="active experiment already exists")
     return _to_response(row)
 
@@ -75,17 +79,23 @@ async def evaluate_experiment(experiment_id: str,
 
 @router.post("/api/experiments/{experiment_id}/abandon", status_code=200)
 async def abandon(experiment_id: str, user=Depends(get_current_user)) -> dict:
+    if not experiment_store.get_one(user["id"], experiment_id):
+        raise HTTPException(status_code=404, detail="experiment not found")
     experiment_store.abandon_experiment(user["id"], experiment_id)
     return {"ok": True}
 
 
 @router.post("/api/experiments/{experiment_id}/restart", status_code=200)
 async def restart(experiment_id: str, user=Depends(get_current_user)) -> ExperimentResponse:
+    if not experiment_store.get_one(user["id"], experiment_id):
+        raise HTTPException(status_code=404, detail="experiment not found")
     row = experiment_store.restart_experiment(user["id"], experiment_id)
     return _to_response(row)
 
 
 @router.post("/api/experiments/{experiment_id}/ack-nudge", status_code=200)
 async def ack_nudge(experiment_id: str, user=Depends(get_current_user)) -> dict:
+    if not experiment_store.get_one(user["id"], experiment_id):
+        raise HTTPException(status_code=404, detail="experiment not found")
     experiment_store.mark_nudged(user["id"], experiment_id)
     return {"ok": True}
