@@ -36,6 +36,7 @@ import '../features/checkin/screens/daily_checkin_screen.dart';
 import '../features/trends/screens/trends_conversation_screen.dart';
 import '../features/setup/screens/notification_setup_screen.dart';
 import '../features/setup/screens/conversation_style_setup_screen.dart';
+import '../features/experiments/screens/experiment_result_screen.dart';
 import '../core/api/providers/preferences_provider.dart';
 import '../core/api/models/user_preferences.dart';
 import '../core/stt/on_device_model.dart';
@@ -70,6 +71,7 @@ class Routes {
   static const String conversationStyle = 'conversation-style';
   static const String checkin = 'checkin';
   static const String trendsConversation = 'trends-conversation';
+  static const String experimentResult = 'experiment-result';
 }
 
 /// Today as `YYYY-MM-DD` in local time — the default reviewed day for /checkin
@@ -255,6 +257,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/trends-conversation',
         name: Routes.trendsConversation,
         builder: (context, state) => const TrendsConversationScreen(),
+      ),
+      GoRoute(
+        path: '/experiment-result',
+        name: Routes.experimentResult,
+        builder: (context, state) => ExperimentResultScreen(
+          experimentId: state.uri.queryParameters['id'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/setup',

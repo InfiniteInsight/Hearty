@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/hearty_api_client.dart';
 import '../../../core/api/models/experiment.dart';
 import '../../../core/api/models/trends_turn.dart';
+import '../../../core/notifications/notification_service.dart';
 
 /// Lifecycle of the monthly trends conversation:
 /// loading → active (a back-and-forth chat) → closed. [error] is reached if a
@@ -178,11 +179,20 @@ class TrendsConversationController extends StateNotifier<TrendsConvoState> {
     if (experiment == null || state.busy) return;
     state = state.copyWith(busy: true);
     try {
-      await _api.createExperiment(
+      final created = await _api.createExperiment(
         category: experiment.category,
         outcomeType: experiment.outcomeType,
         outcomeName: experiment.outcomeName,
       );
+      // Best-effort: a scheduling failure (e.g. no exact-alarm permission, or
+      // the plugin channel being unavailable) must never roll back the created
+      // experiment or flip the UX to error. Device-verified separately.
+      try {
+        await NotificationService.scheduleExperimentEndNotification(
+          experimentId: created.id,
+          end: DateTime.parse(created.experimentEnd),
+        );
+      } catch (_) {/* best-effort */}
       state = state.copyWith(busy: false)._withExperiment(null);
     } catch (_) {
       state = const TrendsConvoState(phase: TrendsConvoPhase.error);
