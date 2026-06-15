@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hearty_app/core/api/hearty_api_client.dart';
+import 'package:hearty_app/core/api/models/experiment.dart';
 import 'package:hearty_app/core/api/models/trends_turn.dart';
 import 'package:hearty_app/features/trends/screens/trends_conversation_screen.dart';
 
@@ -15,6 +16,7 @@ class FakeHeartyApiClient implements HeartyApiClient {
   final TrendsTurn _turn;
 
   final List<Map<String, dynamic>> verdictCalls = [];
+  final List<Map<String, dynamic>> experimentCalls = [];
 
   @override
   Future<TrendsTurn> trendsConversation(List<Map<String, String>> history) async {
@@ -34,6 +36,29 @@ class FakeHeartyApiClient implements HeartyApiClient {
       'outcomeName': outcomeName,
       'verdict': verdict,
     });
+  }
+
+  @override
+  Future<Experiment> createExperiment({
+    required String category,
+    required String outcomeType,
+    required String outcomeName,
+  }) async {
+    experimentCalls.add({
+      'category': category,
+      'outcomeType': outcomeType,
+      'outcomeName': outcomeName,
+    });
+    return Experiment(
+      id: 'exp-1',
+      category: category,
+      direction: 'eliminate',
+      outcomeType: outcomeType,
+      outcomeName: outcomeName,
+      experimentStart: '2026-06-15',
+      experimentEnd: '2026-06-29',
+      status: 'running',
+    );
   }
 
   @override
@@ -121,6 +146,38 @@ void main() {
 
     expect(api.verdictCalls, isEmpty);
     expect(find.byKey(const Key('trends-verdict-confirm')), findsNothing);
+  });
+
+  testWidgets(
+      'proposed experiment → Start creates it once with the right args',
+      (tester) async {
+    final api = await _pump(
+      tester,
+      const TrendsTurn(
+        reply: 'Want to test cutting dairy?',
+        proposedExperiment: ProposedExperiment(
+          category: 'dairy',
+          outcomeType: 'symptom',
+          outcomeName: 'bloating',
+        ),
+      ),
+    );
+
+    // Active conversation with the experiment chip.
+    expect(find.text('Want to test cutting dairy?'), findsOneWidget);
+    expect(find.byKey(const Key('trends-experiment-chip')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('trends-experiment-chip')));
+    await tester.pumpAndSettle();
+
+    expect(api.experimentCalls, hasLength(1));
+    expect(api.experimentCalls.single, {
+      'category': 'dairy',
+      'outcomeType': 'symptom',
+      'outcomeName': 'bloating',
+    });
+    // Chip is gone once the experiment is created.
+    expect(find.byKey(const Key('trends-experiment-chip')), findsNothing);
   });
 
   testWidgets('isClosing turn shows Done → close moves to the end card',
