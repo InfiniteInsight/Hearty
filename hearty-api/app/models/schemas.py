@@ -252,12 +252,20 @@ class ProposedVerdict(BaseModel):
     outcome_name: str
     verdict: VerdictType
 
+class ProposedExperiment(BaseModel):
+    """A 2-week elimination experiment Hearty offers for a harmful pattern,
+    for client confirmation. NEVER started without an explicit confirm step."""
+    category: str
+    outcome_type: Literal["symptom", "wellbeing"]
+    outcome_name: str
+
 class TrendsConversationRequest(BaseModel):
     history: List[ConversationTurn] = Field(default_factory=list)
 
 class TrendsConversationResponse(BaseModel):
     reply: str
     proposed_verdict: Optional[ProposedVerdict] = None
+    proposed_experiment: Optional[ProposedExperiment] = None
     is_closing: bool = False
 
 class SignalVerdictRequest(BaseModel):
