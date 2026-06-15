@@ -153,8 +153,8 @@ class _ResultBody extends StatelessWidget {
       case 'no_change':
         return 'No clear change from cutting $category.';
       case 'worse':
-        return "Symptoms didn't improve — they looked a bit worse during the "
-            'test.';
+        return 'Cutting $category didn\'t help — $outcome looked a bit worse '
+            'during the test.';
       case 'inconclusive':
         if (reason == 'low_adherence') {
           return 'Not enough clean days to tell — $category showed up too '
