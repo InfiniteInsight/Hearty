@@ -60,6 +60,15 @@ async def evaluate_experiment(experiment_id: str,
     row = experiment_store.get_one(user_id, experiment_id)
     if not row:
         raise HTTPException(status_code=404, detail="experiment not found")
+    # Defense-in-depth: only an ACTIVE experiment may be evaluated+completed.
+    # A stale end-of-window notification tapped after the user already stopped
+    # or restarted must not clobber that decision. If the experiment already
+    # has a stored result, re-tapping is idempotent (return it, no recompute);
+    # otherwise (e.g. abandoned, no result) the action is invalid.
+    if row["status"] != "active":
+        if row.get("result"):
+            return _to_response(row)
+        raise HTTPException(status_code=409, detail="experiment is not active")
     b_meals, b_sym, b_wb = signal_engine._load_between(
         user_id, row["baseline_start"], row["baseline_end"])
     e_meals, e_sym, e_wb = signal_engine._load_between(

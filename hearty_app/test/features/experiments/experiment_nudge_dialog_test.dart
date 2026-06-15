@@ -11,6 +11,10 @@ class _FakeApi implements HeartyApiClient {
   final List<String> restartCalls = [];
   final List<String> abandonCalls = [];
 
+  /// When true, abandonExperiment throws (simulates a failed action) so the
+  /// pop-only-on-success path can be asserted.
+  bool failAbandon = false;
+
   @override
   Future<void> ackExperimentNudge(String id) async => ackCalls.add(id);
 
@@ -30,7 +34,10 @@ class _FakeApi implements HeartyApiClient {
   }
 
   @override
-  Future<void> abandonExperiment(String id) async => abandonCalls.add(id);
+  Future<void> abandonExperiment(String id) async {
+    abandonCalls.add(id);
+    if (failAbandon) throw Exception('abandon failed');
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -101,5 +108,18 @@ void main() {
     expect(api.ackCalls, isEmpty);
     expect(api.restartCalls, isEmpty);
     expect(find.byKey(const Key('experiment-nudge-dialog')), findsNothing);
+  });
+
+  testWidgets('a failed action does NOT dismiss the dialog', (tester) async {
+    final api = await _pump(tester);
+    api.failAbandon = true;
+
+    await tester.tap(find.byKey(const Key('experiment-nudge-stop')));
+    await tester.pumpAndSettle();
+
+    // The client call still happened, but the thrown error must leave the
+    // dialog open rather than pop it as if the action succeeded.
+    expect(api.abandonCalls, ['exp-7']);
+    expect(find.byKey(const Key('experiment-nudge-dialog')), findsOneWidget);
   });
 }

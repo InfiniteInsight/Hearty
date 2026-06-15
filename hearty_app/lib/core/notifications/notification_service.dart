@@ -331,4 +331,11 @@ class NotificationService {
       payload: '/experiment-result?id=$experimentId',
     );
   }
+
+  /// Cancels any pending experiment end-of-window notification. Called when the
+  /// running experiment is stopped mid-window so a stale alarm can't fire and
+  /// re-evaluate (or re-open) an experiment the user already abandoned.
+  static Future<void> cancelExperimentEndNotification() async {
+    await _localNotifs.cancel(_kExperimentNotifId);
+  }
 }

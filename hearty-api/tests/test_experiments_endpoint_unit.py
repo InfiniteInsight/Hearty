@@ -96,3 +96,43 @@ def test_evaluate_happy_path_marks_completed(monkeypatch):
     assert completed["id"] == "e1"
     assert "verdict" in completed["result"]
     app.dependency_overrides.clear()
+
+
+def test_evaluate_completed_returns_stored_result_without_recompute(monkeypatch):
+    app.dependency_overrides[get_current_user] = lambda: {"id": "u1", "email": "e"}
+    monkeypatch.setattr(ex.experiment_store, "get_one", lambda u, i: {
+        "id": "e1", "category": "dairy", "direction": "eliminate",
+        "outcome_type": "symptom", "outcome_name": "bloating",
+        "baseline_start": "2026-05-31T00:00:00+00:00", "baseline_end": "2026-06-14T00:00:00+00:00",
+        "experiment_start": "2026-06-14T00:00:00+00:00", "experiment_end": "2026-06-28T00:00:00+00:00",
+        "status": "completed", "result": {"verdict": "improved", "reason": None},
+        "nudged_at": None})
+    flags = {"loaded": False, "completed": False}
+
+    def _load(u, s, e):
+        flags["loaded"] = True
+        return ([], [], [])
+
+    def _mark(u, i, result):
+        flags["completed"] = True
+
+    monkeypatch.setattr(ex.signal_engine, "_load_between", _load)
+    monkeypatch.setattr(ex.experiment_store, "mark_completed", _mark)
+    client = TestClient(app)
+    r = client.post("/api/experiments/e1/evaluate")
+    assert r.status_code == 200
+    assert r.json()["result"]["verdict"] == "improved"
+    # idempotent re-tap: no recompute, no mutation
+    assert flags["loaded"] is False
+    assert flags["completed"] is False
+    app.dependency_overrides.clear()
+
+
+def test_evaluate_abandoned_returns_409(monkeypatch):
+    app.dependency_overrides[get_current_user] = lambda: {"id": "u1", "email": "e"}
+    monkeypatch.setattr(ex.experiment_store, "get_one", lambda u, i: {
+        "id": "e1", "status": "abandoned", "result": None})
+    client = TestClient(app)
+    r = client.post("/api/experiments/e1/evaluate")
+    assert r.status_code == 409
+    app.dependency_overrides.clear()
