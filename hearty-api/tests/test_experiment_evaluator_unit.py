@@ -70,3 +70,33 @@ def test_wellbeing_rose_is_improved():
                    adherence=_good_adherence())
     assert out["verdict"] == "improved"
     assert out["experiment_rate"] > out["baseline_rate"]
+
+
+def test_symptom_zero_baseline_zero_experiment_is_no_change():
+    # No symptoms before AND none during -> the experiment didn't "improve" anything.
+    out = evaluate(outcome_type="symptom", outcome_name="bloating",
+                   baseline_symptoms=[], experiment_symptoms=[],
+                   baseline_wellbeing=[], experiment_wellbeing=[],
+                   baseline_logged_days=10, experiment_logged_days=10,
+                   adherence=_good_adherence())
+    assert out["verdict"] == "no_change"
+
+
+def test_symptom_zero_baseline_with_experiment_symptoms_is_worse():
+    # None before, some during -> worse, not improved.
+    out = evaluate(outcome_type="symptom", outcome_name="bloating",
+                   baseline_symptoms=[], experiment_symptoms=[_sym(d) for d in range(15, 20)],
+                   baseline_wellbeing=[], experiment_wellbeing=[],
+                   baseline_logged_days=10, experiment_logged_days=10,
+                   adherence=_good_adherence())
+    assert out["verdict"] == "worse"
+
+
+def test_wellbeing_empty_baseline_is_not_falsely_improved():
+    # No baseline wellbeing data -> cannot claim improvement; must NOT be 'improved'.
+    out = evaluate(outcome_type="wellbeing", outcome_name="energy_level",
+                   baseline_symptoms=[], experiment_symptoms=[],
+                   baseline_wellbeing=[], experiment_wellbeing=[_wb(d, 8) for d in range(15, 22)],
+                   baseline_logged_days=10, experiment_logged_days=10,
+                   adherence=_good_adherence())
+    assert out["verdict"] != "improved"
