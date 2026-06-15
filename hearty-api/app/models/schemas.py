@@ -268,3 +268,29 @@ class SignalVerdictRequest(BaseModel):
 
 class SignalVerdictResponse(BaseModel):
     ok: bool
+
+# ─── Tracked Experiments ─────────────────────────────────────────────────────
+
+class CreateExperimentRequest(BaseModel):
+    category: str
+    outcome_type: Literal["symptom", "wellbeing"]
+    outcome_name: str
+
+class ExperimentResponse(BaseModel):
+    id: str
+    category: str
+    direction: str
+    outcome_type: str
+    outcome_name: str
+    experiment_start: str
+    experiment_end: str
+    status: str
+    result: Optional[Dict] = None
+    nudged_at: Optional[str] = None
+    # Computed on the active fetch (not stored):
+    adherence: Optional[float] = None
+    logged_days: Optional[int] = None
+    nudge_suggested: bool = False
+
+class ActiveExperimentsResponse(BaseModel):
+    experiments: List[ExperimentResponse] = Field(default_factory=list)
