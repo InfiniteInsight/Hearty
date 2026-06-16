@@ -10,12 +10,12 @@ import 'models/chat_result.dart';
 import 'models/checkin_gap.dart';
 import 'models/meal_log.dart';
 import 'models/symptom_log.dart';
+import 'models/photo_analysis.dart';
 import 'models/trends_data.dart';
 import 'models/trends_turn.dart';
 import 'models/user_preferences.dart';
 import 'offline_exception.dart';
 import '../../features/photos/models/photo_upload_response.dart';
-import '../../features/photos/models/photo_status_response.dart';
 
 const _kBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -443,13 +443,47 @@ class HeartyApiClient {
     });
   }
 
+  /// Uploads raw image [bytes] to POST /api/photos as multipart/form-data.
+  ///
+  /// Used by the AI Vision food-plate flow (Spec 06). Sends the image under the
+  /// `file` field plus a `type` Form field (default `food_plate`) and an
+  /// optional `meal_id`. Returns the new photo `id` to poll for results.
+  Future<String> uploadFoodPhoto({
+    required List<int> bytes,
+    required String filename,
+    String type = 'food_plate',
+    String? mealId,
+  }) {
+    return _call(() async {
+      final formData = FormData.fromMap(<String, dynamic>{
+        'file': MultipartFile.fromBytes(bytes, filename: filename),
+        'type': type,
+        'meal_id': ?mealId,
+      });
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/photos',
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      return response.data!['id'] as String;
+    });
+  }
+
   /// Polls GET /api/photos/{id}/status for processing results.
-  Future<PhotoStatusResponse> fetchPhotoStatus(String photoId) {
+  Future<PhotoAnalysis> fetchPhotoStatus(String photoId) {
     return _call(() async {
       final response = await _dio.get<Map<String, dynamic>>(
         '/api/photos/$photoId/status',
       );
-      return PhotoStatusResponse.fromJson(response.data!);
+      return PhotoAnalysis.fromJson(response.data!);
+    });
+  }
+
+  /// Re-enqueues a failed photo for processing via POST /api/photos/{id}/retry.
+  /// Idempotent on the backend if the photo is already complete.
+  Future<void> retryPhoto(String photoId) {
+    return _call(() async {
+      await _dio.post<Map<String, dynamic>>('/api/photos/$photoId/retry');
     });
   }
 }

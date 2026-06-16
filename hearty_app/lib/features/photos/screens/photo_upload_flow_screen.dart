@@ -49,30 +49,51 @@ class _PhotoUploadFlowScreenState extends ConsumerState<PhotoUploadFlowScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(photoProvider);
 
-    if (state.error != null) {
+    final analysis = state.analysis;
+
+    // Transport/timeout error (no analysis came back) OR a backend 'failed'
+    // status. Both surface an inline message plus retry + manual fallback.
+    final failureMessage = state.error ??
+        (analysis != null && analysis.isFailed
+            ? (analysis.error ?? 'We could not analyze this photo.')
+            : null);
+
+    if (failureMessage != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Upload Failed')),
+        appBar: AppBar(title: const Text('Analysis Failed')),
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48),
-              const SizedBox(height: 16),
-              Text(state.error!),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Go back'),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 48),
+                const SizedBox(height: 16),
+                Text(failureMessage, textAlign: TextAlign.center),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () =>
+                      ref.read(photoProvider.notifier).retry(),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Try again'),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  // Manual-entry fallback: return to the logging screen so the
+                  // user can type the meal instead.
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Enter manually'),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
-    if (state.statusResponse != null) {
+    if (analysis != null && analysis.isComplete) {
       return PhotoReviewScreen(
-        statusResponse: state.statusResponse!,
+        analysis: analysis,
         photoType: widget.photoType,
       );
     }
