@@ -80,11 +80,31 @@ def test_status_404_when_missing(monkeypatch):
 def test_retry_resets_and_reenqueues(monkeypatch):
     app.dependency_overrides[get_current_user] = lambda: {"id": "u1", "email": "e"}
     rec = {}
-    monkeypatch.setattr(ph.photo_store, "get_photo", lambda u, p: {"id": PID, "photo_type": "food_plate"})
+    monkeypatch.setattr(ph.photo_store, "get_photo", lambda u, p: {"id": PID, "photo_type": "food_plate", "processing_status": "failed"})
     monkeypatch.setattr(ph.photo_store, "set_processing", lambda u, p: rec.update({"reset": p}))
     monkeypatch.setattr(ph.photo_pipeline, "process_photo", lambda pid, uid: rec.update({"enqueued": pid}))
     client = TestClient(app)
     r = client.post(f"/api/photos/{PID}/retry")
     assert r.status_code == 202
     assert rec["reset"] == PID and rec["enqueued"] == PID
+    app.dependency_overrides.clear()
+
+
+def test_retry_completed_is_idempotent_no_reset(monkeypatch):
+    app.dependency_overrides[get_current_user] = lambda: {"id": "u1", "email": "e"}
+    rec = {}
+    monkeypatch.setattr(ph.photo_store, "get_photo", lambda u, p: {
+        "id": PID, "photo_type": "food_plate", "processing_status": "complete",
+        "extracted_data": {"foods": [{"name": "egg"}]}})
+    monkeypatch.setattr(ph.photo_store, "set_processing",
+                        lambda u, p: rec.update({"reset": True}))
+    monkeypatch.setattr(ph.photo_pipeline, "process_photo",
+                        lambda pid, uid: rec.update({"enqueued": True}))
+    client = TestClient(app)
+    r = client.post(f"/api/photos/{PID}/retry")
+    assert r.status_code == 202
+    body = r.json()
+    assert body["status"] == "complete"
+    assert body["result"]["foods"][0]["name"] == "egg"
+    assert "reset" not in rec and "enqueued" not in rec  # no wipe, no re-bill
     app.dependency_overrides.clear()

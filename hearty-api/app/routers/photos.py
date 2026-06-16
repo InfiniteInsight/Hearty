@@ -48,7 +48,7 @@ async def upload_photo(
                                meal_id=meal_id, message="Processing your photo…")
 
 
-@router.get("/api/photos/{photo_id}/status")
+@router.get("/api/photos/{photo_id}/status", status_code=200)
 async def get_photo_status(photo_id: str,
                            user=Depends(get_current_user)) -> PhotoStatusResponse:
     row = photo_store.get_photo(user["id"], photo_id)
@@ -69,6 +69,14 @@ async def retry_photo(photo_id: str, background_tasks: BackgroundTasks,
     row = photo_store.get_photo(user_id, photo_id)
     if not row:
         raise HTTPException(status_code=404, detail="Photo not found")
+    # Retry is for failed-recovery only. A completed photo already holds a good
+    # result; resetting it would wipe extracted_data and defeat the pipeline
+    # cache (forcing a paid re-call to Claude). Return the existing result.
+    if row["processing_status"] == "complete" and row.get("extracted_data"):
+        return PhotoStatusResponse(id=photo_id,
+                                   type=row.get("photo_type") or "food_plate",
+                                   status="complete",
+                                   result=row["extracted_data"], error=None)
     photo_store.set_processing(user_id, photo_id)
     background_tasks.add_task(photo_pipeline.process_photo, photo_id, user_id)
     return PhotoStatusResponse(id=photo_id, type=row.get("photo_type") or "food_plate",
