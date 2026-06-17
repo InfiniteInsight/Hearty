@@ -57,3 +57,49 @@ def test_web_lookup_no_key_returns_none(monkeypatch):
     # the loop must bail to None without calling the model.
     out = wn.web_nutrition_lookup("clif bar")
     assert out is None
+
+
+def test_malformed_tool_args_falls_back_to_description():
+    seen = {}
+    def fake_search(q):
+        seen["q"] = q
+        return [{"title": "x", "url": "http://x", "description": "d"}]
+    bad = SimpleNamespace(id="c1", function=SimpleNamespace(name="web_search", arguments="{not json"))
+    seq = [
+        _msg(tool_calls=[bad]),
+        _msg(content=json.dumps({"item_name": "Item", "calories": 100, "source_url": "http://x"})),
+    ]
+    out = wn.web_nutrition_lookup("clif bar", search=fake_search, complete=lambda **k: seq.pop(0))
+    assert seen["q"] == "clif bar"   # fell back to description
+    assert out["calories"] == 100
+
+
+def test_multiple_tool_calls_in_one_round_all_execute():
+    calls = []
+    def fake_search(q):
+        calls.append(q)
+        return [{"title": "x", "url": "http://x", "description": "d"}]
+    seq = [
+        _msg(tool_calls=[_tool_call("c1", "q1"), _tool_call("c2", "q2")]),
+        _msg(content=json.dumps({"item_name": "Item", "calories": 50, "source_url": "http://x"})),
+    ]
+    out = wn.web_nutrition_lookup("x", search=fake_search, complete=lambda **k: seq.pop(0))
+    assert calls == ["q1", "q2"]
+    assert out["calories"] == 50
+
+
+def test_rounds_exhausted_returns_none():
+    calls = {"n": 0}
+    def fake_search(q):
+        calls["n"] += 1
+        return []
+    def always_tool(**k):
+        return _msg(tool_calls=[_tool_call("c", "q")])
+    out = wn.web_nutrition_lookup("x", search=fake_search, complete=always_tool)
+    assert out is None
+    assert calls["n"] <= wn.WEB_MAX_TOOL_ROUNDS
+
+
+def test_unparseable_final_json_returns_none():
+    out = wn.web_nutrition_lookup("x", search=lambda q: [], complete=lambda **k: _msg(content="here you go: not json"))
+    assert out is None
