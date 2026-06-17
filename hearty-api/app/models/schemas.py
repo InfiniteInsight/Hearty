@@ -268,3 +268,23 @@ class SignalVerdictRequest(BaseModel):
 
 class SignalVerdictResponse(BaseModel):
     ok: bool
+
+# ─── Food Intelligence ───────────────────────────────────────────────────────
+
+class FoodLookupRequest(BaseModel):
+    type: Literal["barcode", "name", "free_text"]
+    value: str
+    restaurant: Optional[str] = None
+
+class FoodLookupResponse(BaseModel):
+    item_name: str
+    nutrition: Optional[Dict] = None
+    tier_used: int
+    source: Optional[str] = None
+    confidence: Optional[float] = None
+    allergen_warnings: List[str] = Field(default_factory=list)
+    message: Optional[str] = None
+
+class FoodCacheResponse(BaseModel):
+    hit: bool
+    nutrition: Optional[Dict] = None
