@@ -63,3 +63,34 @@ def off_branded_search(query: str) -> dict | None:
     if not products:
         return None
     return _from_off_product(products[0], tier=2, source="open_food_facts_branded")
+
+
+NUTRITIONIX_URL = "https://trackapi.nutritionix.com/v2/natural/nutrients"
+
+
+def nutritionix_lookup(query: str) -> dict | None:
+    app_id = os.environ.get("NUTRITIONIX_APP_ID")
+    api_key = os.environ.get("NUTRITIONIX_API_KEY")
+    if not app_id or not api_key:
+        return None  # not configured → fall through
+    headers = {"x-app-id": app_id, "x-app-key": api_key,
+               "Content-Type": "application/json"}
+    with httpx.Client(timeout=HTTP_TIMEOUT) as client:
+        r = client.post(NUTRITIONIX_URL, headers=headers, json={"query": query})
+        r.raise_for_status()
+        foods = (r.json() or {}).get("foods") or []
+    if not foods:
+        return None
+    f = foods[0]
+    serving = f"{f.get('serving_qty', '')} {f.get('serving_unit', '')}".strip()
+    return {
+        "item_name": f.get("food_name") or query,
+        "restaurant": f.get("brand_name") or "",
+        "serving_size": serving,
+        "calories": f.get("nf_calories"),
+        "total_fat_g": f.get("nf_total_fat"),
+        "total_carbs_g": f.get("nf_total_carbohydrate"),
+        "protein_g": f.get("nf_protein"),
+        "sodium_mg": f.get("nf_sodium"),
+        "source": "nutritionix", "tier": 2,
+    }
