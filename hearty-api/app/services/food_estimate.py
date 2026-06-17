@@ -47,3 +47,41 @@ def ai_estimate(description: str) -> dict:
             "total_fat_g": data.get("total_fat_g"),
             "confidence": data.get("confidence") if data.get("confidence") is not None else 0.0,
             "source": "ai_estimate", "tier": 4}
+
+
+_EXTRACT_PROMPT = (
+    "Extract structured food lookup fields from this user input. Return JSON only: "
+    "{{\"restaurant\": str|null, \"item\": str, \"size\": str|null, \"modifiers\": "
+    "[str]|null}}. If no restaurant is mentioned, set restaurant to null.\n\n"
+    "User input: {raw_text}"
+)
+
+
+def extract_lookup_fields(raw_text: str) -> dict:
+    resp = litellm.completion(
+        model=FOOD_LLM_MODEL,
+        messages=[{"role": "user",
+                   "content": _EXTRACT_PROMPT.format(raw_text=raw_text)}],
+        api_base=os.environ.get("LLM_BASE_URL") or None)
+    content = _strip_fence(resp.choices[0].message.content or "")
+    try:
+        data = json.loads(content)
+    except (TypeError, ValueError):
+        return {"restaurant": None, "item": raw_text, "size": None, "modifiers": None}
+    return {"restaurant": data.get("restaurant"), "item": data.get("item") or raw_text,
+            "size": data.get("size"), "modifiers": data.get("modifiers")}
+
+
+def allergen_warnings(nutrition: dict, user_allergens: list[str]) -> list[str]:
+    """Case-insensitive substring match of each user allergen against the result's
+    allergens + ingredients. Informational only — never blocks logging."""
+    haystack = " ".join([
+        *(nutrition.get("allergens") or []),
+        *(nutrition.get("ingredients") or []),
+    ]).lower()
+    warnings = []
+    for a in user_allergens:
+        a = (a or "").strip().lower()
+        if a and a in haystack:
+            warnings.append(f"contains: {a}")
+    return warnings
