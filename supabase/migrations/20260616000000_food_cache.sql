@@ -10,7 +10,7 @@ CREATE TABLE food_cache (
   ttl_days       INT NOT NULL
 );
 
-CREATE INDEX idx_food_cache_key ON food_cache (lookup_key);
+-- (lookup_key is UNIQUE, which already creates the index used for cache lookups.)
 
 ALTER TABLE food_cache ENABLE ROW LEVEL SECURITY;
 -- No policies: only the service-role key (which bypasses RLS) touches this table.
