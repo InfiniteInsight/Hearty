@@ -61,3 +61,31 @@ def test_missing_row_is_noop(monkeypatch):
     monkeypatch.setattr(pp.photo_store, "get_photo", lambda u, p: None)
     # must not raise
     pp.process_photo("nope", "u1")
+
+
+def test_png_bytes_are_sent_as_png(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(pp.photo_store, "get_photo", lambda u, p: {
+        "id": p, "user_id": u, "photo_url": "u1/p1.jpg",
+        "photo_type": "food_plate", "processing_status": "processing",
+        "extracted_data": None})
+    monkeypatch.setattr(pp.photo_store, "download_bytes", lambda path: b"\x89PNG\r\n\x1a\n rest")
+    monkeypatch.setattr(pp.food_plate, "analyze_food_plate",
+                        lambda data, ct: captured.update({"ct": ct}) or {"foods": [], "source": "food_plate_vision"})
+    monkeypatch.setattr(pp.photo_store, "set_result", lambda u, p, d: None)
+    pp.process_photo("p1", "u1")
+    assert captured["ct"] == "image/png"
+
+
+def test_jpeg_bytes_are_sent_as_jpeg(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(pp.photo_store, "get_photo", lambda u, p: {
+        "id": p, "user_id": u, "photo_url": "u1/p1.jpg",
+        "photo_type": "food_plate", "processing_status": "processing",
+        "extracted_data": None})
+    monkeypatch.setattr(pp.photo_store, "download_bytes", lambda path: b"\xff\xd8\xff\xe0 rest")
+    monkeypatch.setattr(pp.food_plate, "analyze_food_plate",
+                        lambda data, ct: captured.update({"ct": ct}) or {"foods": [], "source": "food_plate_vision"})
+    monkeypatch.setattr(pp.photo_store, "set_result", lambda u, p, d: None)
+    pp.process_photo("p1", "u1")
+    assert captured["ct"] == "image/jpeg"

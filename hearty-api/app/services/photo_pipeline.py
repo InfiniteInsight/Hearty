@@ -1,8 +1,8 @@
 """Background worker: turn an uploaded photo into structured extracted_data.
 Dispatches by photo_type; only food_plate is supported in the MVP. All failures
 are non-blocking and recorded as processing_status='failed' (the meal log is
-never affected). Guessed content-type is fine for the data URL — Claude sniffs
-the actual image."""
+never affected). The content-type for the data URL is sniffed from the actual
+image bytes so a PNG upload isn't mislabeled as JPEG to the vision model."""
 
 import logging
 
@@ -10,7 +10,13 @@ from app.services import photo_store, food_plate
 
 logger = logging.getLogger(__name__)
 
-_CONTENT_TYPE = "image/jpeg"  # stored objects are normalized to .jpg paths
+
+def _sniff_content_type(image: bytes) -> str:
+    """PNG files start with the 8-byte signature \\x89PNG\\r\\n\\x1a\\n; everything
+    else we accept is JPEG. Used to label the data URL sent to the vision model."""
+    if image.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    return "image/jpeg"
 
 
 def process_photo(photo_id: str, user_id: str) -> None:
@@ -22,9 +28,10 @@ def process_photo(photo_id: str, user_id: str) -> None:
         return
     try:
         image = photo_store.download_bytes(row["photo_url"])
+        content_type = _sniff_content_type(image)
         photo_type = row.get("photo_type") or "food_plate"
         if photo_type == "food_plate":
-            result = food_plate.analyze_food_plate(image, _CONTENT_TYPE)
+            result = food_plate.analyze_food_plate(image, content_type)
         else:
             photo_store.set_failed(
                 user_id, photo_id, f"Photo type '{photo_type}' not yet supported")
