@@ -66,6 +66,17 @@ def test_all_fail_tier5_fallback(monkeypatch):
     assert "couldn't find" in out["message"].lower()
 
 
+def test_tier2_source_exception_falls_through(monkeypatch):
+    _patch(monkeypatch,
+           get_cached=lambda k: None,
+           off_branded_search=lambda q: (_ for _ in ()).throw(RuntimeError("off down")),
+           nutritionix_lookup=lambda q: {"item_name": "x", "calories": 50, "source": "nutritionix", "tier": 2},
+           set_cached=lambda *a: None,
+           _user_allergens=lambda uid: [])
+    out = fl.lookup_food("name", "x", None, "u1")
+    assert out["tier_used"] == 2 and out["source"] == "nutritionix"
+
+
 def test_allergen_warnings_attached(monkeypatch):
     _patch(monkeypatch,
            get_cached=lambda k: None,
