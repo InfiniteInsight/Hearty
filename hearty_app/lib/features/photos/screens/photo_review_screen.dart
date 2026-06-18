@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/models/photo_analysis.dart';
 import '../../../core/api/providers/meals_provider.dart';
-import '../models/photo_status_response.dart';
 import '../models/photo_type.dart';
 
 /// Results review screen shown after photo processing completes.
@@ -13,11 +13,11 @@ import '../models/photo_type.dart';
 class PhotoReviewScreen extends ConsumerStatefulWidget {
   const PhotoReviewScreen({
     super.key,
-    required this.statusResponse,
+    required this.analysis,
     required this.photoType,
   });
 
-  final PhotoStatusResponse statusResponse;
+  final PhotoAnalysis analysis;
   final PhotoType photoType;
 
   @override
@@ -31,10 +31,10 @@ class _PhotoReviewScreenState extends ConsumerState<PhotoReviewScreen> {
   @override
   void initState() {
     super.initState();
-    final foods = widget.statusResponse.foods;
+    final foods = widget.analysis.foods;
     final initialDescription = foods.isNotEmpty
         ? foods
-            .map((f) => f['name'] as String? ?? '')
+            .map((f) => f.name)
             .where((n) => n.isNotEmpty)
             .join(', ')
         : 'Photo result';
@@ -67,12 +67,16 @@ class _PhotoReviewScreenState extends ConsumerState<PhotoReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final statusResponse = widget.statusResponse;
+    final analysis = widget.analysis;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    final allergenWarnings = statusResponse.allergenWarnings;
-    final foods = statusResponse.foods;
+    // Allergen warnings are not part of the food-plate contract, but other
+    // photo types may include them in the raw result map.
+    final rawWarnings = analysis.result?['allergen_warnings'];
+    final allergenWarnings =
+        rawWarnings is List ? rawWarnings.whereType<String>().toList() : <String>[];
+    final foods = analysis.foods;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Review Photo Results')),
@@ -137,26 +141,31 @@ class _PhotoReviewScreenState extends ConsumerState<PhotoReviewScreen> {
               ),
               const SizedBox(height: 8),
               ...foods.map((food) {
-                final name = food['name'] as String? ?? '';
-                final quantity = food['quantity'] as String?;
-                final calories = food['estimated_calories'];
+                final portion = food.portion;
+                final confidence = food.confidence;
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     title: Text(
-                      name,
+                      food.name,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (quantity != null && quantity.isNotEmpty)
-                          Text(quantity),
-                        if (calories != null)
-                          Text('~$calories cal'),
-                      ],
-                    ),
+                    subtitle: (portion != null && portion.isNotEmpty) ||
+                            confidence != null
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (portion != null && portion.isNotEmpty)
+                                Text(portion),
+                              if (confidence != null)
+                                Text(
+                                  '${(confidence * 100).round()}% confidence',
+                                  style: textTheme.bodySmall,
+                                ),
+                            ],
+                          )
+                        : null,
                   ),
                 );
               }),
