@@ -252,12 +252,20 @@ class ProposedVerdict(BaseModel):
     outcome_name: str
     verdict: VerdictType
 
+class ProposedExperiment(BaseModel):
+    """A 2-week elimination experiment Hearty offers for a harmful pattern,
+    for client confirmation. NEVER started without an explicit confirm step."""
+    category: str
+    outcome_type: Literal["symptom", "wellbeing"]
+    outcome_name: str
+
 class TrendsConversationRequest(BaseModel):
     history: List[ConversationTurn] = Field(default_factory=list)
 
 class TrendsConversationResponse(BaseModel):
     reply: str
     proposed_verdict: Optional[ProposedVerdict] = None
+    proposed_experiment: Optional[ProposedExperiment] = None
     is_closing: bool = False
 
 class SignalVerdictRequest(BaseModel):
@@ -268,6 +276,32 @@ class SignalVerdictRequest(BaseModel):
 
 class SignalVerdictResponse(BaseModel):
     ok: bool
+
+# ─── Tracked Experiments ─────────────────────────────────────────────────────
+
+class CreateExperimentRequest(BaseModel):
+    category: str
+    outcome_type: Literal["symptom", "wellbeing"]
+    outcome_name: str
+
+class ExperimentResponse(BaseModel):
+    id: str
+    category: str
+    direction: str
+    outcome_type: str
+    outcome_name: str
+    experiment_start: str
+    experiment_end: str
+    status: str
+    result: Optional[Dict] = None
+    nudged_at: Optional[str] = None
+    # Computed on the active fetch (not stored):
+    adherence: Optional[float] = None
+    logged_days: Optional[int] = None
+    nudge_suggested: bool = False
+
+class ActiveExperimentsResponse(BaseModel):
+    experiments: List[ExperimentResponse] = Field(default_factory=list)
 
 # ─── Food Intelligence ───────────────────────────────────────────────────────
 

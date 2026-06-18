@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/auth_interceptor.dart';
 import 'models/chat_result.dart';
 import 'models/checkin_gap.dart';
+import 'models/experiment.dart';
 import 'models/meal_log.dart';
 import 'models/symptom_log.dart';
 import 'models/photo_analysis.dart';
@@ -291,6 +292,76 @@ class HeartyApiClient {
           'verdict': verdict,
         },
       );
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Tracked experiments
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Starts a tracked experiment for [category] against the named outcome.
+  Future<Experiment> createExperiment({
+    required String category,
+    required String outcomeType,
+    required String outcomeName,
+  }) {
+    return _call(() async {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/experiments',
+        data: <String, dynamic>{
+          'category': category,
+          'outcome_type': outcomeType,
+          'outcome_name': outcomeName,
+        },
+      );
+      return Experiment.fromJson(response.data!);
+    });
+  }
+
+  /// Fetches the user's currently-running experiments.
+  Future<List<Experiment>> fetchActiveExperiments() {
+    return _call(() async {
+      final response =
+          await _dio.get<Map<String, dynamic>>('/api/experiments/active');
+      final data = response.data!;
+      final experiments = data['experiments'] as List<dynamic>? ?? [];
+      return experiments
+          .map((e) => Experiment.fromJson(e as Map<String, dynamic>))
+          .toList();
+    });
+  }
+
+  /// Evaluates experiment [id], returning it with [Experiment.result] populated.
+  Future<Experiment> evaluateExperiment(String id) {
+    return _call(() async {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/experiments/$id/evaluate',
+      );
+      return Experiment.fromJson(response.data!);
+    });
+  }
+
+  /// Abandons experiment [id].
+  Future<void> abandonExperiment(String id) {
+    return _call(() async {
+      await _dio.post<Map<String, dynamic>>('/api/experiments/$id/abandon');
+    });
+  }
+
+  /// Restarts experiment [id], returning the fresh experiment.
+  Future<Experiment> restartExperiment(String id) {
+    return _call(() async {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/experiments/$id/restart',
+      );
+      return Experiment.fromJson(response.data!);
+    });
+  }
+
+  /// Acknowledges the adherence nudge for experiment [id].
+  Future<void> ackExperimentNudge(String id) {
+    return _call(() async {
+      await _dio.post<Map<String, dynamic>>('/api/experiments/$id/ack-nudge');
     });
   }
 

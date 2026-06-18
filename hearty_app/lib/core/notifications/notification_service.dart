@@ -23,6 +23,7 @@ class NotificationService {
   static const _kFollowUpNotifId  = 3010;
   static const int _kCheckinNotifId = 3011; // distinct from follow-up (3010)
   static const int _kTrendsNotifId  = 3012; // monthly trends conversation
+  static const int _kExperimentNotifId = 3013; // experiment end-of-window
 
   /// Post-meal check-in notification copy. The body tells the user the app will
   /// listen for a spoken reply, so the listen "ding" doesn't catch them off guard.
@@ -38,6 +39,11 @@ class NotificationService {
   static const String trendsTitle = 'Your monthly trends';
   static const String trendsBody  =
       "Let's talk through what your data showed this month.";
+
+  /// End-of-window experiment result notification copy.
+  static const String experimentTitle = 'Your experiment is done';
+  static const String experimentBody  =
+      'Tap to see how cutting it back went.';
 
   static final _localNotifs = FlutterLocalNotificationsPlugin();
 
@@ -115,6 +121,11 @@ class NotificationService {
       'hearty_trends',
       'Monthly Trends',
       importance: Importance.defaultImportance,
+    ));
+    await plugin.createNotificationChannel(const AndroidNotificationChannel(
+      'hearty_experiment',
+      'Experiment Results',
+      importance: Importance.high,
     ));
   }
 
@@ -280,5 +291,51 @@ class NotificationService {
       matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
       payload: '/trends-conversation',
     );
+  }
+
+  /// Schedules a one-shot end-of-window notification for experiment
+  /// [experimentId] at [end]. GATE = defer-to-tap: the payload routes to
+  /// /experiment-result, which evaluates the experiment on open — there is no
+  /// background WorkManager precompute. Replaces any pending experiment alarm
+  /// (one running experiment at a time mirrors the single-slot follow-up timer).
+  static Future<void> scheduleExperimentEndNotification({
+    required String experimentId,
+    required DateTime end,
+  }) async {
+    await _localNotifs.cancel(_kExperimentNotifId);
+
+    final scheduled = tz.TZDateTime.from(end, tz.local);
+
+    final androidPlugin = _localNotifs
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    final canExact =
+        await androidPlugin?.canScheduleExactNotifications() ?? false;
+
+    await _localNotifs.zonedSchedule(
+      _kExperimentNotifId,
+      experimentTitle,
+      experimentBody,
+      scheduled,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'hearty_experiment',
+          'Experiment Results',
+        ),
+      ),
+      androidScheduleMode: canExact
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexact,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: '/experiment-result?id=$experimentId',
+    );
+  }
+
+  /// Cancels any pending experiment end-of-window notification. Called when the
+  /// running experiment is stopped mid-window so a stale alarm can't fire and
+  /// re-evaluate (or re-open) an experiment the user already abandoned.
+  static Future<void> cancelExperimentEndNotification() async {
+    await _localNotifs.cancel(_kExperimentNotifId);
   }
 }

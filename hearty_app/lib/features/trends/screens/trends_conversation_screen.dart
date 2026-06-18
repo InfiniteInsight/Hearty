@@ -83,6 +83,7 @@ class _ActiveViewState extends ConsumerState<_ActiveView> {
     final state = widget.state;
     final busy = state.busy;
     final verdict = state.pendingVerdict;
+    final experiment = state.pendingExperiment;
     final notifier = ref.read(trendsConversationProvider.notifier);
 
     return SafeArea(
@@ -128,6 +129,32 @@ class _ActiveViewState extends ConsumerState<_ActiveView> {
                             child: const Text('Not now'),
                           ),
                         ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            if (experiment != null) ...[
+              Card(
+                key: const Key('trends-experiment-card'),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Test this — cut ${experiment.category} for 2 weeks?',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton(
+                        key: const Key('trends-experiment-chip'),
+                        onPressed:
+                            busy ? null : () => notifier.startExperiment(),
+                        child: const Text('Start experiment'),
                       ),
                     ],
                   ),

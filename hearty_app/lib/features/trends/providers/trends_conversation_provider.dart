@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/hearty_api_client.dart';
+import '../../../core/api/models/experiment.dart';
 import '../../../core/api/models/trends_turn.dart';
+import '../../../core/notifications/notification_service.dart';
 
 /// Lifecycle of the monthly trends conversation:
 /// loading → active (a back-and-forth chat) → closed. [error] is reached if a
@@ -24,6 +26,9 @@ class TrendsConvoState {
   /// When non-null, a confirm/dismiss chip is shown for this proposed verdict.
   final ProposedVerdict? pendingVerdict;
 
+  /// When non-null, a confirm chip is shown for this proposed experiment.
+  final ProposedExperiment? pendingExperiment;
+
   /// The assistant considers the conversation wrapped up (still [active]).
   final bool isClosing;
 
@@ -35,6 +40,7 @@ class TrendsConvoState {
     this.history = const [],
     this.currentReply = '',
     this.pendingVerdict,
+    this.pendingExperiment,
     this.isClosing = false,
     this.busy = false,
   });
@@ -50,10 +56,11 @@ class TrendsConvoState {
         phase: phase ?? this.phase,
         history: history ?? this.history,
         currentReply: currentReply ?? this.currentReply,
-        // pendingVerdict is intentionally NOT in copyWith — clearing it to null
-        // is a real state (verdict resolved/dismissed), which a `?? this` guard
-        // would swallow. Use the dedicated [_withVerdict] helper instead.
+        // pendingVerdict/pendingExperiment are intentionally NOT copyWith params
+        // — clearing one to null is a real state (resolved/dismissed), which a
+        // `?? this` guard would swallow. Use [_withVerdict]/[_withExperiment].
         pendingVerdict: pendingVerdict,
+        pendingExperiment: pendingExperiment,
         isClosing: isClosing ?? this.isClosing,
         busy: busy ?? this.busy,
       );
@@ -64,6 +71,19 @@ class TrendsConvoState {
         history: history,
         currentReply: currentReply,
         pendingVerdict: verdict,
+        pendingExperiment: pendingExperiment,
+        isClosing: isClosing,
+        busy: busy,
+      );
+
+  /// copyWith variant that can set OR clear [pendingExperiment].
+  TrendsConvoState _withExperiment(ProposedExperiment? experiment) =>
+      TrendsConvoState(
+        phase: phase,
+        history: history,
+        currentReply: currentReply,
+        pendingVerdict: pendingVerdict,
+        pendingExperiment: experiment,
         isClosing: isClosing,
         busy: busy,
       );
@@ -92,6 +112,7 @@ class TrendsConversationController extends StateNotifier<TrendsConvoState> {
         ],
         currentReply: turn.reply,
         pendingVerdict: turn.proposedVerdict,
+        pendingExperiment: turn.proposedExperiment,
         isClosing: turn.isClosing,
       );
     } catch (_) {
@@ -123,6 +144,7 @@ class TrendsConversationController extends StateNotifier<TrendsConvoState> {
         ],
         currentReply: turn.reply,
         pendingVerdict: turn.proposedVerdict,
+        pendingExperiment: turn.proposedExperiment,
         isClosing: turn.isClosing,
         busy: false,
       );
@@ -145,6 +167,33 @@ class TrendsConversationController extends StateNotifier<TrendsConvoState> {
         verdict: verdict.verdict,
       );
       state = state.copyWith(busy: false)._withVerdict(null);
+    } catch (_) {
+      state = const TrendsConvoState(phase: TrendsConvoPhase.error);
+    }
+  }
+
+  /// Starts the pending experiment (the only path that ever creates one), then
+  /// clears it. No-op if there's nothing pending or a request is in flight.
+  Future<void> startExperiment() async {
+    final experiment = state.pendingExperiment;
+    if (experiment == null || state.busy) return;
+    state = state.copyWith(busy: true);
+    try {
+      final created = await _api.createExperiment(
+        category: experiment.category,
+        outcomeType: experiment.outcomeType,
+        outcomeName: experiment.outcomeName,
+      );
+      // Best-effort: a scheduling failure (e.g. no exact-alarm permission, or
+      // the plugin channel being unavailable) must never roll back the created
+      // experiment or flip the UX to error. Device-verified separately.
+      try {
+        await NotificationService.scheduleExperimentEndNotification(
+          experimentId: created.id,
+          end: DateTime.parse(created.experimentEnd),
+        );
+      } catch (_) {/* best-effort */}
+      state = state.copyWith(busy: false)._withExperiment(null);
     } catch (_) {
       state = const TrendsConvoState(phase: TrendsConvoPhase.error);
     }
