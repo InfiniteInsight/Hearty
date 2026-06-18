@@ -1,3 +1,5 @@
+import 'experiment.dart';
+
 /// A verdict the assistant proposes during the monthly trends conversation —
 /// e.g. "dairy seems to trigger your bloating, confirm?". Nullable on a turn;
 /// only present when the assistant has a concrete signal to put to the user.
@@ -33,20 +35,26 @@ class ProposedVerdict {
 class TrendsTurn {
   final String reply;
   final ProposedVerdict? proposedVerdict;
+  final ProposedExperiment? proposedExperiment;
   final bool isClosing;
 
   const TrendsTurn({
     required this.reply,
     this.proposedVerdict,
+    this.proposedExperiment,
     this.isClosing = false,
   });
 
   factory TrendsTurn.fromJson(Map<String, dynamic> json) {
     final rawVerdict = json['proposed_verdict'];
+    final rawExperiment = json['proposed_experiment'];
     return TrendsTurn(
       reply: json['reply'] as String? ?? '',
       proposedVerdict: rawVerdict is Map<String, dynamic>
           ? ProposedVerdict.fromJson(rawVerdict)
+          : null,
+      proposedExperiment: rawExperiment is Map<String, dynamic>
+          ? ProposedExperiment.fromJson(rawExperiment)
           : null,
       isClosing: json['is_closing'] as bool? ?? false,
     );

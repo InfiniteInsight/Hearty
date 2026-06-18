@@ -14,6 +14,7 @@ import '../../../core/offline/local_symptom_dao.dart';
 import '../../../core/offline/offline_database.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../checkin/widgets/home_checkin_banner.dart';
+import '../../experiments/widgets/experiment_nudge_dialog.dart';
 
 // ---------------------------------------------------------------------------
 // Top-level helpers
@@ -73,6 +74,9 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   late final Stream<List<ConnectivityResult>> _connectivityStream;
+  // Only surface the adherence nudge once per Home visit — the provider is
+  // autoDispose, so a fresh visit re-fetches and may re-prompt.
+  bool _nudgeShown = false;
 
   @override
   void initState() {
@@ -82,6 +86,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Surface the experiment adherence nudge (mirrors the check-in banner's
+    // provider trigger, but as a one-shot dialog). Watch the autoDispose
+    // fetch; when it resolves with at least one flagged experiment, prompt for
+    // the first one after the frame settles.
+    ref.listen(experimentNudgesProvider, (_, next) {
+      final nudges = next.valueOrNull;
+      if (nudges == null || nudges.isEmpty || _nudgeShown) return;
+      _nudgeShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        showExperimentNudgeDialog(context, experiment: nudges.first);
+      });
+    });
+    // Keep the nudge provider alive so the listen above receives its value.
+    ref.watch(experimentNudgesProvider);
+
     // Keep sync service alive and watch sync state.
     ref.watch(syncServiceProvider);
     ref.watch(pendingQueueCountProvider); // keeps provider alive; count read on-demand via ref.read

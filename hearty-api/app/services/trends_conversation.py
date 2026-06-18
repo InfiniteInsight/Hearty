@@ -8,7 +8,8 @@ import os
 import litellm
 
 from app.models.schemas import (
-    PresentedSignal, ConversationTurn, ProposedVerdict, TrendsConversationResponse,
+    PresentedSignal, ConversationTurn, ProposedVerdict, ProposedExperiment,
+    TrendsConversationResponse,
 )
 from app.services.ai_extraction import _strip_code_fence
 
@@ -52,6 +53,9 @@ raised at least once ("Before we finish, there are a couple more I noticed…").
 - When the user clearly expresses a verdict on a pattern (e.g. "that's right" / \
 "dairy's fine for me, that's wrong" / "not sure"), propose the matching verdict \
 for their confirmation — never assume it is final.
+- For a HARMFUL pattern the user seems interested in, you may offer a 2-week \
+elimination experiment via proposed_experiment (the same category/outcome as \
+that pattern) — never start it silently; the app shows a confirm chip.
 - When every pattern has been covered and there is nothing left to raise, set \
 is_closing to true and give a short, finite goodbye.
 
@@ -59,9 +63,11 @@ Respond with ONLY a JSON object, no prose around it:
 {{
   "reply": "what you say to the user this turn",
   "proposed_verdict": null OR {{"category": "...", "outcome_type": "symptom|wellbeing", "outcome_name": "...", "verdict": "confirmed|disputed|snoozed"}},
+  "proposed_experiment": null OR {{"category": "...", "outcome_type": "symptom|wellbeing", "outcome_name": "..."}},
   "is_closing": false
 }}
-proposed_verdict must reference one of the exact patterns above, or be null."""
+proposed_verdict and proposed_experiment must each reference one of the exact \
+patterns above, or be null."""
 
 
 def generate_turn(
@@ -85,8 +91,11 @@ def generate_turn(
 
     pv = data.get("proposed_verdict")
     proposed = ProposedVerdict(**pv) if pv else None
+    pe = data.get("proposed_experiment")
+    proposed_exp = ProposedExperiment(**pe) if pe else None
     return TrendsConversationResponse(
         reply=data["reply"],
         proposed_verdict=proposed,
+        proposed_experiment=proposed_exp,
         is_closing=bool(data.get("is_closing", False)),
     )
