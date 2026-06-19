@@ -258,6 +258,7 @@ class ProposedExperiment(BaseModel):
     category: str
     outcome_type: Literal["symptom", "wellbeing"]
     outcome_name: str
+    category_label: Optional[str] = None
 
 class TrendsConversationRequest(BaseModel):
     history: List[ConversationTurn] = Field(default_factory=list)
@@ -287,6 +288,7 @@ class CreateExperimentRequest(BaseModel):
 class ExperimentResponse(BaseModel):
     id: str
     category: str
+    category_label: Optional[str] = None
     direction: str
     outcome_type: str
     outcome_name: str

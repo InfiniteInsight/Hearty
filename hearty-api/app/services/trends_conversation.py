@@ -12,6 +12,7 @@ from app.models.schemas import (
     TrendsConversationResponse,
 )
 from app.services.ai_extraction import _strip_code_fence
+from app.services.food_category_service import category_label
 
 
 def _signal_line(s: PresentedSignal) -> str:
@@ -92,7 +93,10 @@ def generate_turn(
     pv = data.get("proposed_verdict")
     proposed = ProposedVerdict(**pv) if pv else None
     pe = data.get("proposed_experiment")
-    proposed_exp = ProposedExperiment(**pe) if pe else None
+    proposed_exp = (
+        ProposedExperiment(**pe, category_label=category_label(pe["category"]))
+        if pe else None
+    )
     return TrendsConversationResponse(
         reply=data["reply"],
         proposed_verdict=proposed,

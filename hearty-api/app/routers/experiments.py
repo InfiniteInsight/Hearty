@@ -9,6 +9,7 @@ from app.models.schemas import (
 )
 from app.services import experiment_store, experiment_adherence, experiment_evaluator
 from app.services import signal_engine
+from app.services.food_category_service import category_label
 
 router = APIRouter()
 
@@ -17,7 +18,8 @@ logger = logging.getLogger(__name__)
 
 def _to_response(row: dict, **extra) -> ExperimentResponse:
     return ExperimentResponse(
-        id=row["id"], category=row["category"], direction=row["direction"],
+        id=row["id"], category=row["category"],
+        category_label=category_label(row["category"]), direction=row["direction"],
         outcome_type=row["outcome_type"], outcome_name=row["outcome_name"],
         experiment_start=row["experiment_start"], experiment_end=row["experiment_end"],
         status=row["status"], result=row.get("result"), nudged_at=row.get("nudged_at"),

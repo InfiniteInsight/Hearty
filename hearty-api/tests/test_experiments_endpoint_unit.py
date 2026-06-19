@@ -18,9 +18,10 @@ def test_create_experiment(monkeypatch):
                             "experiment_end": "e", "status": "active",
                             "result": None, "nudged_at": None})
     client = TestClient(app)
-    r = client.post("/api/experiments", json={"category": "dairy",
+    r = client.post("/api/experiments", json={"category": "dairy_casein",
                     "outcome_type": "symptom", "outcome_name": "bloating"})
-    assert r.status_code == 200 and r.json()["category"] == "dairy"
+    assert r.status_code == 200 and r.json()["category"] == "dairy_casein"
+    assert r.json()["category_label"] == "Dairy / Casein"
     app.dependency_overrides.clear()
 
 

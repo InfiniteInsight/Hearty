@@ -78,11 +78,12 @@ def test_generate_turn_parses_proposed_experiment():
         content=json.dumps({
             "reply": "Want to actually test the dairy link — cut it for two weeks?",
             "proposed_verdict": None,
-            "proposed_experiment": {"category": "dairy", "outcome_type": "symptom",
+            "proposed_experiment": {"category": "dairy_casein", "outcome_type": "symptom",
                                     "outcome_name": "bloating"},
             "is_closing": False,
         })))])
     with patch.object(tc.litellm, "completion", return_value=fake):
         out = tc.generate_turn(_presented(), history=[])
     assert out.proposed_experiment is not None
-    assert out.proposed_experiment.category == "dairy"
+    assert out.proposed_experiment.category == "dairy_casein"
+    assert out.proposed_experiment.category_label == "Dairy / Casein"
