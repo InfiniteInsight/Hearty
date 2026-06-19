@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/models/meal_log.dart';
 import '../../../core/api/models/symptom_log.dart';
+import '../../../core/util/meal_label.dart';
 import '../../../core/api/providers/meals_provider.dart';
 import '../../../core/api/providers/symptoms_provider.dart';
 
@@ -334,7 +335,7 @@ class _MealRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: const Icon(Icons.restaurant),
-      title: Text(meal.description),
+      title: Text(mealTimelineTitle(meal.foods, meal.description)),
       subtitle: Text(_formatTime(meal.loggedAt)),
       trailing: Chip(
         label: Text(

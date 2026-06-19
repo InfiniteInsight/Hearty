@@ -8,6 +8,7 @@ import '../../../core/api/providers/symptoms_provider.dart';
 import '../../../core/api/providers/voice_queue_provider.dart';
 import '../../../core/api/models/meal_log.dart';
 import '../../../core/api/models/symptom_log.dart';
+import '../../../core/util/meal_label.dart';
 import '../../../core/api/hearty_api_client.dart';
 import '../../../core/offline/local_meal_dao.dart';
 import '../../../core/offline/local_symptom_dao.dart';
@@ -383,7 +384,7 @@ class _MealCard extends ConsumerWidget {
       children: [
         ListTile(
           leading: Icon(_mealTypeIcon(meal.mealType)),
-          title: Text(meal.description),
+          title: Text(mealTimelineTitle(meal.foods, meal.description)),
           subtitle: Text(_formatTime(meal.loggedAt)),
           trailing: meal.claudeNote != null
               ? const Icon(Icons.info_outline, size: 20)
