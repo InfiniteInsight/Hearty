@@ -106,6 +106,17 @@ TAXONOMY: dict[str, dict] = {
 
 VALID_SLUGS = set(TAXONOMY.keys())
 
+
+def category_label(slug: str) -> str:
+    """Human-facing label for a category slug. Uses the TAXONOMY display name;
+    falls back to a prettified slug for anything unknown. Empty/None -> ''."""
+    if not slug:
+        return ""
+    entry = TAXONOMY.get(slug)
+    if entry and entry.get("display"):
+        return entry["display"]
+    return slug.replace("_", " ").title()
+
 # Known multi-category foods — used as prompt seed hints.
 MULTI_CATEGORY_FOODS: dict[str, list[str]] = {
     "wheat": ["gluten", "fodmap_fructans"],
