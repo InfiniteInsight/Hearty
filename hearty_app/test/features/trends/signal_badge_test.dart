@@ -8,9 +8,15 @@ FoodSignal _sig({
   bool recurring = false,
   bool isNew = false,
   Map<String, double> strengthByYear = const {},
+  String category = 'dairy_casein',
+  // Empty string mimics a payload with no backend label (triggers the prettify
+  // fallback in resolveCategoryLabel).
+  String categoryLabel = 'Dairy / Casein',
 }) =>
     FoodSignal.fromJson({
-      'category': 'dairy', 'unified_score': 0.8,
+      'category': category,
+      'category_label': categoryLabel,
+      'unified_score': 0.8,
       'channels': <dynamic>[], 'convergent': false,
       'years_seen': years, 'recurring': recurring, 'is_new': isNew,
       'strength_by_year': strengthByYear,
@@ -18,6 +24,18 @@ FoodSignal _sig({
 
 void main() {
   Widget host(FoodSignal s) => MaterialApp(home: Scaffold(body: SignalCard(signal: s)));
+
+  testWidgets('renders the friendly backend label, not the raw slug', (t) async {
+    await t.pumpWidget(host(_sig()));
+    expect(find.text('Dairy / Casein'), findsOneWidget);
+    expect(find.text('dairy_casein'), findsNothing);
+  });
+
+  testWidgets('falls back to a prettified slug when no backend label', (t) async {
+    await t.pumpWidget(
+        host(_sig(category: 'high_sugar_refined', categoryLabel: '')));
+    expect(find.text('High Sugar Refined'), findsOneWidget);
+  });
 
   testWidgets('recurring shows a "Seen N years" badge', (t) async {
     await t.pumpWidget(host(_sig(years: [2024, 2025, 2026], recurring: true)));

@@ -52,6 +52,7 @@ class FakeHeartyApiClient implements HeartyApiClient {
     return Experiment(
       id: 'exp-1',
       category: category,
+      categoryLabel: category,
       direction: 'eliminate',
       outcomeType: outcomeType,
       outcomeName: outcomeName,
@@ -156,23 +157,29 @@ void main() {
       const TrendsTurn(
         reply: 'Want to test cutting dairy?',
         proposedExperiment: ProposedExperiment(
-          category: 'dairy',
+          category: 'dairy_casein',
+          categoryLabel: 'Dairy / Casein',
           outcomeType: 'symptom',
           outcomeName: 'bloating',
         ),
       ),
     );
 
-    // Active conversation with the experiment chip.
+    // Active conversation with the experiment chip, rendering the friendly label.
     expect(find.text('Want to test cutting dairy?'), findsOneWidget);
+    expect(
+      find.text('Test this — cut Dairy / Casein for 2 weeks?'),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('trends-experiment-chip')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('trends-experiment-chip')));
     await tester.pumpAndSettle();
 
     expect(api.experimentCalls, hasLength(1));
+    // Write-back uses the raw slug, not the friendly label.
     expect(api.experimentCalls.single, {
-      'category': 'dairy',
+      'category': 'dairy_casein',
       'outcomeType': 'symptom',
       'outcomeName': 'bloating',
     });

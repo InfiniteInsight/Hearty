@@ -11,11 +11,13 @@ void main() {
     await t.pumpWidget(host(const [
       ResolvedSignal(
           category: 'dairy_casein',
+          categoryLabel: 'Dairy / Casein',
           lastYear: 2024,
           strength: 0.6,
           status: 'resolved'),
       ResolvedSignal(
           category: 'gluten',
+          categoryLabel: 'Gluten',
           lastYear: 2023,
           strength: 0.4,
           status: 'potentially_resolved'),
@@ -25,6 +27,9 @@ void main() {
     expect(find.text('No longer flagging'), findsOneWidget);
     expect(find.text('Resolved'), findsOneWidget);
     expect(find.text('Possibly resolved'), findsOneWidget);
+    // The friendly backend label renders, not the raw slug.
+    expect(find.text('Dairy / Casein'), findsOneWidget);
+    expect(find.text('dairy_casein'), findsNothing);
   });
 
   testWidgets('handles multiple same-status items without key collision',
@@ -32,21 +37,25 @@ void main() {
     await t.pumpWidget(host(const [
       ResolvedSignal(
           category: 'dairy_casein',
+          categoryLabel: 'Dairy / Casein',
           lastYear: 2024,
           strength: 0.6,
           status: 'resolved'),
       ResolvedSignal(
           category: 'gluten',
+          categoryLabel: 'Gluten',
           lastYear: 2024,
           strength: 0.5,
           status: 'resolved'),
       ResolvedSignal(
           category: 'soy',
+          categoryLabel: 'Soy',
           lastYear: 2023,
           strength: 0.4,
           status: 'potentially_resolved'),
       ResolvedSignal(
           category: 'eggs',
+          categoryLabel: 'Eggs',
           lastYear: 2023,
           strength: 0.3,
           status: 'potentially_resolved'),

@@ -68,7 +68,7 @@ class _ExperimentNudgeDialogState extends ConsumerState<ExperimentNudgeDialog> {
     final exp = widget.experiment;
     return AlertDialog(
       key: const Key('experiment-nudge-dialog'),
-      title: Text('Noticed ${exp.category} in a few meals during your '
+      title: Text('Noticed ${exp.categoryLabel} in a few meals during your '
           'experiment.'),
       content: const Text(
         "Keeping it out gives the test a cleaner read. Want to keep going, "

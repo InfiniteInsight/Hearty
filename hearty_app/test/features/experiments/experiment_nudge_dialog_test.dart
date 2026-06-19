@@ -23,7 +23,8 @@ class _FakeApi implements HeartyApiClient {
     restartCalls.add(id);
     return Experiment(
       id: id,
-      category: 'dairy',
+      category: 'dairy_casein',
+      categoryLabel: 'Dairy / Casein',
       direction: 'eliminate',
       outcomeType: 'symptom',
       outcomeName: 'bloating',
@@ -45,7 +46,8 @@ class _FakeApi implements HeartyApiClient {
 
 Experiment _exp() => const Experiment(
       id: 'exp-7',
-      category: 'dairy',
+      category: 'dairy_casein',
+      categoryLabel: 'Dairy / Casein',
       direction: 'eliminate',
       outcomeType: 'symptom',
       outcomeName: 'bloating',
@@ -72,6 +74,17 @@ Future<_FakeApi> _pump(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('renders the friendly category label, not the raw slug',
+      (tester) async {
+    await _pump(tester);
+
+    expect(
+      find.textContaining('Dairy / Casein'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('dairy_casein'), findsNothing);
+  });
+
   testWidgets('Keep going → ackExperimentNudge(id) then dismisses',
       (tester) async {
     final api = await _pump(tester);

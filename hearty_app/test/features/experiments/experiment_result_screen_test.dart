@@ -20,7 +20,8 @@ class _FakeApi implements HeartyApiClient {
     evaluatedIds.add(id);
     return Experiment(
       id: id,
-      category: 'dairy',
+      category: 'dairy_casein',
+      categoryLabel: 'Dairy / Casein',
       direction: 'eliminate',
       outcomeType: 'symptom',
       outcomeName: 'bloating',
@@ -79,7 +80,8 @@ void main() {
 
     expect(api.evaluatedIds, ['exp-1']);
     expect(
-      find.text('Cutting dairy seems to have helped — bloating improved.'),
+      find.text(
+          'Cutting Dairy / Casein seems to have helped — bloating improved.'),
       findsOneWidget,
     );
     expect(find.byKey(const Key('experiment-confirm-chip')), findsOneWidget);
@@ -88,8 +90,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(api.verdictCalls, hasLength(1));
+    // Write-back uses the raw slug, not the friendly label.
     expect(api.verdictCalls.single, {
-      'category': 'dairy',
+      'category': 'dairy_casein',
       'outcomeType': 'symptom',
       'outcomeName': 'bloating',
       'verdict': 'confirmed',
@@ -102,7 +105,8 @@ void main() {
   testWidgets('no_change → neutral copy, no confirm chip', (tester) async {
     final api = await _pump(tester, {'verdict': 'no_change', 'reason': null});
 
-    expect(find.text('No clear change from cutting dairy.'), findsOneWidget);
+    expect(find.text('No clear change from cutting Dairy / Casein.'),
+        findsOneWidget);
     expect(find.byKey(const Key('experiment-confirm-chip')), findsNothing);
     expect(api.verdictCalls, isEmpty);
   });
@@ -121,7 +125,8 @@ void main() {
     });
 
     expect(
-      find.text('Not enough clean days to tell — dairy showed up too often '
+      find.text(
+          'Not enough clean days to tell — Dairy / Casein showed up too often '
           'during the test.'),
       findsOneWidget,
     );

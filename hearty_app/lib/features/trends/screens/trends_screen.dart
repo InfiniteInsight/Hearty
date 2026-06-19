@@ -26,30 +26,6 @@ const _kSymptomColors = [
 // Display helpers
 // ---------------------------------------------------------------------------
 
-String _formatCategory(String slug) {
-  const labels = {
-    'fodmap_fructans': 'FODMAP Fructans',
-    'fodmap_fructose': 'FODMAP Fructose',
-    'fodmap_polyols': 'FODMAP Polyols',
-    'fodmap_gos': 'FODMAP GOS',
-    'fodmap_lactose': 'FODMAP Lactose',
-    'dairy_casein': 'Dairy / Casein',
-    'gluten': 'Gluten',
-    'eggs': 'Eggs',
-    'soy': 'Soy',
-    'histamine': 'High Histamine',
-    'sulfites': 'Sulfites',
-    'caffeine': 'Caffeine',
-    'alcohol': 'Alcohol',
-    'high_fat': 'High Fat',
-    'cruciferous': 'Cruciferous',
-    'nightshades': 'Nightshades',
-    'high_sugar_refined': 'High Sugar',
-    'spicy': 'Spicy',
-  };
-  return labels[slug] ?? slug.replaceAll('_', ' ').toUpperCase();
-}
-
 String _recurringLabel(List<int> yearsSeen) {
   final base = 'Seen ${yearsSeen.length} years';
   if (yearsSeen.isEmpty) return base;
@@ -367,7 +343,7 @@ class SignalCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      _formatCategory(signal.category),
+                      signal.categoryLabel,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
@@ -581,13 +557,13 @@ class ResolvedSection extends StatelessWidget {
             const SizedBox(height: 8),
             for (final r in firm)
               _ResolvedRow(
-                  category: r.category,
+                  categoryLabel: r.categoryLabel,
                   label: 'Resolved',
                   color: Colors.green,
                   key: Key('resolved-firm-${r.category}')),
             for (final r in maybe)
               _ResolvedRow(
-                  category: r.category,
+                  categoryLabel: r.categoryLabel,
                   label: 'Possibly resolved',
                   color: Colors.amber.shade800,
                   key: Key('resolved-maybe-${r.category}')),
@@ -601,11 +577,11 @@ class ResolvedSection extends StatelessWidget {
 class _ResolvedRow extends StatelessWidget {
   const _ResolvedRow(
       {super.key,
-      required this.category,
+      required this.categoryLabel,
       required this.label,
       required this.color});
 
-  final String category;
+  final String categoryLabel;
   final String label;
   final Color color;
 
@@ -614,7 +590,7 @@ class _ResolvedRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(children: [
           Expanded(
-              child: Text(_formatCategory(category),
+              child: Text(categoryLabel,
                   style: const TextStyle(fontSize: 13))),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

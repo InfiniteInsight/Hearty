@@ -105,7 +105,7 @@ class _ResultBody extends StatelessWidget {
     final result = exp.result ?? const <String, dynamic>{};
     final verdict = result['verdict'] as String?;
     final reason = result['reason'] as String?;
-    final category = exp.category;
+    final category = exp.categoryLabel;
     final outcome = exp.outcomeName;
 
     final message = _message(verdict, reason, category, outcome);

@@ -146,7 +146,7 @@ class _ActiveViewState extends ConsumerState<_ActiveView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Test this — cut ${experiment.category} for 2 weeks?',
+                        'Test this — cut ${experiment.categoryLabel} for 2 weeks?',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 12),

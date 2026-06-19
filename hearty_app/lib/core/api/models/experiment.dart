@@ -1,3 +1,5 @@
+import '../../util/category_label.dart';
+
 /// A tracked experiment — a time-boxed test of whether changing one [category]
 /// of food shifts an outcome. Mirrors `ExperimentResponse` from the backend
 /// experiments endpoints (`POST /api/experiments`, `GET /api/experiments/active`,
@@ -9,6 +11,7 @@
 class Experiment {
   final String id;
   final String category;
+  final String categoryLabel;
   final String direction;
   final String outcomeType;
   final String outcomeName;
@@ -24,6 +27,7 @@ class Experiment {
   const Experiment({
     required this.id,
     required this.category,
+    required this.categoryLabel,
     required this.direction,
     required this.outcomeType,
     required this.outcomeName,
@@ -42,6 +46,8 @@ class Experiment {
     return Experiment(
       id: json['id'] as String? ?? '',
       category: json['category'] as String? ?? '',
+      categoryLabel: resolveCategoryLabel(
+          json['category_label'] as String?, json['category'] as String? ?? ''),
       direction: json['direction'] as String? ?? '',
       outcomeType: json['outcome_type'] as String? ?? '',
       outcomeName: json['outcome_name'] as String? ?? '',
@@ -64,11 +70,13 @@ class Experiment {
 /// Mirrors the `proposed_experiment` object from `POST /api/trends/conversation`.
 class ProposedExperiment {
   final String category;
+  final String categoryLabel;
   final String outcomeType;
   final String outcomeName;
 
   const ProposedExperiment({
     required this.category,
+    required this.categoryLabel,
     required this.outcomeType,
     required this.outcomeName,
   });
@@ -76,6 +84,8 @@ class ProposedExperiment {
   factory ProposedExperiment.fromJson(Map<String, dynamic> json) {
     return ProposedExperiment(
       category: json['category'] as String? ?? '',
+      categoryLabel: resolveCategoryLabel(
+          json['category_label'] as String?, json['category'] as String? ?? ''),
       outcomeType: json['outcome_type'] as String? ?? '',
       outcomeName: json['outcome_name'] as String? ?? '',
     );

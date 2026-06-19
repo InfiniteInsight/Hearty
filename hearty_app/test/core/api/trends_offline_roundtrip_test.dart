@@ -10,7 +10,8 @@ void main() {
     final original = TrendsData.fromSignalsJson({
       'signals': [
         {
-          'category': 'dairy',
+          'category': 'dairy_casein',
+          'category_label': 'Dairy / Casein',
           'unified_score': 0.8,
           'channels': <dynamic>[],
           'convergent': false,
@@ -29,6 +30,8 @@ void main() {
     expect(sig.recurring, isTrue);
     expect(sig.yearsSeen, [2024, 2025]);
     expect(sig.strengthByYear['2025'], 0.8);
+    // The friendly label is persisted, not downgraded to the prettify fallback.
+    expect(sig.categoryLabel, 'Dairy / Casein');
   });
 
   test('resolved list survives toJson -> fromSignalsJson', () {
@@ -38,15 +41,18 @@ void main() {
       'resolved': [
         {'category': 'gluten', 'last_year': 2025, 'strength': 0.6,
          'status': 'potentially_resolved'},
-        {'category': 'dairy', 'last_year': 2025, 'strength': 0.7,
-         'status': 'resolved'},
+        {'category': 'dairy_casein', 'category_label': 'Dairy / Casein',
+         'last_year': 2025, 'strength': 0.7, 'status': 'resolved'},
       ],
     });
 
     final round = TrendsData.fromSignalsJson(original.toJson());
     expect(round.resolved.length, 2);
-    final dairy = round.resolved.firstWhere((r) => r.category == 'dairy');
+    final dairy =
+        round.resolved.firstWhere((r) => r.category == 'dairy_casein');
     expect(dairy.status, 'resolved');
     expect(dairy.lastYear, 2025);
+    // The friendly label is persisted across the offline round-trip.
+    expect(dairy.categoryLabel, 'Dairy / Casein');
   });
 }

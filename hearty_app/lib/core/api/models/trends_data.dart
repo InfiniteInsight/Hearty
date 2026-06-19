@@ -1,3 +1,5 @@
+import '../../util/category_label.dart';
+
 class TrendsData {
   final List<SymptomFrequencyPoint> symptomFrequency;
   final List<FoodSignal> signals;
@@ -45,12 +47,14 @@ class TrendsData {
 
 class ResolvedSignal {
   final String category;
+  final String categoryLabel;
   final int lastYear;
   final double strength;
   final String status; // 'resolved' | 'potentially_resolved'
 
   const ResolvedSignal({
     required this.category,
+    required this.categoryLabel,
     required this.lastYear,
     required this.strength,
     required this.status,
@@ -58,6 +62,9 @@ class ResolvedSignal {
 
   factory ResolvedSignal.fromJson(Map<String, dynamic> json) => ResolvedSignal(
         category: (json['category'] as String?) ?? '',
+        categoryLabel: resolveCategoryLabel(
+            json['category_label'] as String?,
+            (json['category'] as String?) ?? ''),
         lastYear: (json['last_year'] as num?)?.toInt() ?? 0,
         strength: (json['strength'] as num?)?.toDouble() ?? 0.0,
         status: (json['status'] as String?) ?? 'potentially_resolved',
@@ -65,6 +72,9 @@ class ResolvedSignal {
 
   Map<String, dynamic> toJson() => {
         'category': category,
+        // Persisted so the friendly label survives an offline reload rather than
+        // downgrading to the prettify fallback.
+        'category_label': categoryLabel,
         'last_year': lastYear,
         'strength': strength,
         'status': status,
@@ -121,6 +131,7 @@ class SignalChannel {
 
 class FoodSignal {
   final String category;
+  final String categoryLabel;
   final double unifiedScore;
   final List<SignalChannel> channels;
   final bool convergent;
@@ -131,6 +142,7 @@ class FoodSignal {
 
   const FoodSignal({
     required this.category,
+    required this.categoryLabel,
     required this.unifiedScore,
     required this.channels,
     required this.convergent,
@@ -143,6 +155,8 @@ class FoodSignal {
   factory FoodSignal.fromJson(Map<String, dynamic> json) {
     return FoodSignal(
       category: json['category'] as String,
+      categoryLabel: resolveCategoryLabel(
+          json['category_label'] as String?, json['category'] as String? ?? ''),
       unifiedScore: (json['unified_score'] as num).toDouble(),
       channels: (json['channels'] as List<dynamic>)
           .map((c) => SignalChannel.fromJson(c as Map<String, dynamic>))
@@ -160,6 +174,9 @@ class FoodSignal {
 
   Map<String, dynamic> toJson() => {
         'category': category,
+        // Persisted so the friendly label survives an offline reload rather than
+        // downgrading to the prettify fallback.
+        'category_label': categoryLabel,
         'unified_score': unifiedScore,
         'channels': channels.map((c) => c.toJson()).toList(),
         'convergent': convergent,
