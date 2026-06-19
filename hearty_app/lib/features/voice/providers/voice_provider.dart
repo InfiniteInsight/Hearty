@@ -205,6 +205,12 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     _tts = _injectedTts ?? await createTtsEngine();
     _tts.setCompletionHandler(() {
       if (!mounted) return;
+      // Only advance when TTS finished on its OWN while we were still speaking
+      // the response. dismiss()/stopSpeaking() also stop TTS, which fires this
+      // same callback — without this guard, cancelling mid-response would
+      // resurrect the turn and open a ghost capture session that fights the
+      // wake-word mic (user taps X "between turns" → wake word goes deaf).
+      if (state.status != VoiceStatus.responding) return;
       if (_askFollowUp) {
         setAwaitingFollowUp();
       } else {

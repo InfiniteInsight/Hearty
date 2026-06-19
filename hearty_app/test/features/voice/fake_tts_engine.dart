@@ -22,6 +22,11 @@ class FakeTtsEngine implements TtsEngine {
   @override
   void setCompletionHandler(VoidCallback onDone) => _onDone = onDone;
 
+  /// Manually fire the completion callback. In production both natural TTS
+  /// completion AND `stop()` (called by dismiss/stopSpeaking) fire it — tests
+  /// use this to simulate completion arriving after a cancel.
+  void fireCompletion() => _onDone?.call();
+
   @override
   Future<void> setStyle(TtsStyle style) async {}
 

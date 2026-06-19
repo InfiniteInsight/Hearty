@@ -172,6 +172,25 @@ void main() {
       expect(container.read(voiceProvider).status, VoiceStatus.idle);
     });
 
+    test('TTS completion fired AFTER dismiss does not open a ghost session',
+        () async {
+      final n = container.read(voiceProvider.notifier);
+      // Hearty is speaking a response that would normally ask a follow-up.
+      n.setResponse('Logged! How are you feeling?');
+      expect(n.state.status, VoiceStatus.responding);
+      final before = h.creations;
+      // User taps X mid-response. dismiss() stops TTS, which in production fires
+      // the completion callback — simulate that arriving after the cancel.
+      n.dismiss();
+      expect(n.state.status, VoiceStatus.idle);
+      tts.fireCompletion();
+      await pump();
+      // No capture session was opened, and we stayed idle (no resurrected turn
+      // fighting the wake-word mic).
+      expect(h.creations, before);
+      expect(n.state.status, VoiceStatus.idle);
+    });
+
     test('initial state has MicPhase.none', () {
       expect(container.read(voiceProvider).micPhase, MicPhase.none);
     });
