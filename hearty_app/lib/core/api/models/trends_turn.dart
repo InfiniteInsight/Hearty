@@ -1,3 +1,4 @@
+import '../../util/category_label.dart';
 import 'experiment.dart';
 
 /// A verdict the assistant proposes during the monthly trends conversation —
@@ -7,12 +8,14 @@ import 'experiment.dart';
 /// Mirrors the `proposed_verdict` object from `POST /api/trends/conversation`.
 class ProposedVerdict {
   final String category;
+  final String categoryLabel;
   final String outcomeType; // 'symptom' | 'wellbeing'
   final String outcomeName;
   final String verdict; // 'confirmed' | 'disputed' | 'snoozed'
 
   const ProposedVerdict({
     required this.category,
+    required this.categoryLabel,
     required this.outcomeType,
     required this.outcomeName,
     required this.verdict,
@@ -21,6 +24,8 @@ class ProposedVerdict {
   factory ProposedVerdict.fromJson(Map<String, dynamic> json) {
     return ProposedVerdict(
       category: json['category'] as String? ?? '',
+      categoryLabel: resolveCategoryLabel(
+          json['category_label'] as String?, json['category'] as String? ?? ''),
       outcomeType: json['outcome_type'] as String? ?? '',
       outcomeName: json['outcome_name'] as String? ?? '',
       verdict: json['verdict'] as String? ?? '',

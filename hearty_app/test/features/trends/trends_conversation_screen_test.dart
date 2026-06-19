@@ -101,7 +101,8 @@ void main() {
       const TrendsTurn(
         reply: 'I noticed something about dairy.',
         proposedVerdict: ProposedVerdict(
-          category: 'dairy',
+          category: 'dairy_casein',
+          categoryLabel: 'Dairy / Casein',
           outcomeType: 'symptom',
           outcomeName: 'bloating',
           verdict: 'confirmed',
@@ -109,16 +110,21 @@ void main() {
       ),
     );
 
-    // Active conversation with the verdict chip.
+    // Active conversation with the verdict chip, rendering the friendly label.
     expect(find.text('I noticed something about dairy.'), findsOneWidget);
+    expect(
+      find.text('Mark Dairy / Casein → bloating as confirmed?'),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('trends-verdict-confirm')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('trends-verdict-confirm')));
     await tester.pumpAndSettle();
 
     expect(api.verdictCalls, hasLength(1));
+    // Write-back uses the raw slug, not the friendly label.
     expect(api.verdictCalls.single, {
-      'category': 'dairy',
+      'category': 'dairy_casein',
       'outcomeType': 'symptom',
       'outcomeName': 'bloating',
       'verdict': 'confirmed',
@@ -134,7 +140,8 @@ void main() {
       const TrendsTurn(
         reply: 'I noticed something about dairy.',
         proposedVerdict: ProposedVerdict(
-          category: 'dairy',
+          category: 'dairy_casein',
+          categoryLabel: 'Dairy / Casein',
           outcomeType: 'symptom',
           outcomeName: 'bloating',
           verdict: 'confirmed',

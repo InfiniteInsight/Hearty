@@ -253,6 +253,7 @@ class ProposedVerdict(BaseModel):
     outcome_type: Literal["symptom", "wellbeing"]
     outcome_name: str
     verdict: VerdictType
+    category_label: Optional[str] = None
 
 class ProposedExperiment(BaseModel):
     """A 2-week elimination experiment Hearty offers for a harmful pattern,

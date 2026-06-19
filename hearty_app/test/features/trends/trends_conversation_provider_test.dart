@@ -57,6 +57,7 @@ TrendsTurn _turn(
 
 const _verdict = ProposedVerdict(
   category: 'dairy',
+  categoryLabel: 'Dairy / Casein',
   outcomeType: 'symptom',
   outcomeName: 'bloating',
   verdict: 'confirmed',

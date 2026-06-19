@@ -91,7 +91,10 @@ def generate_turn(
     data = json.loads(content)
 
     pv = data.get("proposed_verdict")
-    proposed = ProposedVerdict(**pv) if pv else None
+    proposed = (
+        ProposedVerdict(**pv, category_label=category_label(pv["category"]))
+        if pv else None
+    )
     pe = data.get("proposed_experiment")
     proposed_exp = (
         ProposedExperiment(**pe, category_label=category_label(pe["category"]))

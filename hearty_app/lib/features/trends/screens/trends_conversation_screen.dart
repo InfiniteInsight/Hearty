@@ -108,7 +108,7 @@ class _ActiveViewState extends ConsumerState<_ActiveView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Mark ${verdict.category} → ${verdict.outcomeName} '
+                        'Mark ${verdict.categoryLabel} → ${verdict.outcomeName} '
                         'as ${verdict.verdict}?',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),

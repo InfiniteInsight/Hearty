@@ -61,7 +61,7 @@ def test_generate_turn_parses_proposed_verdict():
     fake = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
         content=json.dumps({
             "reply": "Got it — want me to mark dairy as not a problem for you?",
-            "proposed_verdict": {"category": "dairy", "outcome_type": "symptom",
+            "proposed_verdict": {"category": "dairy_casein", "outcome_type": "symptom",
                                  "outcome_name": "bloating", "verdict": "disputed"},
             "is_closing": False,
         })))])
@@ -69,7 +69,8 @@ def test_generate_turn_parses_proposed_verdict():
     with patch.object(tc.litellm, "completion", return_value=fake):
         out = tc.generate_turn(_presented(), history=history)
     assert out.proposed_verdict is not None
-    assert out.proposed_verdict.category == "dairy"
+    assert out.proposed_verdict.category == "dairy_casein"
+    assert out.proposed_verdict.category_label == "Dairy / Casein"
     assert out.proposed_verdict.verdict == "disputed"
 
 
