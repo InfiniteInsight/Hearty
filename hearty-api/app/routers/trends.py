@@ -18,6 +18,7 @@ from app.services import (
     ai_extraction, trend_engine, signal_engine,
     signal_presenter, trends_conversation, signal_persistence,
 )
+from app.services.food_category_service import category_label
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -81,6 +82,7 @@ async def get_signals(
         )
         signals.append(FoodSignal(
             category=category,
+            category_label=category_label(category),
             unified_score=float(unified_score),
             channels=channels,
             convergent=has_symptom and has_wellbeing,
@@ -172,7 +174,10 @@ async def get_signals(
         total_meals_analyzed=meals_count,
         total_symptoms_analyzed=symptoms_count,
         total_wellbeing_analyzed=wellbeing_count,
-        resolved=[ResolvedSignal(**r) for r in resolved],
+        resolved=[
+            ResolvedSignal(**r, category_label=category_label(r["category"]))
+            for r in resolved
+        ],
     )
 
 

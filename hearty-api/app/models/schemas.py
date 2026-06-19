@@ -135,6 +135,7 @@ class SignalChannel(BaseModel):
 
 class FoodSignal(BaseModel):
     category: str
+    category_label: Optional[str] = None
     unified_score: float
     channels: List[SignalChannel]
     convergent: bool
@@ -146,6 +147,7 @@ class FoodSignal(BaseModel):
 
 class ResolvedSignal(BaseModel):
     category: str
+    category_label: Optional[str] = None
     last_year: int
     strength: float
     status: Literal["resolved", "potentially_resolved"]
