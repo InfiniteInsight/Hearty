@@ -55,11 +55,14 @@ class HeartyApiClient {
   Future<MealLog> logMeal({
     required String description,
     String? mealType,
+    List<String>? foods,
+    String inputMethod = 'voice',
   }) async {
     final body = <String, dynamic>{
       'description': description,
       'meal_type': mealType,
-      'input_method': 'voice',
+      'foods': foods,
+      'input_method': inputMethod,
     }..removeWhere((_, v) => v == null);
     final response = await _dio.post<Map<String, dynamic>>(
       '/api/meals',
