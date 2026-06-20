@@ -41,9 +41,15 @@ async def log_meal(
             response.status_code = 200
             return MealResponse(**existing.data[0])
 
-    extracted = ai_extraction.extract_meal(body.description)
-    foods = extracted.get("foods", [])
-    inferred_meal_type = extracted.get("inferred_meal_type")
+    if body.foods is not None:
+        # Verbatim save: store the caller's foods as name-only items, skip
+        # extraction, and leave meal_type to body.meal_type (mirrors PATCH).
+        foods = [{"name": n.strip()} for n in body.foods if n and n.strip()]
+        inferred_meal_type = None
+    else:
+        extracted = ai_extraction.extract_meal(body.description)
+        foods = extracted.get("foods", [])
+        inferred_meal_type = extracted.get("inferred_meal_type")
 
     row = {
         "user_id": user["id"],
