@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hearty_app/core/api/hearty_api_client.dart';
+import 'package:hearty_app/core/api/models/meal_log.dart';
 import 'package:hearty_app/core/api/models/photo_analysis.dart';
+import 'package:hearty_app/core/api/providers/meals_provider.dart';
+import 'package:hearty_app/features/logging/widgets/editable_food_list.dart';
 import 'package:hearty_app/features/photos/models/photo_type.dart';
 import 'package:hearty_app/features/photos/models/photo_upload_response.dart';
 import 'package:hearty_app/features/photos/providers/photo_provider.dart';
@@ -76,9 +79,35 @@ class _FakePhotoNotifier extends PhotoNotifier {
   }
 }
 
+/// Records [logMeal] calls so the save path (screen -> mealsProvider -> DAO)
+/// can be asserted without a real database. [build] emits an empty stream so
+/// the screen renders normally.
+class _RecordingMealsNotifier extends MealsNotifier {
+  String? loggedDescription;
+  List<String>? loggedFoods;
+  String? loggedInputMethod;
+  int logCalls = 0;
+
+  @override
+  Stream<List<MealLog>> build() => Stream.value(const <MealLog>[]);
+
+  @override
+  Future<void> logMeal(
+    String description, {
+    String? mealType,
+    List<String>? foods,
+    String inputMethod = 'voice',
+  }) async {
+    logCalls++;
+    loggedDescription = description;
+    loggedFoods = foods;
+    loggedInputMethod = inputMethod;
+  }
+}
+
 void main() {
   group('PhotoReviewScreen (complete)', () {
-    testWidgets('renders identified food names and portions', (tester) async {
+    testWidgets('renders detected foods as an editable list', (tester) async {
       const analysis = PhotoAnalysis(
         id: 'photo-1',
         type: 'food_plate',
@@ -106,10 +135,82 @@ void main() {
       await tester.pump();
 
       expect(find.text('Detected Foods'), findsOneWidget);
-      expect(find.text('Grilled salmon'), findsOneWidget);
-      expect(find.text('approximately 1 fillet'), findsOneWidget);
-      expect(find.text('Side salad'), findsOneWidget);
-      expect(find.text('82% confidence'), findsOneWidget);
+      // The detected foods are now editable, not read-only Text.
+      expect(find.byType(EditableFoodList), findsOneWidget);
+      final foodFields = find.descendant(
+        of: find.byType(EditableFoodList),
+        matching: find.byType(TextField),
+      );
+      expect(foodFields, findsNWidgets(2));
+
+      // Names are pre-filled into the editable rows.
+      expect(
+        tester.widget<TextField>(foodFields.at(0)).controller!.text,
+        'Grilled salmon',
+      );
+      expect(
+        tester.widget<TextField>(foodFields.at(1)).controller!.text,
+        'Side salad',
+      );
+    });
+
+    testWidgets(
+        'editing, removing and adding foods then saving logs the corrected '
+        'list verbatim with inputMethod photo', (tester) async {
+      const analysis = PhotoAnalysis(
+        id: 'photo-1',
+        type: 'food_plate',
+        status: 'complete',
+        foods: [
+          IdentifiedFood(name: 'Grilled salmon', confidence: 0.82),
+          IdentifiedFood(name: 'Side salad', confidence: 0.4),
+        ],
+      );
+
+      final notifier = _RecordingMealsNotifier();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [mealsProvider.overrideWith(() => notifier)],
+          child: MaterialApp(
+            home: PhotoReviewScreen(
+              analysis: analysis,
+              photoType: PhotoType.foodPlate,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      Finder foodFields() => find.descendant(
+            of: find.byType(EditableFoodList),
+            matching: find.byType(TextField),
+          );
+
+      // Edit the first food name.
+      await tester.enterText(foodFields().at(0), 'Baked salmon');
+      await tester.pump();
+
+      // Remove the second food ('Side salad').
+      await tester.tap(find.widgetWithIcon(IconButton, Icons.close).at(1));
+      await tester.pump();
+
+      // Add a new food.
+      await tester.tap(find.text('Add food'));
+      await tester.pump();
+      await tester.enterText(foodFields().last, 'Steamed broccoli');
+      await tester.pump();
+
+      // Save.
+      await tester.tap(find.text('Looks good — Save'));
+      await tester.pump();
+
+      expect(notifier.logCalls, 1);
+      expect(notifier.loggedInputMethod, 'photo');
+      // The corrected names are sent verbatim — NOT the raw vision names.
+      expect(notifier.loggedFoods, ['Baked salmon', 'Steamed broccoli']);
+      expect(notifier.loggedFoods, isNot(contains('Grilled salmon')));
+      expect(notifier.loggedFoods, isNot(contains('Side salad')));
     });
   });
 
