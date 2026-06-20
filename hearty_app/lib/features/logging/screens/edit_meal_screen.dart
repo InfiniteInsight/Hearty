@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/hearty_api_client.dart';
 import '../../../core/offline/local_meal_dao.dart';
+import '../widgets/editable_food_list.dart';
 
 class EditMealScreen extends ConsumerStatefulWidget {
   final String id;
@@ -24,39 +25,25 @@ class EditMealScreen extends ConsumerStatefulWidget {
 
 class _EditMealScreenState extends ConsumerState<EditMealScreen> {
   late final TextEditingController _descController;
-  late final List<TextEditingController> _foodControllers;
+  final GlobalKey<EditableFoodListState> _foodsKey =
+      GlobalKey<EditableFoodListState>();
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     _descController = TextEditingController(text: widget.initialDescription);
-    _foodControllers = widget.initialFoods
-        .map((f) => TextEditingController(text: f))
-        .toList();
   }
 
   @override
   void dispose() {
     _descController.dispose();
-    for (final c in _foodControllers) {
-      c.dispose();
-    }
     super.dispose();
   }
 
-  void _removeFood(int index) {
-    setState(() {
-      final removed = _foodControllers.removeAt(index);
-      removed.dispose();
-    });
-  }
-
   /// Current non-empty food names, in order.
-  List<String> _currentFoods() => _foodControllers
-      .map((c) => c.text.trim())
-      .where((s) => s.isNotEmpty)
-      .toList();
+  List<String> _currentFoods() =>
+      _foodsKey.currentState?.currentFoods() ?? const [];
 
   Future<void> _save() async {
     final text = _descController.text.trim();
@@ -126,36 +113,17 @@ class _EditMealScreenState extends ConsumerState<EditMealScreen> {
                 border: OutlineInputBorder(),
               ),
             ),
-            if (_foodControllers.isNotEmpty) ...[
+            if (widget.initialFoods.isNotEmpty) ...[
               const SizedBox(height: 24),
               Text(
                 'Foods identified',
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 8),
-              for (var i = 0; i < _foodControllers.length; i++)
-                Padding(
-                  key: ValueKey(_foodControllers[i]),
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _foodControllers[i],
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        tooltip: 'Remove food',
-                        onPressed: () => _removeFood(i),
-                      ),
-                    ],
-                  ),
-                ),
+              EditableFoodList(
+                key: _foodsKey,
+                initialFoods: widget.initialFoods,
+              ),
             ],
           ],
         ),
