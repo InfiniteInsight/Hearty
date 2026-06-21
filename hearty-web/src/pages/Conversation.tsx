@@ -37,7 +37,13 @@ export default function Conversation() {
       setActionMsg("Experiment started — track it on the Experiments page.");
       c.clearProposals();
     } catch (e) {
-      setActionMsg(e instanceof ApiError && e.status === 409 ? "An experiment for this is already running." : "Couldn't start the experiment.");
+      if (e instanceof ApiError && e.status === 409) {
+        // The experiment already exists, so the proposal is resolved — clear it.
+        setActionMsg("An experiment for this is already running.");
+        c.clearProposals();
+      } else {
+        setActionMsg("Couldn't start the experiment.");
+      }
     }
   }
 
@@ -53,7 +59,7 @@ export default function Conversation() {
             </div>
           </div>
         ))}
-        {c.isSending && <div className="self-start text-text-faint text-sm">Hearty is typing…</div>}
+        {c.isSending && <div aria-live="polite" className="self-start text-text-faint text-sm">Hearty is typing…</div>}
       </div>
 
       {c.proposedVerdict && (
