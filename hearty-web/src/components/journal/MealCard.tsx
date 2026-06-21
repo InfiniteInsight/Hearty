@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { api } from "../../lib/api";
 import type { MealWithSymptoms } from "@/types/api";
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function severityClass(sev?: number) {
   if (sev == null) return "bg-surface text-text-muted";
   if (sev <= 3) return "bg-brand/15 text-brand";
@@ -21,6 +24,47 @@ export default function MealCard({
 }) {
   const [open, setOpen] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [desc, setDesc] = useState(meal.description);
+  const [foods, setFoods] = useState((meal.foods ?? []).map((f) => f.name).join(", "));
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  function invalidate() {
+    for (const k of [["meals"], ["summary"], ["trends"]]) qc.invalidateQueries({ queryKey: k });
+  }
+  async function save() {
+    if (busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await api.patchMeal(meal.id, {
+        description: desc.trim(),
+        foods: foods.split(",").map((s) => s.trim()).filter(Boolean),
+      });
+      invalidate();
+      setEditing(false);
+    } catch {
+      setErr("Couldn't save changes.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function remove() {
+    if (busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await api.deleteMeal(meal.id);
+      invalidate();
+    } catch {
+      setErr("Couldn't delete.");
+      setBusy(false);
+    }
+  }
+
   const symptoms = symptomTypeFilter
     ? meal.symptoms.filter((s) => s.symptom_type === symptomTypeFilter)
     : meal.symptoms;
@@ -65,6 +109,35 @@ export default function MealCard({
             <pre className="mt-2 overflow-x-auto rounded-lg bg-black/30 p-2 font-mono-data text-xs text-text-muted">
               {JSON.stringify(meal, null, 2)}
             </pre>
+          )}
+          {err && <p className="mt-2 text-xs text-accent-red">{err}</p>}
+          {!editing ? (
+            <div className="mt-3 flex gap-2">
+              <button onClick={() => setEditing(true)} className="rounded-lg border border-surface-border px-2 py-1 text-xs">Edit</button>
+              {!confirmDelete ? (
+                <button onClick={() => setConfirmDelete(true)} className="rounded-lg border border-surface-border px-2 py-1 text-xs text-accent-red">Delete</button>
+              ) : (
+                <>
+                  <button onClick={remove} disabled={busy} className="rounded-lg bg-accent-red px-2 py-1 text-xs text-black">Confirm delete</button>
+                  <button onClick={() => setConfirmDelete(false)} className="rounded-lg border border-surface-border px-2 py-1 text-xs">Cancel</button>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="mt-3 flex flex-col gap-2">
+              <label className="flex flex-col gap-1 text-xs text-text-muted">
+                Description
+                <input value={desc} onChange={(e) => setDesc(e.target.value)} className="rounded-lg border border-surface-border bg-transparent px-2 py-1 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-text-muted">
+                Foods (comma-separated)
+                <input value={foods} onChange={(e) => setFoods(e.target.value)} className="rounded-lg border border-surface-border bg-transparent px-2 py-1 text-sm" />
+              </label>
+              <div className="flex gap-2">
+                <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-2 py-1 text-xs text-black">Save</button>
+                <button onClick={() => { setEditing(false); setDesc(meal.description); }} className="rounded-lg border border-surface-border px-2 py-1 text-xs">Cancel</button>
+              </div>
+            </div>
           )}
         </div>
       )}
