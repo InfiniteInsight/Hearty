@@ -6,6 +6,7 @@ import AppShell from "./components/layout/AppShell";
 import Dashboard from "./pages/Dashboard";
 import ComingSoon from "./pages/ComingSoon";
 import Journal from "./pages/Journal";
+import Trends from "./pages/Trends";
 export default function App() {
   return (
     <Routes>
@@ -16,7 +17,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/" element={<Dashboard />} />
           <Route path="/journal" element={<Journal />} />
-          <Route path="/trends" element={<ComingSoon />} />
+          <Route path="/trends" element={<Trends />} />
           <Route path="/experiments" element={<ComingSoon />} />
           <Route path="/reports" element={<ComingSoon />} />
           <Route path="/profile" element={<ComingSoon />} />
