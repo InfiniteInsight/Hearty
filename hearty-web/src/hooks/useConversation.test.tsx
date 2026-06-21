@@ -8,10 +8,8 @@ vi.mock("../lib/supabase", () => ({
 import { useConversation } from "./useConversation";
 
 test("fetches an opener on mount, then sends and appends a reply", async () => {
-  let calls = 0;
   server.use(
     http.post("*/api/trends/conversation", async ({ request }) => {
-      calls += 1;
       const body = (await request.json()) as { history: { role: string; content: string }[] };
       if (body.history.length === 0) {
         return HttpResponse.json({ reply: "Hey — want to talk about milk?", proposed_verdict: null, proposed_experiment: null, is_closing: false });
