@@ -48,7 +48,7 @@ npm run lint         # ESLint
 
 ## Auth
 
-Google OAuth via Supabase (same provider as the phone app). After OAuth completes, Supabase redirects to `/auth/callback`, which exchanges the code for a session and navigates to `/dashboard`.
+Google OAuth via Supabase (same provider as the phone app). After OAuth completes, Supabase redirects to `/auth/callback`, where the Supabase SDK's `detectSessionInUrl` detects the session from the callback URL and navigates to `/dashboard`.
 
 ### Redirect URL registration (required)
 
@@ -90,7 +90,7 @@ create policy "users can select own symptoms"
   using (user_id = auth.uid());
 ```
 
-If these policies are absent, Realtime is best-effort and the Dashboard will fall back to the guaranteed freshness paths: refetch-on-window-focus (TanStack Query) and the `SyncIndicator`'s polling/connecting/offline state cycle. Verify after deploying which path is in effect.
+If these policies are absent, Realtime is best-effort and the Dashboard will fall back to the guaranteed freshness paths: refetch-on-window-focus (TanStack Query) and the manual Refresh button in the Header. Verify after deploying which path is in effect.
 
 ---
 

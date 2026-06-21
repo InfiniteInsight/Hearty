@@ -3,6 +3,7 @@ import { screen } from "@testing-library/react";
 import { Route, Routes } from "react-router-dom";
 import { renderWithProviders } from "../../test/utils";
 vi.mock("../../hooks/useRealtimeSync", () => ({ useRealtimeSync: () => "live" }));
+vi.mock("../../lib/auth", () => ({ signOut: vi.fn() }));
 import AppShell from "./AppShell";
 
 test("shell shows primary nav and child route", () => {
