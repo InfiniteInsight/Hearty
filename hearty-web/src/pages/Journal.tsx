@@ -1,8 +1,8 @@
 import { useJournalFilters } from "../hooks/useJournalFilters";
 import { useJournalMeals, JOURNAL_PAGE_SIZE } from "../hooks/useJournalMeals";
 import MealCard from "../components/journal/MealCard";
+import { MEAL_TYPES } from "../lib/charts";
 
-const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack", "drink", "supplement", "other"];
 const SYMPTOM_TYPES = [
   "acid_reflux", "bloating", "gas", "nausea", "urgency", "loose_stool", "constipation",
   "stomach_pain", "cramping", "fatigue", "brain_fog", "headache", "skin_reaction",

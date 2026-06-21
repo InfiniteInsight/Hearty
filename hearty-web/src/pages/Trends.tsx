@@ -104,20 +104,24 @@ export default function Trends() {
           <section className="grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-surface-border bg-surface p-4">
               <h3 className="mb-2 text-sm text-text-muted">Symptom frequency · {period}</h3>
-              {symptoms.isSuccess
-                ? <SymptomFrequencyChart data={symptomFrequency(symptoms.data)} />
-                : <p className="text-text-faint text-sm">Loading…</p>}
+              {symptoms.isError
+                ? <p className="text-sm text-accent-red">Couldn't load chart.</p>
+                : symptoms.isSuccess
+                  ? <SymptomFrequencyChart data={symptomFrequency(symptoms.data)} />
+                  : <p className="text-text-faint text-sm">Loading…</p>}
             </div>
             <div className="rounded-2xl border border-surface-border bg-surface p-4">
               <h3 className="mb-2 text-sm text-text-muted">Meal-type mix · {period}</h3>
-              {chartMeals.isSuccess
-                ? <>
-                    <MealTypeMixChart data={mealTypeMix(chartMeals.data.meals)} />
-                    {chartMeals.data.total > MEAL_CHART_CAP && (
-                      <p className="mt-1 font-mono-data text-xs text-text-faint">showing first {MEAL_CHART_CAP} of {chartMeals.data.total} meals</p>
-                    )}
-                  </>
-                : <p className="text-text-faint text-sm">Loading…</p>}
+              {chartMeals.isError
+                ? <p className="text-sm text-accent-red">Couldn't load chart.</p>
+                : chartMeals.isSuccess
+                  ? <>
+                      <MealTypeMixChart data={mealTypeMix(chartMeals.data.meals)} />
+                      {chartMeals.data.total > MEAL_CHART_CAP && (
+                        <p className="mt-1 font-mono-data text-xs text-text-faint">showing first {MEAL_CHART_CAP} of {chartMeals.data.total} meals</p>
+                      )}
+                    </>
+                  : <p className="text-text-faint text-sm">Loading…</p>}
             </div>
           </section>
         </>
