@@ -19,20 +19,17 @@ const h = vi.hoisted(() => {
 vi.mock("../lib/supabase", () => ({
   supabase: { channel: vi.fn(() => h.channelObj), removeChannel: h.removeChannel, auth: { getUser: h.getUser } },
 }));
-vi.mock("@tanstack/react-query", async (orig) => ({
-  ...(await orig<typeof import("@tanstack/react-query")>()),
-  useQueryClient: () => ({ invalidateQueries: h.invalidateQueries }),
-}));
+vi.mock("@tanstack/react-query", async (orig) => {
+  const qc = { invalidateQueries: h.invalidateQueries };
+  return { ...(await orig<typeof import("@tanstack/react-query")>()), useQueryClient: () => qc };
+});
 
 import { useRealtimeSync } from "./useRealtimeSync";
 
 test("subscribes to meals+symptoms and invalidates on an event", async () => {
   const { result } = renderHook(() => useRealtimeSync());
   await waitFor(() => expect(h.channelObj.subscribe).toHaveBeenCalled());
-  // React StrictMode double-invokes effects; each run registers 2 listeners (meals + symptoms).
-  // Assert the count is a positive multiple of 2 (each effect adds exactly 2).
-  expect(h.channelObj.on.mock.calls.length % 2).toBe(0);
-  expect(h.channelObj.on.mock.calls.length).toBeGreaterThanOrEqual(2);
+  expect(h.channelObj.on).toHaveBeenCalledTimes(2); // meals + symptoms
   h.handlers[0]?.({});
   expect(h.invalidateQueries).toHaveBeenCalled();
   await waitFor(() => expect(result.current).toBe("live"));
