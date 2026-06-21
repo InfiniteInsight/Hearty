@@ -5,12 +5,9 @@ export default {
   theme: {
   	extend: {
   		colors: {
+  			brand: 'var(--brand)',
   			surface: 'var(--surface)',
   			'surface-border': 'var(--surface-border)',
-  			accent: {
-  				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))'
-  			},
   			'accent-violet': 'var(--accent-violet)',
   			'accent-red': 'var(--accent-red)',
   			good: 'var(--good)',
