@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import type { MealWithSymptoms } from "@/types/api";
@@ -99,15 +100,19 @@ export default function MealCard({
       {open && (
         <div className="border-t border-surface-border px-4 py-3 text-sm">
           {meal.notes && <p className="text-text-muted">{meal.notes}</p>}
-          <button
-            onClick={() => setShowRaw((v) => !v)}
-            className="mt-2 font-mono-data text-xs text-text-faint underline"
-          >
-            {showRaw ? "Hide raw data" : "Show raw data"}
-          </button>
+          <div className="mt-2 flex items-center gap-3">
+            <button
+              onClick={() => setShowRaw((v) => !v)}
+              className="font-mono-data text-xs text-text-faint underline"
+            >
+              {showRaw ? "Hide raw data" : "Show raw data"}
+            </button>
+            <Link to="/trends" className="font-mono-data text-xs text-text-faint underline">View trends</Link>
+          </div>
           {showRaw && (
             <pre className="mt-2 overflow-x-auto rounded-lg bg-black/30 p-2 font-mono-data text-xs text-text-muted">
-              {JSON.stringify(meal, null, 2)}
+              {/* eslint-disable-next-line @typescript-eslint/no-unused-vars */}
+              {JSON.stringify({ ...meal, foods: meal.foods?.map(({ estimated_calories: _estimated_calories, ...f }) => f) }, null, 2)}
             </pre>
           )}
           {err && <p className="mt-2 text-xs text-accent-red">{err}</p>}

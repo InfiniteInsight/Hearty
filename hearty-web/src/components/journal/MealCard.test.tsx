@@ -3,6 +3,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { render } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { server } from "../../test/msw/server";
 vi.mock("../../lib/supabase", () => ({
@@ -14,13 +15,19 @@ import type { MealWithSymptoms } from "@/types/api";
 const meal: MealWithSymptoms = {
   id: "m1", description: "oatmeal with milk", logged_at: "2026-06-21T08:00:00Z",
   created_at: "2026-06-21T08:00:00Z", meal_type: "breakfast", notes: "felt fine",
-  foods: [{ name: "oats" }, { name: "milk" }],
+  foods: [{ name: "oats", estimated_calories: 150 }, { name: "milk", estimated_calories: 60 }],
   symptoms: [{ id: "s1", symptom_type: "bloating", severity: 5, logged_at: "2026-06-21T09:00:00Z" }],
 };
 
 function renderCard(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={qc}><ul>{ui}</ul></QueryClientProvider>);
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter>
+        <ul>{ui}</ul>
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
 }
 
 test("renders description, food badges, and symptom badge", () => {
@@ -71,4 +78,20 @@ test("delete requires a confirm then issues DELETE", async () => {
   expect(deleted).toBe(false); // first click only arms the confirm
   await userEvent.click(screen.getByRole("button", { name: /confirm delete/i }));
   await vi.waitFor(() => expect(deleted).toBe(true));
+});
+
+test("raw data dump does not expose estimated_calories", async () => {
+  renderCard(<MealCard meal={meal} />);
+  await userEvent.click(screen.getByRole("button", { name: /oatmeal with milk/i }));
+  await userEvent.click(screen.getByRole("button", { name: /show raw data/i }));
+  // The food names should appear but calories must be stripped
+  const pre = document.querySelector("pre");
+  expect(pre?.textContent).toContain("oats");
+  expect(pre?.textContent).not.toContain("estimated_calories");
+});
+
+test("expanded card shows a link to the Trends page", async () => {
+  renderCard(<MealCard meal={meal} />);
+  await userEvent.click(screen.getByRole("button", { name: /oatmeal with milk/i }));
+  expect(screen.getByRole("link", { name: /view trends/i })).toHaveAttribute("href", "/trends");
 });
