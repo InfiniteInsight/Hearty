@@ -135,7 +135,7 @@ export default function MealCard({
               </label>
               <div className="flex gap-2">
                 <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-2 py-1 text-xs text-black">Save</button>
-                <button onClick={() => { setEditing(false); setDesc(meal.description); }} className="rounded-lg border border-surface-border px-2 py-1 text-xs">Cancel</button>
+                <button onClick={() => { setEditing(false); setDesc(meal.description); setFoods((meal.foods ?? []).map((f) => f.name).join(", ")); }} className="rounded-lg border border-surface-border px-2 py-1 text-xs">Cancel</button>
               </div>
             </div>
           )}
