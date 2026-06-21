@@ -6,7 +6,7 @@ import type {
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) { super(message); this.status = status; }
+  constructor(status: number, message: string) { super(message); this.name = "ApiError"; this.status = status; }
 }
 
 async function authHeader(): Promise<Record<string, string>> {
@@ -24,10 +24,11 @@ function qs(params: Record<string, string | number | undefined>): string {
 
 export function createApiClient(baseUrl: string) {
   async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const res = await fetch(`${baseUrl}${path}`, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...(await authHeader()), ...(init.headers ?? {}) },
-    });
+    const headers: Record<string, string> = { ...(await authHeader()) };
+    // Only send Content-Type on requests with a body; on cross-origin GETs it can trigger CORS preflight.
+    if (init.method && init.method !== "GET") headers["Content-Type"] = "application/json";
+    Object.assign(headers, (init.headers as Record<string, string> | undefined) ?? {});
+    const res = await fetch(`${baseUrl}${path}`, { ...init, headers });
     if (!res.ok) throw new ApiError(res.status, `${res.status} ${res.statusText}`);
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
