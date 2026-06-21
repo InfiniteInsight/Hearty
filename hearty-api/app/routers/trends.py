@@ -417,7 +417,8 @@ async def get_summary(
         "top_symptoms": top_symptoms,
         "top_triggers": [t.model_dump() for t in top_triggers],
     }
-    summary_text = ai_extraction.generate_summary(stats)
+    health_context = load_health_profile_context(user["id"])
+    summary_text = ai_extraction.generate_summary(stats, health_context=health_context)
 
     return SummaryResponse(
         period=period,
