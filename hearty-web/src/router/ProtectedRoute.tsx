@@ -9,7 +9,7 @@ export default function ProtectedRoute() {
   const [state, setState] = useState<State>("loading");
   useEffect(() => {
     let active = true;
-    getSession().then((s) => { if (active) setState(s ? "in" : "out"); });
+    getSession().then((s) => { if (active) setState(s ? "in" : "out"); }).catch(() => { if (active) setState("out"); });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (active) setState(session ? "in" : "out");
     });
