@@ -83,8 +83,10 @@ def test_conversation_first_turn_refreshes_but_later_turns_dont(monkeypatch):
                         lambda uid: called.append(uid))
     monkeypatch.setattr(trends_module.signal_presenter,
                         "load_presented_signals", lambda s, u: [])
+    monkeypatch.setattr(trends_module, "load_health_profile_context", lambda uid: "")
     monkeypatch.setattr(trends_module.trends_conversation, "generate_turn",
-                        lambda signals, history: TrendsConversationResponse(reply="hi"))
+                        lambda signals, history, health_context="":
+                            TrendsConversationResponse(reply="hi"))
     client = TestClient(app)
 
     r1 = client.post("/api/trends/conversation", json={"history": []})
