@@ -26,3 +26,19 @@ test("renders today data and submits quick-log", async () => {
   await userEvent.click(screen.getByRole("button", { name: /log/i }));
   await vi.waitFor(() => expect(posted).toBe("banana"));
 });
+
+test("shows an error and keeps text when quick-log fails", async () => {
+  server.use(
+    http.get("*/api/meals", () => HttpResponse.json({ total: 0, meals: [] })),
+    http.get("*/api/symptoms", () => HttpResponse.json([])),
+    http.get("*/api/summary", () => HttpResponse.json({ period: "week", start_date: "x", end_date: "y", summary_text: "ok", meals_logged: 0, top_symptoms: [] })),
+    http.get("*/api/trends", () => HttpResponse.json({ signals: [], analyzed_at: null, total_meals_analyzed: 0, total_symptoms_analyzed: 0, total_wellbeing_analyzed: 0, resolved: [] })),
+    http.post("*/api/meals", () => new HttpResponse(null, { status: 500 })),
+  );
+  renderWithProviders(<Dashboard />);
+  const input = await screen.findByPlaceholderText(/log a meal/i);
+  await userEvent.type(input, "banana");
+  await userEvent.click(screen.getByRole("button", { name: /log/i }));
+  expect(await screen.findByText(/couldn't save/i)).toBeInTheDocument();
+  expect(screen.getByDisplayValue("banana")).toBeInTheDocument(); // text preserved for retry
+});
