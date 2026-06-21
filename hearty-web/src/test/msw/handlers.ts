@@ -1,2 +1,2 @@
-import { http } from "msw";
-export const handlers: ReturnType<typeof http.get>[] = [];
+import type { HttpHandler } from "msw";
+export const handlers: HttpHandler[] = [];
