@@ -3,10 +3,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hearty_app/core/api/hearty_api_client.dart';
 import 'package:hearty_app/core/api/models/meal_log.dart';
 import 'package:hearty_app/core/api/models/photo_analysis.dart';
+import 'package:hearty_app/core/api/models/symptom_log.dart';
 import 'package:hearty_app/core/api/providers/meals_provider.dart';
+import 'package:hearty_app/core/api/providers/symptoms_provider.dart';
 import 'package:hearty_app/features/logging/widgets/editable_food_list.dart';
 import 'package:hearty_app/features/photos/models/photo_type.dart';
 import 'package:hearty_app/features/photos/models/photo_upload_response.dart';
@@ -83,6 +86,9 @@ class _FakePhotoNotifier extends PhotoNotifier {
 /// can be asserted without a real database. [build] emits an empty stream so
 /// the screen renders normally.
 class _RecordingMealsNotifier extends MealsNotifier {
+  _RecordingMealsNotifier({this.shouldThrow = false});
+
+  final bool shouldThrow;
   String? loggedDescription;
   List<String>? loggedFoods;
   String? loggedInputMethod;
@@ -102,7 +108,65 @@ class _RecordingMealsNotifier extends MealsNotifier {
     loggedDescription = description;
     loggedFoods = foods;
     loggedInputMethod = inputMethod;
+    if (shouldThrow) {
+      throw Exception('log failed');
+    }
   }
+}
+
+/// Records [logSymptom] calls so the feeling follow-up wiring can be asserted.
+class _RecordingSymptomsNotifier extends SymptomsNotifier {
+  final List<({String description, int? severity})> calls = [];
+
+  @override
+  Stream<List<SymptomLog>> build() => Stream.value(const []);
+
+  @override
+  Future<void> logSymptom(String description, {int? severity}) async {
+    calls.add((description: description, severity: severity));
+  }
+}
+
+/// Pumps [PhotoReviewScreen] inside a GoRouter so `context.go('/home')`
+/// resolves, with the meals + symptoms providers overridden.
+Future<({_RecordingMealsNotifier meals, _RecordingSymptomsNotifier symptoms})>
+    _pumpReview(
+  WidgetTester tester, {
+  required PhotoAnalysis analysis,
+  bool failLog = false,
+}) async {
+  final meals = _RecordingMealsNotifier(shouldThrow: failLog);
+  final symptoms = _RecordingSymptomsNotifier();
+
+  final router = GoRouter(
+    initialLocation: '/review',
+    routes: [
+      GoRoute(
+        path: '/home',
+        builder: (context, state) =>
+            const Scaffold(body: Text('HOME', key: Key('stub-home'))),
+      ),
+      GoRoute(
+        path: '/review',
+        builder: (context, state) => PhotoReviewScreen(
+          analysis: analysis,
+          photoType: PhotoType.foodPlate,
+        ),
+      ),
+    ],
+  );
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        mealsProvider.overrideWith(() => meals),
+        symptomsProvider.overrideWith(() => symptoms),
+      ],
+      child: MaterialApp.router(routerConfig: router),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return (meals: meals, symptoms: symptoms);
 }
 
 void main() {
@@ -203,7 +267,16 @@ void main() {
 
       // Save.
       await tester.tap(find.text('Looks good — Save'));
+      // The save spinner keeps animating while the sheet is open, so
+      // pumpAndSettle cannot converge; pump fixed frames for the sheet route.
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+
+      // Saving now opens the feeling follow-up sheet before navigating; dismiss
+      // it so the route animation/timers settle.
+      expect(find.byKey(const Key('feeling-skip')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('feeling-skip')));
+      await tester.pumpAndSettle();
 
       expect(notifier.logCalls, 1);
       expect(notifier.loggedInputMethod, 'photo');
@@ -211,6 +284,60 @@ void main() {
       expect(notifier.loggedFoods, ['Baked salmon', 'Steamed broccoli']);
       expect(notifier.loggedFoods, isNot(contains('Grilled salmon')));
       expect(notifier.loggedFoods, isNot(contains('Side salad')));
+    });
+
+    testWidgets(
+        'successful save → feeling sheet appears; Skip records nothing and goes '
+        'to /home', (tester) async {
+      const analysis = PhotoAnalysis(
+        id: 'photo-1',
+        type: 'food_plate',
+        status: 'complete',
+        foods: [IdentifiedFood(name: 'Apple', confidence: 0.9)],
+      );
+
+      final fakes = await _pumpReview(tester, analysis: analysis);
+
+      await tester.tap(find.text('Looks good — Save'));
+      // The save spinner keeps animating while the sheet is open, so
+      // pumpAndSettle cannot converge; pump fixed frames for the sheet route.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+
+      // Feeling sheet showing.
+      expect(find.byKey(const Key('feeling-skip')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('feeling-skip')));
+      await tester.pumpAndSettle();
+
+      // Skip records nothing.
+      expect(fakes.symptoms.calls, isEmpty);
+      // Proceeded to /home.
+      expect(find.byKey(const Key('stub-home')), findsOneWidget);
+    });
+
+    testWidgets('failed save → feeling sheet does NOT appear (snackbar shown)',
+        (tester) async {
+      const analysis = PhotoAnalysis(
+        id: 'photo-1',
+        type: 'food_plate',
+        status: 'complete',
+        foods: [IdentifiedFood(name: 'Apple', confidence: 0.9)],
+      );
+
+      final fakes =
+          await _pumpReview(tester, analysis: analysis, failLog: true);
+
+      await tester.tap(find.text('Looks good — Save'));
+      await tester.pumpAndSettle();
+
+      expect(fakes.meals.logCalls, 1);
+      // No prompt on failure.
+      expect(find.byKey(const Key('feeling-skip')), findsNothing);
+      expect(fakes.symptoms.calls, isEmpty);
+      // Did not navigate; failure snackbar shown instead.
+      expect(find.byKey(const Key('stub-home')), findsNothing);
+      expect(find.text('Failed to save — please try again.'), findsOneWidget);
     });
   });
 
