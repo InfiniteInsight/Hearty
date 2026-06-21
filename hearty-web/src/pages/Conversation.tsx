@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useConversation } from "../hooks/useConversation";
 import { api, ApiError } from "../lib/api";
 import type { VerdictType } from "@/types/api";
@@ -7,6 +7,12 @@ export default function Conversation() {
   const c = useConversation();
   const [draft, setDraft] = useState("");
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Keep the latest turn in view as the conversation grows.
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView?.({ block: "end" });
+  }, [c.history, c.isSending]);
 
   async function submit() {
     const text = draft.trim();
@@ -51,7 +57,7 @@ export default function Conversation() {
     <div className="mx-auto flex h-full max-w-2xl flex-col gap-4">
       <h1 className="font-display text-3xl">Chat about your trends</h1>
 
-      <div className="flex flex-1 flex-col gap-3">
+      <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
         {c.history.map((t, i) => (
           <div key={i} className={t.role === "user" ? "self-end max-w-[80%]" : "self-start max-w-[80%]"}>
             <div className={`rounded-2xl px-4 py-2 ${t.role === "user" ? "bg-brand text-black" : "bg-surface text-text"}`}>
@@ -60,6 +66,7 @@ export default function Conversation() {
           </div>
         ))}
         {c.isSending && <div aria-live="polite" className="self-start text-text-faint text-sm">Hearty is typing…</div>}
+        <div ref={bottomRef} />
       </div>
 
       {c.proposedVerdict && (

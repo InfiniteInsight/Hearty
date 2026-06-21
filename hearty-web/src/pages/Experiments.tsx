@@ -12,8 +12,13 @@ export default function Experiments() {
   function run(p: Promise<unknown>) {
     setErr(null);
     p.catch((e) => {
-      if (e instanceof ApiError && e.status === 409) setErr("That action is no longer available — refreshing.");
-      else setErr("Something went wrong. Try again.");
+      if (e instanceof ApiError && e.status === 409) {
+        // The experiment's state changed under us — refetch so the cards reflect reality.
+        setErr("That action is no longer available — refreshing.");
+        void list.refetch();
+      } else {
+        setErr("Something went wrong. Try again.");
+      }
     });
   }
 
