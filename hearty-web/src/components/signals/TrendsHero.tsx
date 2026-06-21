@@ -1,9 +1,10 @@
 import type { SignalsResponse } from "@/types/api";
+import { dominantChannel } from "./SignalCard";
 
 export default function TrendsHero({ data }: { data?: SignalsResponse }) {
   const top = data?.signals?.slice().sort((a, b) => b.unified_score - a.unified_score)[0];
   if (!top) return null;
-  const ch = top.channels[0];
+  const ch = dominantChannel(top);
   const label = top.category_label ?? top.category;
 
   return (

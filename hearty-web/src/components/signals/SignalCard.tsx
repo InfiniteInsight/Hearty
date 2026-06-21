@@ -1,6 +1,7 @@
 import type { FoodSignal, VerdictType } from "@/types/api";
 
-function dominantChannel(s: FoodSignal) {
+// eslint-disable-next-line react-refresh/only-export-components
+export function dominantChannel(s: FoodSignal) {
   return s.channels.slice().sort((a, b) => (b.relative_risk ?? 0) - (a.relative_risk ?? 0))[0];
 }
 
