@@ -5,6 +5,8 @@ import type {
   MealUpdateRequest, SymptomUpdateRequest,
   AnalyzeResponse, AnalyzeStatusResponse,
   SignalVerdictRequest, SignalVerdictResponse,
+  TrendsConversationRequest, TrendsConversationResponse,
+  CreateExperimentRequest, ExperimentResponse, ActiveExperimentsResponse,
 } from "@/types/api";
 
 export class ApiError extends Error {
@@ -60,6 +62,20 @@ export function createApiClient(baseUrl: string) {
       request<AnalyzeStatusResponse>(`/api/trends/analyze/status`),
     signalVerdict: (body: SignalVerdictRequest) =>
       request<SignalVerdictResponse>(`/api/trends/signal-verdict`, { method: "POST", body: JSON.stringify(body) }),
+    trendsConversation: (body: TrendsConversationRequest) =>
+      request<TrendsConversationResponse>(`/api/trends/conversation`, { method: "POST", body: JSON.stringify(body) }),
+    createExperiment: (body: CreateExperimentRequest) =>
+      request<ExperimentResponse>(`/api/experiments`, { method: "POST", body: JSON.stringify(body) }),
+    getActiveExperiments: () =>
+      request<ActiveExperimentsResponse>(`/api/experiments/active`),
+    evaluateExperiment: (id: string) =>
+      request<ExperimentResponse>(`/api/experiments/${id}/evaluate`, { method: "POST" }),
+    abandonExperiment: (id: string) =>
+      request<{ ok: boolean }>(`/api/experiments/${id}/abandon`, { method: "POST" }),
+    restartExperiment: (id: string) =>
+      request<ExperimentResponse>(`/api/experiments/${id}/restart`, { method: "POST" }),
+    ackNudge: (id: string) =>
+      request<{ ok: boolean }>(`/api/experiments/${id}/ack-nudge`, { method: "POST" }),
   };
 }
 
