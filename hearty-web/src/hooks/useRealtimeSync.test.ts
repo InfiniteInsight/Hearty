@@ -36,7 +36,10 @@ test("subscribes to meals+symptoms and invalidates on an event", async () => {
   await waitFor(() => expect(h.channelObj.subscribe).toHaveBeenCalled());
   expect(h.channelObj.on).toHaveBeenCalledTimes(2); // meals + symptoms
   h.handlers[0]?.({});
-  expect(h.invalidateQueries).toHaveBeenCalled();
+  expect(h.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["meals"] });
+  expect(h.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["symptoms"] });
+  expect(h.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["summary"] });
+  expect(h.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["trends"] });
   await waitFor(() => expect(result.current).toBe("live"));
 });
 
