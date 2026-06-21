@@ -2,6 +2,9 @@ import { supabase } from "./supabase";
 import type {
   MealsListResponse, MealResponse, CreateMealRequest,
   SymptomResponse, SignalsResponse, SummaryResponse,
+  MealUpdateRequest, SymptomUpdateRequest,
+  AnalyzeResponse, AnalyzeStatusResponse,
+  SignalVerdictRequest, SignalVerdictResponse,
 } from "@/types/api";
 
 export class ApiError extends Error {
@@ -43,6 +46,20 @@ export function createApiClient(baseUrl: string) {
     getTrends: () => request<SignalsResponse>(`/api/trends`),
     getSummary: (p: { period?: string; start_date?: string; end_date?: string } = {}) =>
       request<SummaryResponse>(`/api/summary${qs(p)}`),
+    patchMeal: (id: string, body: MealUpdateRequest) =>
+      request<MealResponse>(`/api/meals/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    deleteMeal: (id: string) =>
+      request<void>(`/api/meals/${id}`, { method: "DELETE" }),
+    patchSymptom: (id: string, body: SymptomUpdateRequest) =>
+      request<SymptomResponse>(`/api/symptoms/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    deleteSymptom: (id: string) =>
+      request<void>(`/api/symptoms/${id}`, { method: "DELETE" }),
+    analyzeTrends: () =>
+      request<AnalyzeResponse>(`/api/trends/analyze`, { method: "POST" }),
+    getAnalyzeStatus: () =>
+      request<AnalyzeStatusResponse>(`/api/trends/analyze/status`),
+    signalVerdict: (body: SignalVerdictRequest) =>
+      request<SignalVerdictResponse>(`/api/trends/signal-verdict`, { method: "POST", body: JSON.stringify(body) }),
   };
 }
 

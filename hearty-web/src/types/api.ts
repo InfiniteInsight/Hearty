@@ -47,3 +47,16 @@ export interface CreateMealRequest {
   input_method?: "voice" | "text" | "photo" | "barcode";
   notes?: string;
 }
+
+export type VerdictType = "confirmed" | "disputed" | "snoozed";
+export interface MealUpdateRequest { description: string; foods?: string[] }
+export interface SymptomUpdateRequest { description: string; severity?: number; onset_minutes?: number }
+export interface AnalyzeResponse { status: "started" | "completed"; analyzed_at: string; new_signals_count: number }
+export interface AnalyzeStatusResponse { last_analyzed_at?: string; has_new_data: boolean }
+export interface SignalVerdictRequest {
+  category: string;
+  outcome_type: "symptom" | "wellbeing";
+  outcome_name: string;
+  verdict: VerdictType;
+}
+export interface SignalVerdictResponse { ok: boolean }
