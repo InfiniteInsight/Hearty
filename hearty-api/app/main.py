@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.health_profile.defaults_router import router as defaults_router
 from app.health_profile.router import router as health_profile_router
-from app.routers import auth_hooks, chat, meals, symptoms, trends, export, photos, preferences, transcribe, checkin, experiments, food
+from app.routers import auth_hooks, chat, meals, symptoms, trends, export, photos, preferences, transcribe, checkin, experiments, food, account
 
 _origins_env = os.getenv("ALLOWED_ORIGINS", "")
 _allowed_origins = [o.strip() for o in _origins_env.split(",") if o.strip()] or ["*"]
@@ -41,6 +41,7 @@ app.include_router(transcribe.router)
 app.include_router(checkin.router)
 app.include_router(experiments.router)
 app.include_router(food.router)
+app.include_router(account.router)
 
 @app.get("/health")
 async def health_check():
