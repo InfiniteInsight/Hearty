@@ -902,6 +902,10 @@ export default function AppShell() {
 
 **Files:** Replace `src/hooks/useRealtimeSync.ts` (the Task 12 stub); Create `src/hooks/useRealtimeSync.test.ts`.
 
+> **PREREQUISITE — verify before trusting realtime (infra, not unit-testable).** Supabase `postgres_changes` only delivers rows the subscribing user's JWT is authorized to **SELECT under RLS**. This backend uses the service-key client (bypasses RLS), so the `authenticated` role may have **no** client SELECT policy on `meals`/`symptoms` — in which case the channel subscribes "SUBSCRIBED" but delivers **zero events** (and all of this task's mocked tests still pass). Before relying on realtime:
+> 1. Check policies: in Supabase SQL, `select tablename, policyname, cmd, roles from pg_policies where tablename in ('meals','symptoms');` (or the dashboard → Auth → Policies). Confirm Realtime is enabled for both tables (`supabase_realtime` publication).
+> 2. If there is **no** SELECT policy for `authenticated` scoped to `user_id = auth.uid()`, either add one (own-rows SELECT) **or** accept realtime as best-effort. Either way it is non-blocking: because we chose **"Both"**, the refetch-on-focus + polling fallback (Task 8 `refetchOnWindowFocus` + the polling interval) is the **guaranteed** freshness path. The sync indicator must therefore degrade gracefully (status `reconnecting`/`offline` is acceptable, not an error state). Record the finding in the PR + README.
+
 - [ ] **Step 1: Write the failing test** — the hook subscribes to `meals` and `symptoms` postgres-changes for the user and invalidates queries on an event; returns a status string. Mock the supabase channel.
 
 ```ts
@@ -1185,7 +1189,7 @@ export default function Dashboard() {
 
 **Files:** Create `hearty-web/README.md`.
 
-- [ ] **Step 1:** Write `hearty-web/README.md` documenting: env vars, `npm run dev|build|test`, the Supabase redirect-URL requirement (`http://localhost:5173/auth/callback` + prod), the backend `ALLOWED_ORIGINS` requirement, and that Realtime must be enabled on `meals`+`symptoms`.
+- [ ] **Step 1:** Write `hearty-web/README.md` documenting: env vars, `npm run dev|build|test`, the Supabase redirect-URL requirement (`http://localhost:5173/auth/callback` + prod), the backend `ALLOWED_ORIGINS` requirement, and the **Realtime prerequisite** (Realtime enabled on `meals`+`symptoms` **and** an `authenticated` own-rows SELECT RLS policy on each; if absent, realtime is best-effort and the polling fallback is the guaranteed freshness path — record which is in effect).
 - [ ] **Step 2:** Run the full suite + build once more:
 
 ```bash
