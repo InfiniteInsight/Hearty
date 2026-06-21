@@ -55,7 +55,7 @@ This plan **stacks on the Plan 3 branch** (`web-dashboard-reports-settings` was 
 - **Web tests:** Vitest + RTL + MSW; `onUnhandledRequest:"error"` — every fetch needs a handler. `renderWithProviders(ui,{route})` (QueryClient + MemoryRouter). Tests importing `lib/api` or components using it must `vi.mock("../lib/supabase", ...)` (or correct depth) with `auth.getSession`. `vi.mock` factories hoisted. `URL.createObjectURL` is NOT implemented in jsdom — the DOM download helper must be mocked in page tests, not exercised.
 - **Backend tests:** pytest with `from fastapi.testclient import TestClient`, `app.dependency_overrides[get_current_user] = lambda: {"id":"u1","email":"e"}`, and `monkeypatch.setattr(<router_module>, "supabase", fake)`. Clear overrides at test end. **Run them with the project venv + dummy env (verified working):**
   ```
-  cd hearty-api && SUPABASE_URL="http://localhost" SUPABASE_SERVICE_KEY="dummy-key" ./.venv/bin/python -m pytest <path> -q
+  cd hearty-api && SUPABASE_URL="http://localhost" SUPABASE_SERVICE_KEY="dummy-key" /home/evan/projects/food-journal-assistant/hearty-api/.venv/bin/python -m pytest <path> -q
   ```
   (Module-level `create_client(os.environ["SUPABASE_URL"], …)` runs at import across all routers, so both env vars must be set even though unit tests monkeypatch the client. `get_current_user` uses `HTTPBearer()` with `auto_error=True`, so a missing `Authorization` header is rejected with **403** at the dependency layer before any Supabase call — the auth-required test asserts `in (401, 403)`.)
 - **`ApiError`** (from `lib/api.ts`) carries `.status`. **shadcn** pinned to v2. **No calories ever.**
@@ -159,10 +159,11 @@ def test_delete_account_cascades_and_deletes_auth_user(monkeypatch):
     client = TestClient(app)
     r = client.delete("/api/account")
     assert r.status_code == 204
-    deleted = [t for (op, t, uid) in fake.log if op == "delete"]
+    # The log mixes 2-tuples (storage/admin) and 3-tuples (delete) — index, don't unpack.
+    deleted = [e[1] for e in fake.log if e[0] == "delete"]
     for tbl in acct.USER_TABLES:
         assert tbl in deleted, f"missing delete for {tbl}"
-    assert all(uid == "u1" for (op, t, uid) in fake.log if op == "delete")
+    assert all(e[2] == "u1" for e in fake.log if e[0] == "delete")
     assert ("admin_delete_user", "u1") in fake.log
     assert "food_cache" not in deleted and "waitlist" not in deleted
     app.dependency_overrides.clear()
@@ -178,7 +179,7 @@ def test_delete_account_children_before_auth_user(monkeypatch):
     last_delete = max(i for i, op in enumerate(ops) if op == "delete")
     admin_idx = ops.index("admin_delete_user")
     assert last_delete < admin_idx
-    order = [t for (op, t, uid) in fake.log if op == "delete"]
+    order = [e[1] for e in fake.log if e[0] == "delete"]
     assert order.index("symptoms") < order.index("meals")  # child before parent
     app.dependency_overrides.clear()
 
@@ -191,7 +192,7 @@ def test_delete_account_requires_auth():
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd hearty-api && SUPABASE_URL="http://localhost" SUPABASE_SERVICE_KEY="dummy-key" ./.venv/bin/python -m pytest tests/test_account_endpoint_unit.py -q`
+Run: `cd hearty-api && SUPABASE_URL="http://localhost" SUPABASE_SERVICE_KEY="dummy-key" /home/evan/projects/food-journal-assistant/hearty-api/.venv/bin/python -m pytest tests/test_account_endpoint_unit.py -q`
 Expected: FAIL — `app.routers.account` does not exist (ImportError).
 
 - [ ] **Step 3: Implement the router**
@@ -268,7 +269,7 @@ Add `account` to the routers import line (`from app.routers import auth_hooks, c
 
 - [ ] **Step 5: Run to verify it passes**
 
-Run: `cd hearty-api && SUPABASE_URL="http://localhost" SUPABASE_SERVICE_KEY="dummy-key" ./.venv/bin/python -m pytest tests/test_account_endpoint_unit.py -q`
+Run: `cd hearty-api && SUPABASE_URL="http://localhost" SUPABASE_SERVICE_KEY="dummy-key" /home/evan/projects/food-journal-assistant/hearty-api/.venv/bin/python -m pytest tests/test_account_endpoint_unit.py -q`
 Expected: PASS (3 tests).
 
 - [ ] **Step 6: Commit**
