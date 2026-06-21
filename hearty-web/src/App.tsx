@@ -4,6 +4,7 @@ import AuthCallback from "./pages/AuthCallback";
 import ProtectedRoute from "./router/ProtectedRoute";
 import AppShell from "./components/layout/AppShell";
 import Dashboard from "./pages/Dashboard";
+import ComingSoon from "./pages/ComingSoon";
 export default function App() {
   return (
     <Routes>
@@ -13,6 +14,12 @@ export default function App() {
         <Route element={<AppShell />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/" element={<Dashboard />} />
+          <Route path="/journal" element={<ComingSoon />} />
+          <Route path="/trends" element={<ComingSoon />} />
+          <Route path="/experiments" element={<ComingSoon />} />
+          <Route path="/reports" element={<ComingSoon />} />
+          <Route path="/profile" element={<ComingSoon />} />
+          <Route path="/settings" element={<ComingSoon />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

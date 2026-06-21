@@ -1,4 +1,4 @@
-import { expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 
 const h = vi.hoisted(() => {
@@ -26,6 +26,11 @@ vi.mock("@tanstack/react-query", async (orig) => {
 
 import { useRealtimeSync } from "./useRealtimeSync";
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  h.handlers.length = 0;
+});
+
 test("subscribes to meals+symptoms and invalidates on an event", async () => {
   const { result } = renderHook(() => useRealtimeSync());
   await waitFor(() => expect(h.channelObj.subscribe).toHaveBeenCalled());
@@ -33,4 +38,12 @@ test("subscribes to meals+symptoms and invalidates on an event", async () => {
   h.handlers[0]?.({});
   expect(h.invalidateQueries).toHaveBeenCalled();
   await waitFor(() => expect(result.current).toBe("live"));
+});
+
+test("sets status to offline and skips subscribe when getUser returns no uid", async () => {
+  h.getUser.mockResolvedValueOnce({ data: { user: null } });
+  const { result } = renderHook(() => useRealtimeSync());
+  await waitFor(() => expect(result.current).toBe("offline"));
+  expect(h.channelObj.on).not.toHaveBeenCalled();
+  expect(h.channelObj.subscribe).not.toHaveBeenCalled();
 });
