@@ -1,30 +1,28 @@
-# Idea: Tap a detected food to "search & change" it (vision → lookup bridge)
+# Idea: Correct the foods a photo detected (editable detected-food list)
 
-**Status:** Captured (not yet brainstormed). Raised during the on-device AI-vision test, 2026-06-17.
-**Next step:** brainstorming → spec → plan → subagent build, as its own increment/branch.
+**Status:** Captured + re-scoped 2026-06-19. Not yet brainstormed.
+**Next step:** brainstorming → plan → build, as its own increment/branch.
 
 ## Problem
-After a food-plate photo is analyzed (Spec 06 AI Vision), the result screen shows identified foods (`name` + `portion` + `confidence`). Vision is imperfect — some items are wrong or vague. The user wants to **tap a detected food and search for the correct one** to fix it.
+After a food-plate photo is analyzed (Spec 06 AI Vision), the result screen (`features/photos/screens/photo_review_screen.dart`) shows the detected foods **read-only** (you can only edit the free-text description). Vision is imperfect — some items are wrong, vague, missed, or spurious. The user wants to **correct the detected food list** before it's logged.
 
-## Decided behavior (locked with the user)
-Tapping a detected food → a **search field** → searching runs the **food-intelligence lookup** (`POST /api/food/lookup`, `type: "name"`) → user picks a real result → it **replaces the detected item's name AND attaches that result's nutrition** (calories/macros) to the entry.
+## Decided scope (corrected with the user 2026-06-19)
+This is about **tracking *what was eaten*, NOT nutrition.** Hearty is a food/symptom trigger journal, not a calorie counter (and the specs already say "no calories from photos"). So:
+- ❌ NO nutrition / calories / macros, NO food-intelligence `/api/food/lookup` involvement, NO candidate "search" against a nutrition DB.
+- ✅ Just let the user **edit a detected food's name, remove a wrong detection, and add a missed food** — plain food names — so the logged meal's `foods` list is accurate.
 
-This is the **vision → lookup integration we deferred**, arriving via a user-driven correction path instead of an automatic one. Net effect: a corrected food carries real nutrition, not just a fixed label.
+## Key finding — reuse what just merged
+`EditMealScreen` (`features/logging/screens/edit_meal_screen.dart`, merged via the food-editing work) **already** provides editable foods: per-food `TextEditingController`s, `_removeFood`, add, dirty-tracking, and save via meal `PATCH` with a `foods` list. The photo flow should **reuse this**, not rebuild food-editing.
 
-## Why this is the natural next increment
-- Vision (Spec 06, PR #3) produces identification-only foods (no nutrition).
-- Food Intelligence (Spec 07, PR #4) turns a name → structured nutrition via the tiered pipeline.
-- "Search & change" is the UX seam that connects them: the result screen's food list becomes editable, and each edit is a lookup.
-
-## Sketch (to be refined in brainstorming)
-- **Flutter:** make each food row in `experiment`/photo result view... → specifically the photo result list (`features/photos/`) tappable → a search sheet (debounced query → `hearty_api_client` calls a food-search/lookup method → results list → tap to select → replace the row's name + nutrition). Keep portion editable too. Confirmed foods flow into the existing meal-logging path.
-- **Backend:** reuse `POST /api/food/lookup` (already built, PR #4). May want a lighter `type: "name"` search that returns a few candidates rather than a single best result — decide in brainstorming (current lookup returns one tiered result; a "search" UX may want a candidate list, which could mean a new/expanded endpoint or surfacing OFF/Nutritionix multi-results).
-
-## Dependencies / sequencing
-- Live "search" requires the **`food_cache` migration applied** (currently deferred behind the PR #2 → #3 → #4 merge sequence) — sequence the merges + `db push` from master first, or apply the migration.
-- Builds on both PR #3 (vision result UI) and PR #4 (lookup). Cleanest after both merge to master.
+## Likely approach (to confirm in brainstorming)
+**Option A (preferred, minimal):** after a photo is processed, route the detected food names into `EditMealScreen(initialFoods: [...])` so the user corrects/removes/adds there and saves through the existing path. Near-zero new infrastructure.
+**Option B:** make the detected-food rows in `photo_review_screen.dart` inline-editable (replicate the EditMealScreen per-food edit/remove/add in the review screen). More code; keeps editing in the photo flow.
 
 ## Open questions for brainstorming
-- Single best-match (current `lookup_food`) vs a **candidate list** to choose from (likely needs an endpoint that returns multiple OFF/Nutritionix hits).
-- Should the same edit affordance also let the user **add** a missed food (not just change a detected one) and **delete** a wrong detection?
-- How corrected+enriched foods map onto the meal `foods` JSONB (carry nutrition + a `source` so it's distinguishable from raw vision output).
+- A vs B (reuse EditMealScreen vs inline-edit on the review screen).
+- Keep `portion`/`confidence` (vision metadata) visible while editing, or drop to plain names once the user takes over?
+- Where "add a missed food" lives, and how the confirmed list flows into the meal `foods` (the merged PATCH already accepts a foods list).
+- Backend: almost certainly **none** needed (pure Flutter, reusing the existing meal-foods PATCH). Confirm.
+
+## Dependencies
+- None blocking. Pure Flutter; builds on the merged food-editing (`EditMealScreen` + meal `PATCH` foods) and the vision result screen — both on master.

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/models/photo_analysis.dart';
 import '../../../core/api/providers/meals_provider.dart';
+import '../../logging/widgets/editable_food_list.dart';
 import '../models/photo_type.dart';
 
 /// Results review screen shown after photo processing completes.
@@ -26,6 +27,7 @@ class PhotoReviewScreen extends ConsumerStatefulWidget {
 
 class _PhotoReviewScreenState extends ConsumerState<PhotoReviewScreen> {
   late final TextEditingController _descController;
+  final _foodsKey = GlobalKey<EditableFoodListState>();
   bool _saving = false;
 
   @override
@@ -50,8 +52,11 @@ class _PhotoReviewScreenState extends ConsumerState<PhotoReviewScreen> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
+      final foods = _foodsKey.currentState?.currentFoods() ?? <String>[];
       await ref.read(mealsProvider.notifier).logMeal(
             _descController.text.trim(),
+            foods: foods,
+            inputMethod: 'photo',
           );
       if (mounted) context.go('/home');
     } catch (_) {
@@ -139,36 +144,19 @@ class _PhotoReviewScreenState extends ConsumerState<PhotoReviewScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              const SizedBox(height: 4),
+              Text(
+                'Correct what was eaten before saving.',
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
               const SizedBox(height: 8),
-              ...foods.map((food) {
-                final portion = food.portion;
-                final confidence = food.confidence;
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    title: Text(
-                      food.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: (portion != null && portion.isNotEmpty) ||
-                            confidence != null
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (portion != null && portion.isNotEmpty)
-                                Text(portion),
-                              if (confidence != null)
-                                Text(
-                                  '${(confidence * 100).round()}% confidence',
-                                  style: textTheme.bodySmall,
-                                ),
-                            ],
-                          )
-                        : null,
-                  ),
-                );
-              }),
+              EditableFoodList(
+                key: _foodsKey,
+                initialFoods:
+                    foods.map((f) => f.name).where((n) => n.isNotEmpty).toList(),
+              ),
               const SizedBox(height: 16),
             ],
 

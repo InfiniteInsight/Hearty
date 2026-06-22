@@ -37,11 +37,18 @@ class _PhotoUploadFlowScreenState extends ConsumerState<PhotoUploadFlowScreen> {
     super.didChangeDependencies();
     if (!_started) {
       _started = true;
-      // Reset any previous state before starting a new upload.
-      ref.read(photoProvider.notifier).reset();
-      ref
-          .read(photoProvider.notifier)
-          .uploadAndPoll(widget.file, widget.photoType);
+      // Kick off the upload AFTER the first frame: mutating photoProvider
+      // synchronously here (during build) throws "modify a provider while the
+      // widget tree was building" on device, leaving the screen stuck on
+      // "Analyzing food".
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        // Reset any previous state before starting a new upload.
+        ref.read(photoProvider.notifier).reset();
+        ref
+            .read(photoProvider.notifier)
+            .uploadAndPoll(widget.file, widget.photoType);
+      });
     }
   }
 

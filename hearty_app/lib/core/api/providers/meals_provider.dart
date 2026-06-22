@@ -14,13 +14,18 @@ class MealsNotifier extends StreamNotifier<List<MealLog>> {
     return ref.watch(localMealDaoProvider).watchToday();
   }
 
-  Future<void> logMeal(String description, {String? mealType}) async {
+  Future<void> logMeal(
+    String description, {
+    String? mealType,
+    List<String>? foods,
+    String inputMethod = 'voice',
+  }) async {
     final dao = ref.read(localMealDaoProvider);
     await dao.insertLocal(
       localId: _uuid.v4(),
       description: description,
       mealType: mealType ?? 'other',
-      foods: [],
+      foods: foods ?? [],
       loggedAt: DateTime.now(),
     );
     ref.read(syncTriggerProvider).schedule();

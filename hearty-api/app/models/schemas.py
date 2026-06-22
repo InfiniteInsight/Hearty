@@ -23,6 +23,7 @@ class MealRequest(BaseModel):
     input_method: Optional[Literal["voice","text","photo","barcode"]] = "text"
     offline_id: Optional[str] = None
     notes: Optional[str] = None
+    foods: Optional[List[str]] = Field(None, description="Verbatim food names. When provided, stored as-is without AI re-extraction.")
 
 class MealResponse(BaseModel):
     id: UUID

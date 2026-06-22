@@ -1,9 +1,11 @@
 // lib/core/sync/sync_service.dart
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -92,26 +94,35 @@ class SyncService implements SyncTrigger {
 
   Future<bool> _push() async {
     bool pushedAny = false;
-    pushedAny |= await _pushMeals();
+    pushedAny |= await pushMeals();
     pushedAny |= await _pushSymptoms();
     pushedAny |= await _pushPreferences();
     pushedAny |= await _pushVoiceQueue();
     return pushedAny;
   }
 
-  Future<bool> _pushMeals() async {
+  @visibleForTesting
+  Future<bool> pushMeals() async {
     final dao = LocalMealDao(_db);
     final pending = await dao.getPending();
     bool pushed = false;
 
     for (final row in pending) {
       try {
+        // Send the user's corrected detected-foods verbatim so the backend
+        // skips AI extraction. Voice/text meals store an empty foods list and
+        // rely on backend extraction from the description, so omit the key
+        // entirely when there are no foods (sending `foods: []` would make the
+        // backend store NO foods).
+        final names = _parseFoods(row.foods);
+        final data = <String, dynamic>{
+          'description': row.description,
+          'meal_type': row.mealType,
+          if (names.isNotEmpty) 'foods': names,
+        };
         final response = await _dio.post<Map<String, dynamic>>(
           '/api/meals',
-          data: {
-            'description': row.description,
-            'meal_type': row.mealType,
-          },
+          data: data,
         );
         final serverId = response.data!['id'] as String;
         await dao.markSynced(row.id, serverId);
@@ -125,6 +136,23 @@ class SyncService implements SyncTrigger {
     }
 
     return pushed;
+  }
+
+  /// Parses the local meal row's `foods` JSON-array string into a list of
+  /// trimmed, non-empty food names. Returns an empty list for blank/malformed
+  /// input so the caller omits the `foods` key from the request body.
+  List<String> _parseFoods(String raw) {
+    if (raw.trim().isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const [];
+      return decoded
+          .map((e) => e.toString().trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    } catch (_) {
+      return const [];
+    }
   }
 
   Future<bool> _pushSymptoms() async {
