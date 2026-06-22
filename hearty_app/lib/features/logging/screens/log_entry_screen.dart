@@ -17,6 +17,7 @@ import '../../photos/widgets/photo_type_selector.dart';
 import '../../voice/models/voice_state.dart';
 import '../../voice/providers/voice_provider.dart';
 import '../../voice/screens/voice_overlay_screen.dart';
+import '../widgets/feeling_followup_sheet.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -210,8 +211,9 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
       throw Exception(msg);
     }
 
-    // Success: clear the text field and pop.
+    // Success: clear the text field, offer the feeling follow-up, then pop.
     _textController.clear();
+    if (mounted) await showFeelingFollowUp(context);
     if (mounted) context.pop();
   }
 

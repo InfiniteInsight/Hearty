@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/models/photo_analysis.dart';
 import '../../../core/api/providers/meals_provider.dart';
 import '../../logging/widgets/editable_food_list.dart';
+import '../../logging/widgets/feeling_followup_sheet.dart';
 import '../models/photo_type.dart';
 
 /// Results review screen shown after photo processing completes.
@@ -58,6 +59,7 @@ class _PhotoReviewScreenState extends ConsumerState<PhotoReviewScreen> {
             foods: foods,
             inputMethod: 'photo',
           );
+      if (mounted) await showFeelingFollowUp(context);
       if (mounted) context.go('/home');
     } catch (_) {
       if (mounted) {
