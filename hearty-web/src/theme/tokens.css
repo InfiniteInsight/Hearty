@@ -1,0 +1,15 @@
+:root {
+  --bg-from: #0F1F2E;
+  --bg-to: #112240;
+  --surface: rgba(255,255,255,0.05);
+  --surface-border: rgba(255,255,255,0.10);
+  --brand: #34D399;
+  --accent-violet: #8B5CF6;
+  --accent-red: #F87171;
+  --good: #34D399;
+  --text: #FFFFFF;
+  --text-muted: rgba(255,255,255,0.55);
+  --text-faint: rgba(255,255,255,0.30);
+  --glow-emerald: rgba(52,211,153,0.14);
+  --glow-violet: rgba(139,92,246,0.12);
+}

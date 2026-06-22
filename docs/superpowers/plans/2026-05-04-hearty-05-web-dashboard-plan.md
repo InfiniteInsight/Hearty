@@ -1,5 +1,7 @@
 # Hearty — Web Dashboard (Spec 05) — Living Plan
 
+> ⚠️ **SUPERSEDED (2026-06-21).** This living plan targets the stale 2026-05-04 spec. The web dashboard was re-validated on 2026-06-21; the current spec is [`2026-06-21-web-dashboard-revalidated-design.md`](../specs/2026-06-21-web-dashboard-revalidated-design.md) and a fresh implementation plan supersedes this file. Kept for history; do not execute.
+
 **Spec:** [`hearty-05-web-dashboard.md`](../specs/2026-05-04-hearty-05-web-dashboard.md)  
 **Roadmap Phase:** Phase 3 — Web Dashboard  
 **Plan Status:** 🔴 Not Started  

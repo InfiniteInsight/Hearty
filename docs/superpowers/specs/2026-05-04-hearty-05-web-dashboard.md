@@ -1,9 +1,11 @@
 # Hearty — Phase 3: Web Dashboard
 
+> ⚠️ **SUPERSEDED (2026-06-21).** This spec predates the signal engine, trends conversation, experiments, food-intelligence, and structured health profile, and its API/auth contract is stale. The source of truth is **[`2026-06-21-web-dashboard-revalidated-design.md`](2026-06-21-web-dashboard-revalidated-design.md)**. Kept for history; do not implement from this file.
+
 **Spec ID:** hearty-05
 **Date:** 2026-05-04
 **Phase:** 3 of 4
-**Status:** Draft
+**Status:** Superseded by 2026-06-21 re-validation
 
 ---
 
