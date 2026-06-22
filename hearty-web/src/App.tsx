@@ -10,6 +10,7 @@ import Trends from "./pages/Trends";
 import Experiments from "./pages/Experiments";
 import Conversation from "./pages/Conversation";
 import Reports from "./pages/Reports";
+import Settings from "./pages/Settings";
 export default function App() {
   return (
     <Routes>
@@ -25,7 +26,7 @@ export default function App() {
           <Route path="/experiments" element={<Experiments />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/profile" element={<ComingSoon />} />
-          <Route path="/settings" element={<ComingSoon />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
