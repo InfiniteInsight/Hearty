@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  web:
+    name: web (lint · test · build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hearty-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: hearty-web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test -- --run
+      - run: npm run build
+
+  api:
+    name: api (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hearty-api
+    env:
+      SUPABASE_URL: http://localhost
+      SUPABASE_SERVICE_KEY: dummy-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      # Scoped to unit tests only: tests/test_api.py, test_chat.py, test_transcribe.py,
+      # and test_chat_prompts.py require API_BASE_URL + TEST_JWT (live credentials); -k
+      # "unit" selects the 152 *_unit.py tests that run safely with dummy SUPABASE_* env.
+      - run: python -m pytest -q -k "unit"
