@@ -10,6 +10,7 @@ export default {
   			'surface-border': 'var(--surface-border)',
   			'accent-violet': 'var(--accent-violet)',
   			'accent-red': 'var(--accent-red)',
+			warn: 'var(--warn)',
   			good: 'var(--good)',
   			text: 'var(--text)',
   			'text-muted': 'var(--text-muted)',

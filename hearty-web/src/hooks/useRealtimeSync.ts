@@ -15,7 +15,11 @@ export function useRealtimeSync(): SyncStatus {
         const uid = data.user?.id;
         if (!active) return;
         if (!uid) { setStatus("offline"); return; }
-        const invalidate = () => qc.invalidateQueries();
+        const invalidate = () => {
+          for (const key of [["meals"], ["symptoms"], ["summary"], ["trends"]]) {
+            qc.invalidateQueries({ queryKey: key });
+          }
+        };
         channel = supabase.channel(`rt-${uid}`);
         for (const table of ["meals", "symptoms"]) {
           channel.on("postgres_changes", { event: "*", schema: "public", table, filter: `user_id=eq.${uid}` }, invalidate);
