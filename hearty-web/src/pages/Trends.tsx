@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { useTrends } from "../hooks/useTrends";
@@ -55,13 +56,16 @@ export default function Trends() {
             analysed {analyzedAt} · {trends.data?.total_meals_analyzed ?? 0} meals · {trends.data?.total_symptoms_analyzed ?? 0} symptoms
           </div>
         </div>
-        <button
-          onClick={() => analyze.mutate()}
-          disabled={analyze.isPending}
-          className="rounded-full bg-brand px-4 py-2 text-sm text-black disabled:opacity-50"
-        >
-          {analyze.isPending ? "Analysing…" : status.data?.has_new_data ? "Analyse (new data)" : "Analyse"}
-        </button>
+        <div className="flex gap-2">
+          <Link to="/trends/chat" className="rounded-full border border-surface-border px-4 py-2 text-sm text-text-muted hover:text-text">Chat</Link>
+          <button
+            onClick={() => analyze.mutate()}
+            disabled={analyze.isPending}
+            className="rounded-full bg-brand px-4 py-2 text-sm text-black disabled:opacity-50"
+          >
+            {analyze.isPending ? "Analysing…" : status.data?.has_new_data ? "Analyse (new data)" : "Analyse"}
+          </button>
+        </div>
       </div>
 
       {/* Period selector (drives the charts) */}

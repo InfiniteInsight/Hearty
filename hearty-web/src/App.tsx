@@ -7,6 +7,8 @@ import Dashboard from "./pages/Dashboard";
 import ComingSoon from "./pages/ComingSoon";
 import Journal from "./pages/Journal";
 import Trends from "./pages/Trends";
+import Experiments from "./pages/Experiments";
+import Conversation from "./pages/Conversation";
 export default function App() {
   return (
     <Routes>
@@ -18,7 +20,8 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/journal" element={<Journal />} />
           <Route path="/trends" element={<Trends />} />
-          <Route path="/experiments" element={<ComingSoon />} />
+          <Route path="/trends/chat" element={<Conversation />} />
+          <Route path="/experiments" element={<Experiments />} />
           <Route path="/reports" element={<ComingSoon />} />
           <Route path="/profile" element={<ComingSoon />} />
           <Route path="/settings" element={<ComingSoon />} />

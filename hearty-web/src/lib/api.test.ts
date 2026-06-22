@@ -102,3 +102,71 @@ test("signalVerdict posts category + verdict", async () => {
   });
   expect(body).toEqual({ category: "milk", outcome_type: "symptom", outcome_name: "bloating", verdict: "confirmed" });
 });
+
+test("trendsConversation posts history and returns reply", async () => {
+  let body: unknown = null;
+  server.use(
+    http.post("http://api.test/api/trends/conversation", async ({ request }) => {
+      body = await request.json();
+      return HttpResponse.json({ reply: "Hi", proposed_verdict: null, proposed_experiment: null, is_closing: false });
+    })
+  );
+  const { createApiClient } = await import("./api");
+  const r = await createApiClient("http://api.test").trendsConversation({ history: [{ role: "user", content: "hey" }] });
+  expect(body).toEqual({ history: [{ role: "user", content: "hey" }] });
+  expect(r.reply).toBe("Hi");
+});
+
+test("createExperiment posts the pattern", async () => {
+  let body: unknown = null;
+  server.use(
+    http.post("http://api.test/api/experiments", async ({ request }) => {
+      body = await request.json();
+      return HttpResponse.json({ id: "e1", category: "milk", direction: "harmful", outcome_type: "symptom", outcome_name: "bloating", experiment_start: "x", experiment_end: "y", status: "active", nudge_suggested: false });
+    })
+  );
+  const { createApiClient } = await import("./api");
+  await createApiClient("http://api.test").createExperiment({ category: "milk", outcome_type: "symptom", outcome_name: "bloating" });
+  expect(body).toEqual({ category: "milk", outcome_type: "symptom", outcome_name: "bloating" });
+});
+
+test("createExperiment surfaces 409 as ApiError with status", async () => {
+  server.use(http.post("http://api.test/api/experiments", () => new HttpResponse(null, { status: 409 })));
+  const { createApiClient, ApiError } = await import("./api");
+  await expect(createApiClient("http://api.test").createExperiment({ category: "milk", outcome_type: "symptom", outcome_name: "bloating" }))
+    .rejects.toMatchObject({ status: 409 });
+  // also assert the thrown value is an ApiError
+  await expect(createApiClient("http://api.test").createExperiment({ category: "milk", outcome_type: "symptom", outcome_name: "bloating" }))
+    .rejects.toBeInstanceOf(ApiError);
+});
+
+test("getActiveExperiments returns the list", async () => {
+  server.use(http.get("http://api.test/api/experiments/active", () => HttpResponse.json({ experiments: [] })));
+  const { createApiClient } = await import("./api");
+  const r = await createApiClient("http://api.test").getActiveExperiments();
+  expect(r).toEqual({ experiments: [] });
+});
+
+test("evaluateExperiment posts to the evaluate endpoint", async () => {
+  let hit = "";
+  server.use(http.post("http://api.test/api/experiments/e1/evaluate", ({ request }) => { hit = request.method; return HttpResponse.json({ id: "e1", category: "milk", direction: "harmful", outcome_type: "symptom", outcome_name: "bloating", experiment_start: "x", experiment_end: "y", status: "completed", nudge_suggested: false }); }));
+  const { createApiClient } = await import("./api");
+  const r = await createApiClient("http://api.test").evaluateExperiment("e1");
+  expect(hit).toBe("POST");
+  expect(r.status).toBe("completed");
+});
+
+test("abandon/restart/ackNudge hit their endpoints", async () => {
+  const seen: string[] = [];
+  server.use(
+    http.post("http://api.test/api/experiments/e1/abandon", () => { seen.push("abandon"); return HttpResponse.json({ ok: true }); }),
+    http.post("http://api.test/api/experiments/e1/restart", () => { seen.push("restart"); return HttpResponse.json({ id: "e1", category: "milk", direction: "harmful", outcome_type: "symptom", outcome_name: "bloating", experiment_start: "x", experiment_end: "y", status: "active", nudge_suggested: false }); }),
+    http.post("http://api.test/api/experiments/e1/ack-nudge", () => { seen.push("ack"); return HttpResponse.json({ ok: true }); }),
+  );
+  const { createApiClient } = await import("./api");
+  const api = createApiClient("http://api.test");
+  await api.abandonExperiment("e1");
+  await api.restartExperiment("e1");
+  await api.ackNudge("e1");
+  expect(seen).toEqual(["abandon", "restart", "ack"]);
+});

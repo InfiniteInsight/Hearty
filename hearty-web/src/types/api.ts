@@ -60,3 +60,55 @@ export interface SignalVerdictRequest {
   verdict: VerdictType;
 }
 export interface SignalVerdictResponse { ok: boolean }
+
+export interface ConversationTurn { role: "user" | "assistant"; content: string }
+export interface ProposedVerdict {
+  category: string;
+  outcome_type: "symptom" | "wellbeing";
+  outcome_name: string;
+  verdict: VerdictType;
+  category_label?: string;
+}
+export interface ProposedExperiment {
+  category: string;
+  outcome_type: "symptom" | "wellbeing";
+  outcome_name: string;
+  category_label?: string;
+}
+export interface TrendsConversationRequest { history: ConversationTurn[] }
+export interface TrendsConversationResponse {
+  reply: string;
+  proposed_verdict?: ProposedVerdict | null;
+  proposed_experiment?: ProposedExperiment | null;
+  is_closing: boolean;
+}
+export interface CreateExperimentRequest {
+  category: string;
+  outcome_type: "symptom" | "wellbeing";
+  outcome_name: string;
+}
+export interface ExperimentResult {
+  verdict: "improved" | "worse" | "no_change" | "inconclusive";
+  reason?: string | null;
+  adherence: number;
+  logged_days: { baseline: number; experiment: number };
+  baseline_rate?: number | null;
+  experiment_rate?: number | null;
+}
+export interface ExperimentResponse {
+  id: string;
+  category: string;
+  category_label?: string;
+  direction: string;
+  outcome_type: string;
+  outcome_name: string;
+  experiment_start: string;
+  experiment_end: string;
+  status: string;
+  result?: ExperimentResult | null;
+  nudged_at?: string;
+  adherence?: number;
+  logged_days?: number;
+  nudge_suggested: boolean;
+}
+export interface ActiveExperimentsResponse { experiments: ExperimentResponse[] }
