@@ -132,3 +132,29 @@ src/
   main.tsx
   index.css
 ```
+
+---
+
+## Deployment (Vercel)
+
+The web app is a Vite SPA in `hearty-web/`. Vercel hosts it with **Root Directory = `hearty-web`** (framework preset: **Vite**, build `npm run build`, output `dist`). `vercel.json` adds the SPA rewrite so deep links and refreshes resolve to `index.html`.
+
+### One-time setup (Vercel dashboard)
+1. **Import the GitHub repo** into a new Vercel project; set **Root Directory = `hearty-web`**.
+2. **Environment variables** (Production + Preview):
+   - `VITE_SUPABASE_URL` — your Supabase project URL
+   - `VITE_SUPABASE_ANON_KEY` — the Supabase anon/publishable key (safe for the browser; never the service key)
+   - `VITE_API_URL` — the deployed FastAPI base URL (e.g. `https://api.hearty.app`)
+3. **Deploys:** production builds from `master`; every PR gets a preview URL.
+
+### Supabase Auth (per origin)
+Add the app origins to **Supabase → Authentication → URL Configuration → Redirect URLs**:
+- `https://<your-prod-domain>/auth/callback`
+- `https://<your-vercel-preview-domain>/auth/callback` (or the wildcard preview pattern)
+- `http://localhost:5173/auth/callback` (local dev)
+
+### Backend CORS
+Set the FastAPI backend's `ALLOWED_ORIGINS` env to include the production (and preview) origins, e.g. `ALLOWED_ORIGINS=https://<your-prod-domain>,https://<preview>`. (Defaults to `*`; lock it down for production.)
+
+### Realtime prerequisite
+For live sync, `meals`/`symptoms` need Realtime enabled + an `authenticated` own-rows SELECT RLS policy (see the realtime note in this README); otherwise refetch-on-focus + manual Refresh is the guaranteed path.
