@@ -217,3 +217,26 @@ test("deleteAccount issues DELETE and tolerates 204", async () => {
   const { createApiClient } = await import("./api");
   await expect(createApiClient("http://api.test").deleteAccount()).resolves.toBeUndefined();
 });
+
+test("getHealthProfile returns the four lists", async () => {
+  server.use(http.get("http://api.test/api/health-profile", () => HttpResponse.json({ allergens: [], intolerances: [], conditions: [], dietary_protocols: [], updated_at: "2026-06-21T00:00:00Z" })));
+  const { createApiClient } = await import("./api");
+  const r = await createApiClient("http://api.test").getHealthProfile();
+  expect(r.allergens).toEqual([]);
+  expect(r.updated_at).toBe("2026-06-21T00:00:00Z");
+});
+
+test("putHealthProfile sends all four lists", async () => {
+  let body: unknown = null;
+  server.use(http.put("http://api.test/api/health-profile", async ({ request }) => { body = await request.json(); return HttpResponse.json({ allergens: [], intolerances: [], conditions: [], dietary_protocols: [], updated_at: "x" }); }));
+  const { createApiClient } = await import("./api");
+  await createApiClient("http://api.test").putHealthProfile({ allergens: [{ name: "peanut", severity: "severe", confirmed_by_doctor: true }], intolerances: [], conditions: [], dietary_protocols: [] });
+  expect(body).toMatchObject({ allergens: [{ name: "peanut", severity: "severe", confirmed_by_doctor: true }], intolerances: [], conditions: [], dietary_protocols: [] });
+});
+
+test("getHealthProfileDefaults returns suggestion lists", async () => {
+  server.use(http.get("http://api.test/api/health-profile/defaults", () => HttpResponse.json({ allergens: ["Peanuts"], intolerances: ["Lactose"], conditions: ["IBS"], dietary_protocols: ["Low FODMAP"] })));
+  const { createApiClient } = await import("./api");
+  const r = await createApiClient("http://api.test").getHealthProfileDefaults();
+  expect(r.allergens).toEqual(["Peanuts"]);
+});

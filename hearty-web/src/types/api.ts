@@ -145,3 +145,28 @@ export interface UserPreferences {
 }
 export interface ExportDateRange { start_date?: string; end_date?: string }
 export interface BlobDownload { blob: Blob; filename: string }
+
+export type Severity = "mild" | "moderate" | "severe";
+export interface AllergenEntry { name: string; severity: Severity; reaction?: string; confirmed_by_doctor: boolean; notes?: string }
+export interface IntoleranceEntry { name: string; severity?: Severity; threshold?: string; notes?: string }
+export interface ConditionEntry { name: string; diagnosed: boolean; diagnosis_year?: number; notes?: string }
+export interface DietaryProtocolEntry { name: string; active: boolean; started?: string; phase?: string; notes?: string }
+export interface HealthProfileResponse {
+  allergens: AllergenEntry[];
+  intolerances: IntoleranceEntry[];
+  conditions: ConditionEntry[];
+  dietary_protocols: DietaryProtocolEntry[];
+  updated_at: string;
+}
+export interface HealthProfilePutRequest {
+  allergens: AllergenEntry[];
+  intolerances: IntoleranceEntry[];
+  conditions: ConditionEntry[];
+  dietary_protocols: DietaryProtocolEntry[];
+}
+export interface HealthProfileDefaults {
+  allergens: string[];
+  intolerances: string[];
+  conditions: string[];
+  dietary_protocols: string[];
+}

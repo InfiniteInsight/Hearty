@@ -8,6 +8,7 @@ import type {
   TrendsConversationRequest, TrendsConversationResponse,
   CreateExperimentRequest, ExperimentResponse, ActiveExperimentsResponse,
   UserPreferences, ExportDateRange, BlobDownload,
+  HealthProfileResponse, HealthProfilePutRequest, HealthProfileDefaults,
 } from "@/types/api";
 
 export class ApiError extends Error {
@@ -93,6 +94,9 @@ export function createApiClient(baseUrl: string) {
     getPreferences: () => request<UserPreferences>(`/api/preferences`),
     putPreferences: (body: UserPreferences) => request<UserPreferences>(`/api/preferences`, { method: "PUT", body: JSON.stringify(body) }),
     deleteAccount: () => request<void>(`/api/account`, { method: "DELETE" }),
+    getHealthProfile: () => request<HealthProfileResponse>(`/api/health-profile`),
+    putHealthProfile: (body: HealthProfilePutRequest) => request<HealthProfileResponse>(`/api/health-profile`, { method: "PUT", body: JSON.stringify(body) }),
+    getHealthProfileDefaults: () => request<HealthProfileDefaults>(`/api/health-profile/defaults`),
   };
 }
 
