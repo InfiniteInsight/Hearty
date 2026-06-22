@@ -19,7 +19,8 @@ test("shows the disclaimer and saves a quick-added allergen", async () => {
     http.put("*/api/health-profile", async ({ request }) => { put = (await request.json()) as Record<string, unknown>; return HttpResponse.json({ ...empty }); }),
   );
   renderWithProviders(<Profile />, { route: "/profile" });
-  expect(await screen.findByText(/not a medical device/i)).toBeInTheDocument();
+  // Guard the verbatim disclaimer text (compliance-sensitive — must not drift).
+  expect(await screen.findByText("Hearty is not a medical device. Information provided is for personal tracking only and does not constitute medical advice. Always consult a qualified healthcare professional.")).toBeInTheDocument();
   await userEvent.click(await screen.findByRole("button", { name: /^Peanuts$/ }));
   await userEvent.click(screen.getByRole("button", { name: /save profile/i }));
   await vi.waitFor(() => expect(put).not.toBeNull());
