@@ -253,6 +253,43 @@ void main() {
       await tester.pump();
       expect(notifier.retryCalls, 1);
     });
+
+    testWidgets('starts the upload from a post-frame callback, not during build',
+        (tester) async {
+      // The flow screen must kick off the upload AFTER the first frame, never
+      // by mutating photoProvider inside didChangeDependencies. Mutating during
+      // build throws "modify a provider while the widget tree was building" on
+      // device (left the screen stuck on "Analyzing food"); that assertion is a
+      // runtime-only check, so this test guards the corrected behaviour — the
+      // real upload still fires post-frame — while the crash itself is
+      // device-verified. Drives the REAL notifier so the deferral is exercised.
+      final api = FakeHeartyApiClient(const PhotoAnalysis(
+        id: 'photo-1',
+        type: 'barcode',
+        status: 'complete',
+        foods: [IdentifiedFood(name: 'apple')],
+      ));
+      // Owned + disposed by the ProviderScope below (no manual addTearDown).
+      final notifier =
+          PhotoNotifier(api, pollInterval: const Duration(milliseconds: 1));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [photoProvider.overrideWith((ref) => notifier)],
+          child: MaterialApp(
+            home: PhotoUploadFlowScreen(
+              file: File('unused-barcode-path.jpg'),
+              photoType: PhotoType.barcode,
+            ),
+          ),
+        ),
+      );
+      // First frame: the post-frame callback runs and starts the upload.
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      // Drain the upload future + the 1ms poll so the flow reaches a result.
+      await tester.pump(const Duration(milliseconds: 5));
+      expect(notifier.state.analysis?.isComplete ?? false, isTrue);
+    });
   });
 
   group('PhotoNotifier poll termination', () {
