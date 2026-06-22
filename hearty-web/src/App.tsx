@@ -4,13 +4,13 @@ import AuthCallback from "./pages/AuthCallback";
 import ProtectedRoute from "./router/ProtectedRoute";
 import AppShell from "./components/layout/AppShell";
 import Dashboard from "./pages/Dashboard";
-import ComingSoon from "./pages/ComingSoon";
 import Journal from "./pages/Journal";
 import Trends from "./pages/Trends";
 import Experiments from "./pages/Experiments";
 import Conversation from "./pages/Conversation";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 export default function App() {
   return (
     <Routes>
@@ -25,7 +25,7 @@ export default function App() {
           <Route path="/trends/chat" element={<Conversation />} />
           <Route path="/experiments" element={<Experiments />} />
           <Route path="/reports" element={<Reports />} />
-          <Route path="/profile" element={<ComingSoon />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Route>
