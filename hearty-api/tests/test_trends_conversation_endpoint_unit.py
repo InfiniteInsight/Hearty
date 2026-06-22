@@ -24,9 +24,11 @@ class _Supa:
 def test_conversation_endpoint_returns_reply(monkeypatch):
     app.dependency_overrides[get_current_user] = lambda: {"id": "u1", "email": "e"}
     monkeypatch.setattr(trends_module, "supabase", _Supa())
+    monkeypatch.setattr(trends_module, "load_health_profile_context", lambda uid: "")
     monkeypatch.setattr(
         trends_module.trends_conversation, "generate_turn",
-        lambda signals, history: TrendsConversationResponse(reply="hi", is_closing=False),
+        lambda signals, history, health_context="": TrendsConversationResponse(
+            reply="hi", is_closing=False),
     )
     client = TestClient(app)
     r = client.post("/api/trends/conversation", json={"history": []})

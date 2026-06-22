@@ -74,6 +74,39 @@ def test_generate_turn_parses_proposed_verdict():
     assert out.proposed_verdict.verdict == "disputed"
 
 
+def test_build_system_prompt_includes_health_context():
+    block = "User health profile:\n- Allergens: milk (severe, confirmed)"
+    prompt = tc.build_system_prompt(_presented(), health_context=block)
+    assert block in prompt
+
+
+def test_build_system_prompt_unchanged_without_health_context():
+    # Empty/default health_context must produce byte-identical output to passing
+    # nothing at all (and to the historical no-arg behavior).
+    assert tc.build_system_prompt(_presented()) == \
+        tc.build_system_prompt(_presented(), health_context="")
+
+
+def test_generate_turn_forwards_health_context_into_system_message():
+    captured = {}
+
+    def _capture(*args, **kwargs):
+        captured["messages"] = kwargs["messages"]
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+            content=json.dumps({
+                "reply": "ok",
+                "proposed_verdict": None,
+                "is_closing": False,
+            })))])
+
+    with patch.object(tc.litellm, "completion", side_effect=_capture):
+        tc.generate_turn(_presented(), history=[],
+                         health_context="HP-BLOCK-SENTINEL")
+    system_msg = captured["messages"][0]
+    assert system_msg["role"] == "system"
+    assert "HP-BLOCK-SENTINEL" in system_msg["content"]
+
+
 def test_generate_turn_parses_proposed_experiment():
     fake = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
         content=json.dumps({

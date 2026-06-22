@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from supabase import create_client
 
 from app.auth import get_current_user
+from app.health_profile.context import load_health_profile_context
 from app.models.schemas import (
     TrendsResponse, TriggerFood, SummaryResponse,
     SignalsResponse, FoodSignal, SignalChannel, ResolvedSignal,
@@ -296,7 +297,9 @@ async def trends_conversation_turn(
     if not body.history:
         ensure_fresh_signals(user_id)
     signals = signal_presenter.load_presented_signals(supabase, user_id)
-    return trends_conversation.generate_turn(signals, body.history)
+    health_context = load_health_profile_context(user_id)
+    return trends_conversation.generate_turn(
+        signals, body.history, health_context=health_context)
 
 
 @router.post("/api/trends/signal-verdict", status_code=200)
@@ -414,7 +417,8 @@ async def get_summary(
         "top_symptoms": top_symptoms,
         "top_triggers": [t.model_dump() for t in top_triggers],
     }
-    summary_text = ai_extraction.generate_summary(stats)
+    health_context = load_health_profile_context(user["id"])
+    summary_text = ai_extraction.generate_summary(stats, health_context=health_context)
 
     return SummaryResponse(
         period=period,
