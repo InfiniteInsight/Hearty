@@ -7,6 +7,7 @@ import type {
   SignalVerdictRequest, SignalVerdictResponse,
   TrendsConversationRequest, TrendsConversationResponse,
   CreateExperimentRequest, ExperimentResponse, ActiveExperimentsResponse,
+  UserPreferences, ExportDateRange, BlobDownload,
 } from "@/types/api";
 
 export class ApiError extends Error {
@@ -37,6 +38,16 @@ export function createApiClient(baseUrl: string) {
     if (!res.ok) throw new ApiError(res.status, `${res.status} ${res.statusText}`);
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
+  }
+  async function requestBlob(path: string, init: RequestInit = {}): Promise<BlobDownload> {
+    const headers: Record<string, string> = { ...(await authHeader()) };
+    if (init.method && init.method !== "GET") headers["Content-Type"] = "application/json";
+    const res = await fetch(`${baseUrl}${path}`, { ...init, headers });
+    if (!res.ok) throw new ApiError(res.status, `${res.status} ${res.statusText}`);
+    const blob = await res.blob();
+    const cd = res.headers.get("Content-Disposition") ?? "";
+    const match = /filename="?([^";]+)"?/.exec(cd);
+    return { blob, filename: match?.[1] ?? "download" };
   }
   return {
     getMeals: (p: { start_date?: string; end_date?: string; meal_type?: string; keyword?: string; limit?: number; offset?: number } = {}) =>
@@ -76,6 +87,12 @@ export function createApiClient(baseUrl: string) {
       request<ExperimentResponse>(`/api/experiments/${id}/restart`, { method: "POST" }),
     ackNudge: (id: string) =>
       request<{ ok: boolean }>(`/api/experiments/${id}/ack-nudge`, { method: "POST" }),
+    exportCsv: (p: ExportDateRange = {}) => requestBlob(`/api/export/csv${qs(p as Record<string, string | undefined>)}`),
+    exportJson: (p: ExportDateRange = {}) => requestBlob(`/api/export/json${qs(p as Record<string, string | undefined>)}`),
+    exportPdf: (body: ExportDateRange) => requestBlob(`/api/export/pdf`, { method: "POST", body: JSON.stringify(body) }),
+    getPreferences: () => request<UserPreferences>(`/api/preferences`),
+    putPreferences: (body: UserPreferences) => request<UserPreferences>(`/api/preferences`, { method: "PUT", body: JSON.stringify(body) }),
+    deleteAccount: () => request<void>(`/api/account`, { method: "DELETE" }),
   };
 }
 

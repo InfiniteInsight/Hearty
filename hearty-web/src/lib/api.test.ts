@@ -170,3 +170,50 @@ test("abandon/restart/ackNudge hit their endpoints", async () => {
   await api.ackNudge("e1");
   expect(seen).toEqual(["abandon", "restart", "ack"]);
 });
+
+test("exportCsv fetches a blob and parses the filename", async () => {
+  server.use(
+    http.get("http://api.test/api/export/csv", () =>
+      new HttpResponse("a,b\n1,2\n", { status: 200, headers: { "Content-Type": "text/csv", "Content-Disposition": "attachment; filename=hearty-export.csv" } })
+    )
+  );
+  const { createApiClient } = await import("./api");
+  const { blob, filename } = await createApiClient("http://api.test").exportCsv({});
+  expect(filename).toBe("hearty-export.csv");
+  expect(await blob.text()).toContain("a,b");
+});
+
+test("exportPdf posts the date range and returns a blob", async () => {
+  let body: unknown = null;
+  server.use(
+    http.post("http://api.test/api/export/pdf", async ({ request }) => {
+      body = await request.json();
+      return new HttpResponse("%PDF-1.4", { status: 200, headers: { "Content-Type": "application/pdf", "Content-Disposition": "attachment; filename=hearty-report.pdf" } });
+    })
+  );
+  const { createApiClient } = await import("./api");
+  const { filename } = await createApiClient("http://api.test").exportPdf({ start_date: "2026-06-01", end_date: "2026-06-15" });
+  expect(body).toEqual({ start_date: "2026-06-01", end_date: "2026-06-15" });
+  expect(filename).toBe("hearty-report.pdf");
+});
+
+test("getPreferences / putPreferences round-trip the schema", async () => {
+  let put: unknown = null;
+  const prefs = { conversation_style: "warm", daily_checkin_enabled: true };
+  server.use(
+    http.get("http://api.test/api/preferences", () => HttpResponse.json(prefs)),
+    http.put("http://api.test/api/preferences", async ({ request }) => { put = await request.json(); return HttpResponse.json(prefs); }),
+  );
+  const { createApiClient } = await import("./api");
+  const api = createApiClient("http://api.test");
+  const got = await api.getPreferences();
+  expect(got.conversation_style).toBe("warm");
+  await api.putPreferences(got);
+  expect(put).toMatchObject({ conversation_style: "warm" });
+});
+
+test("deleteAccount issues DELETE and tolerates 204", async () => {
+  server.use(http.delete("http://api.test/api/account", () => new HttpResponse(null, { status: 204 })));
+  const { createApiClient } = await import("./api");
+  await expect(createApiClient("http://api.test").deleteAccount()).resolves.toBeUndefined();
+});

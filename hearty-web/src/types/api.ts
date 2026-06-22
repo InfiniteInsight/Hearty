@@ -112,3 +112,36 @@ export interface ExperimentResponse {
   nudge_suggested: boolean;
 }
 export interface ActiveExperimentsResponse { experiments: ExperimentResponse[] }
+
+export interface UserPreferences {
+  allergens: string[];
+  conditions: string[];
+  dietary_protocols: string[];
+  medications: string[];
+  nudge_delay_minutes: number;
+  post_meal_nudge_enabled: boolean;
+  daily_checkin_enabled: boolean;
+  trends_conversation_enabled: boolean;
+  weekly_digest_enabled: boolean;
+  sync_error_alerts_enabled: boolean;
+  wake_word_enabled: boolean;
+  daily_checkin_hour: number;
+  daily_checkin_minute: number;
+  fcm_token: string | null;
+  morning_checkin_enabled: boolean;
+  morning_checkin_hour: number;
+  morning_checkin_minute: number;
+  midday_checkin_enabled: boolean;
+  midday_checkin_hour: number;
+  midday_checkin_minute: number;
+  evening_checkin_enabled: boolean;
+  evening_checkin_hour: number;
+  evening_checkin_minute: number;
+  conversation_style: "warm" | "concise";
+  use_cloud_when_online: boolean;
+  auto_submit: boolean;
+  auto_submit_silence_seconds: number;
+  use_on_device_model: "parakeetCtc110m" | "parakeet";
+}
+export interface ExportDateRange { start_date?: string; end_date?: string }
+export interface BlobDownload { blob: Blob; filename: string }
