@@ -11,6 +11,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/auth/onboarding_provider.dart';
 import '../features/auth/screens/sign_in_screen.dart';
+import '../features/licensing/license_provider.dart';
+import '../features/licensing/no_access_screen.dart';
 import '../features/voice/providers/voice_provider.dart';
 import '../features/voice/screens/voice_overlay_screen.dart';
 import '../features/wake_word/providers/wake_word_provider.dart';
@@ -72,6 +74,7 @@ class Routes {
   static const String checkin = 'checkin';
   static const String trendsConversation = 'trends-conversation';
   static const String experimentResult = 'experiment-result';
+  static const String noAccess = 'no-access';
 }
 
 /// Today as `YYYY-MM-DD` in local time — the default reviewed day for /checkin
@@ -91,6 +94,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   // When the onboarding flag changes, trigger the router to re-evaluate its
   // redirect without rebuilding the provider (ref.listen, not ref.watch).
   ref.listen(hasCompletedOnboardingProvider, (_, next) {
+    refreshStream.notify();
+  }, fireImmediately: false);
+
+  // Re-evaluate the redirect whenever the license status resolves/changes so a
+  // revoke routes to the gate and a re-grant routes back into the app.
+  ref.listen(licenseStatusProvider, (_, next) {
     refreshStream.notify();
   }, fireImmediately: false);
 
@@ -118,6 +127,26 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       }
       if (isAuthenticated && isOnOnboarding && hasCompletedOnboarding) {
         return '/home';
+      }
+
+      // License gate: only applies once a fully onboarded user is in the app.
+      // Leave the auth/onboarding/setup flows alone so sign-in and account
+      // creation are never blocked by a (not-yet-fetched) license status.
+      final inAppFlow = isAuthenticated &&
+          hasCompletedOnboarding &&
+          !isOnSignIn &&
+          !isOnOnboarding &&
+          !isOnSetup &&
+          !isOnNotificationSetup &&
+          !isOnConversationStyleSetup;
+      if (inAppFlow) {
+        final licenseStatus = ref.read(licenseStatusProvider).valueOrNull;
+        final licenseTarget = licenseRedirect(
+          isAuthenticated: isAuthenticated,
+          status: licenseStatus,
+          location: location,
+        );
+        if (licenseTarget != null) return licenseTarget;
       }
       return null;
     },
@@ -168,6 +197,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/sign-in',
         name: Routes.signIn,
         builder: (context, state) => const SignInScreen(),
+      ),
+      GoRoute(
+        path: '/no-access',
+        name: Routes.noAccess,
+        builder: (context, state) => const NoAccessScreen(),
       ),
       GoRoute(
         path: '/log',
