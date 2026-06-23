@@ -75,11 +75,19 @@ A new Supabase table (migration via the project's dry-run-then-apply flow):
 
 The migration that creates `licenses` also **backfills an `active` license (`activation_source='comp'`) for every existing `auth.users` row**, so enabling the gate never locks out current users. The owner then: (1) gets `app_metadata.role='admin'` set once (documented runbook step / a one-off script), (2) manages everyone from `/admin`.
 
-## 8. Web `/admin` UI
+## 8. Client gated-state UX (web **and** phone — both in scope)
 
+The "no active access" state is wired on **both** clients in this spec.
+
+**Web (`hearty-web`):**
 - Gated `/admin` route (owner role; redirect non-admins). Reuses Aurora components + an extended `api.ts` (`getAdminUsers`, `grantLicense`, `revokeLicense`, `reactivateLicense`, `updateLicense`, `getLicenseStatus`).
 - **Subscribers view:** table of users — email, signup date, license status (active/revoked/expired/none), expiry, tier. Row actions: **Grant** (with optional expiry/tier/notes), **Revoke**, **Reactivate**, **Edit expiry**.
-- **Gated-state UX (all clients):** on `403 no_active_license` (or via `GET /api/license/status`), the web app and the phone app show a non-dismissable "No active access — contact the owner" screen instead of the dashboard.
+- **Gated state:** on `403 no_active_license` (or via `GET /api/license/status`), show a non-dismissable "No active access — contact the owner" screen instead of the dashboard.
+
+**Phone (`hearty_app`, Flutter):**
+- The API client (`hearty_api_client.dart`) detects the `403 no_active_license` response and surfaces a typed condition (e.g. a `NoActiveLicenseException`, mirroring the existing `OfflineException` pattern) rather than letting it surface as a generic error.
+- A post-login license check (call `GET /api/license/status`, or react to the first gated 403) routes the user to a **non-dismissable "No active access — contact the owner" screen** instead of the home shell. Login still succeeds; the data UI is gated.
+- **Offline note:** the gate is server-side, so an offline phone keeps working from its local cache (offline-first) and only sees the gated screen once online and the server reports no active license — consistent with the app's offline-first model. Locally-queued logs sync once a license is active again.
 
 ## 9. Out of scope (this spec)
 
@@ -87,12 +95,12 @@ The migration that creates `licenses` also **backfills an `active` license (`act
 - **Per-user LLM routing (#1)** — deferred until Spec 12 (local-LLM) is built into the app.
 - **Service monitoring (#3)** — its own next spec.
 - **Multi-tier capability differences** — `tier` column reserved only.
-- **Phone-side "no access" screen polish** — backend returns the 403/status; phone UI wiring can be a small follow-up if not done with this.
 
 ## 10. Testing
 
 - **Backend (pytest):** `require_active_license` (active → allow; revoked / expired / missing → 403 `no_active_license`); `get_current_admin` (non-admin → 403 on `/api/admin/*`; admin → allow); grant / revoke / reactivate / edit endpoints (mocked supabase); `GET /api/license/status` shapes; rollout backfill logic. Mirror the existing endpoint-unit test style (`TestClient` + `dependency_overrides` + monkeypatched `supabase`).
 - **Web (Vitest + RTL + MSW):** `/admin` route gates non-admins out; subscribers list renders; grant/revoke/reactivate flows hit the right endpoints; the gated "no access" state renders on `no_active_license`.
+- **Phone (Flutter widget/unit tests):** the API client maps a `403 no_active_license` to the typed `NoActiveLicenseException`; the post-login check routes to the non-dismissable gated screen; an active license routes to the normal home shell. Device-verify the gated→granted transition (revoke in `/admin` → phone shows gated screen; grant → phone restores).
 - **Migration:** dry-run, verify `licenses` schema + RLS + backfill, then apply.
 
 ## 11. Security checklist (Supabase)
