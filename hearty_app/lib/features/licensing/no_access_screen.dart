@@ -3,14 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'license_provider.dart';
+
 /// Non-dismissable gated state shown when the server reports that the user has
-/// no active license. The only way out is to sign out (which fires an auth
-/// state change → the router redirects to /sign-in).
+/// no active license. The user can re-check (after the owner re-grants access)
+/// or sign out (which fires an auth state change → the router redirects to
+/// /sign-in).
 class NoAccessScreen extends ConsumerWidget {
   const NoAccessScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Re-fetching the status re-fires the router's listener; if the owner has
+    // re-granted access, the redirect routes back to home — no restart needed.
+    final checking = ref.watch(licenseStatusProvider).isLoading;
     // canPop: false traps the system back button; GoRouter redirect traps any
     // programmatic navigation away while the license is non-active.
     return PopScope(
@@ -39,6 +45,13 @@ class NoAccessScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
                   FilledButton(
+                    onPressed: checking
+                        ? null
+                        : () => ref.invalidate(licenseStatusProvider),
+                    child: Text(checking ? 'Checking…' : 'Check again'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
                     onPressed: () async {
                       await Supabase.instance.client.auth.signOut();
                       await GoogleSignIn().signOut();
