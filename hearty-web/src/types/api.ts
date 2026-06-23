@@ -170,3 +170,10 @@ export interface HealthProfileDefaults {
   conditions: string[];
   dietary_protocols: string[];
 }
+
+export type LicenseState = "active" | "none" | "revoked" | "expired";
+export interface LicenseStatus { status: LicenseState; expires_at?: string | null }
+export interface AdminUserLicense { status: string; expires_at?: string | null; tier?: string | null; activation_source?: string }
+export interface AdminUser { user_id: string; email: string; created_at: string; license: AdminUserLicense | null }
+export interface AdminUsersResponse { users: AdminUser[] }
+export interface GrantLicenseRequest { user_id: string; expires_at?: string; tier?: string; notes?: string }
