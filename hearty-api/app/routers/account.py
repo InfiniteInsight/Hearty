@@ -27,6 +27,7 @@ USER_TABLES = [
     "health_profile",
     "notification_preferences",
     "offline_queue",
+    "licenses",
 ]
 
 
