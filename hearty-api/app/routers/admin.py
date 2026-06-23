@@ -15,6 +15,21 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _effective_status(row: dict) -> str:
+    """The status the gate actually sees: an 'active' row past its expiry reads
+    as 'expired' (the stored status stays 'active'). Keeps the admin table honest
+    about who currently has access."""
+    status = row.get("status")
+    exp = row.get("expires_at")
+    if status == "active" and exp:
+        exp_dt = datetime.fromisoformat(str(exp).replace("Z", "+00:00"))
+        if exp_dt.tzinfo is None:
+            exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+        if exp_dt <= datetime.now(timezone.utc):
+            return "expired"
+    return status
+
+
 class GrantRequest(BaseModel):
     user_id: str
     expires_at: str | None = None
@@ -42,7 +57,7 @@ async def list_users(admin=Depends(get_current_admin)) -> dict:
             "email": u.email,
             "created_at": str(getattr(u, "created_at", "")),
             "license": ({
-                "status": lr["status"], "expires_at": lr.get("expires_at"),
+                "status": _effective_status(lr), "expires_at": lr.get("expires_at"),
                 "tier": lr.get("tier"), "activation_source": lr.get("activation_source"),
             } if lr else None),
         })

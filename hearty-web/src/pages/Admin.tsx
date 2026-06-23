@@ -19,9 +19,10 @@ function LicenseActions({ user, busy, actions }: {
 }) {
   const status = user.license?.status;
   const hasLicense = status != null;
-  const isActive = status === "active";
-  // Exhaustive: never leave a license state with no available action.
-  const reactivatable = status === "revoked" || status === "expired";
+  // "expired" is a derived state over a stored-active row, so it shares active's
+  // actions (Revoke / Edit expiry — extend to restore). Exhaustive: every state
+  // has an action.
+  const activeLike = status === "active" || status === "expired";
   return (
     <div className="flex gap-2">
       {!hasLicense && (
@@ -33,7 +34,7 @@ function LicenseActions({ user, busy, actions }: {
           Grant
         </button>
       )}
-      {reactivatable && (
+      {status === "revoked" && (
         <button
           disabled={busy}
           onClick={actions.onReactivate}
@@ -42,23 +43,23 @@ function LicenseActions({ user, busy, actions }: {
           Reactivate
         </button>
       )}
-      {isActive && (
-        <button
-          disabled={busy}
-          onClick={actions.onRevoke}
-          className="rounded px-3 py-1 text-xs bg-accent-red text-black hover:opacity-80 disabled:opacity-40"
-        >
-          Revoke
-        </button>
-      )}
-      {(isActive || status === "expired") && (
-        <button
-          disabled={busy}
-          onClick={() => actions.onEditExpiry(user.user_id)}
-          className="rounded px-3 py-1 text-xs border border-surface-border text-text-muted hover:text-text disabled:opacity-40"
-        >
-          Edit expiry
-        </button>
+      {activeLike && (
+        <>
+          <button
+            disabled={busy}
+            onClick={actions.onRevoke}
+            className="rounded px-3 py-1 text-xs bg-accent-red text-black hover:opacity-80 disabled:opacity-40"
+          >
+            Revoke
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => actions.onEditExpiry(user.user_id)}
+            className="rounded px-3 py-1 text-xs border border-surface-border text-text-muted hover:text-text disabled:opacity-40"
+          >
+            Edit expiry
+          </button>
+        </>
       )}
     </div>
   );
