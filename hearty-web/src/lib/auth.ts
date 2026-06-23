@@ -17,3 +17,8 @@ export async function getSession() {
   const { data } = await supabase.auth.getSession();
   return data.session;
 }
+
+export async function isAdmin(): Promise<boolean> {
+  const { data } = await supabase.auth.getSession();
+  return ((data.session?.user?.app_metadata as { role?: string } | undefined)?.role) === "admin";
+}

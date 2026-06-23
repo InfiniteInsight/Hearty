@@ -5,7 +5,7 @@ import { http, HttpResponse } from "msw";
 import { server } from "../../test/msw/server";
 import { renderWithProviders } from "../../test/utils";
 vi.mock("../../hooks/useRealtimeSync", () => ({ useRealtimeSync: () => "live" }));
-vi.mock("../../lib/auth", () => ({ signOut: vi.fn() }));
+vi.mock("../../lib/auth", () => ({ signOut: vi.fn(), isAdmin: vi.fn().mockResolvedValue(false) }));
 vi.mock("../../lib/supabase", () => ({ supabase: { auth: { getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: "t" } } }) } } }));
 import AppShell from "./AppShell";
 
