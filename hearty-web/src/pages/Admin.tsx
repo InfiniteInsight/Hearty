@@ -18,34 +18,47 @@ function LicenseActions({ user, busy, actions }: {
   };
 }) {
   const status = user.license?.status;
+  const hasLicense = status != null;
+  const isActive = status === "active";
+  // Exhaustive: never leave a license state with no available action.
+  const reactivatable = status === "revoked" || status === "expired";
   return (
     <div className="flex gap-2">
-      {(status == null || status === "revoked") && (
+      {!hasLicense && (
         <button
           disabled={busy}
-          onClick={status === "revoked" ? actions.onReactivate : actions.onGrant}
-          className="rounded px-3 py-1 text-xs bg-brand text-white hover:opacity-80 disabled:opacity-40"
+          onClick={actions.onGrant}
+          className="rounded px-3 py-1 text-xs bg-brand text-black hover:opacity-80 disabled:opacity-40"
         >
-          {status === "revoked" ? "Reactivate" : "Grant"}
+          Grant
         </button>
       )}
-      {status === "active" && (
-        <>
-          <button
-            disabled={busy}
-            onClick={actions.onRevoke}
-            className="rounded px-3 py-1 text-xs bg-accent-red text-white hover:opacity-80 disabled:opacity-40"
-          >
-            Revoke
-          </button>
-          <button
-            disabled={busy}
-            onClick={() => actions.onEditExpiry(user.user_id)}
-            className="rounded px-3 py-1 text-xs border border-surface-border text-text-muted hover:text-text disabled:opacity-40"
-          >
-            Edit expiry
-          </button>
-        </>
+      {reactivatable && (
+        <button
+          disabled={busy}
+          onClick={actions.onReactivate}
+          className="rounded px-3 py-1 text-xs bg-brand text-black hover:opacity-80 disabled:opacity-40"
+        >
+          Reactivate
+        </button>
+      )}
+      {isActive && (
+        <button
+          disabled={busy}
+          onClick={actions.onRevoke}
+          className="rounded px-3 py-1 text-xs bg-accent-red text-black hover:opacity-80 disabled:opacity-40"
+        >
+          Revoke
+        </button>
+      )}
+      {(isActive || status === "expired") && (
+        <button
+          disabled={busy}
+          onClick={() => actions.onEditExpiry(user.user_id)}
+          className="rounded px-3 py-1 text-xs border border-surface-border text-text-muted hover:text-text disabled:opacity-40"
+        >
+          Edit expiry
+        </button>
       )}
     </div>
   );
@@ -88,13 +101,14 @@ export default function Admin() {
             </thead>
             <tbody>
               {list.data.users.map((user) => (
-                <tr key={user.user_id} className="border-b border-surface-border last:border-0 hover:bg-surface-hover">
+                <tr key={user.user_id} className="border-b border-surface-border last:border-0 hover:bg-white/5">
                   <td className="px-4 py-3">{user.email}</td>
                   <td className="px-4 py-3 text-text-muted">{formatDate(user.created_at)}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      user.license?.status === "active" ? "bg-emerald-100 text-emerald-700" :
-                      user.license?.status === "revoked" ? "bg-red-100 text-red-700" :
+                      user.license?.status === "active" ? "bg-good/15 text-good" :
+                      user.license?.status === "revoked" ? "bg-accent-red/15 text-accent-red" :
+                      user.license?.status === "expired" ? "bg-warn/15 text-warn" :
                       "bg-surface-border text-text-muted"
                     }`}>
                       {user.license?.status ?? "none"}
