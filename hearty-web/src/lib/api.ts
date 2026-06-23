@@ -9,6 +9,7 @@ import type {
   CreateExperimentRequest, ExperimentResponse, ActiveExperimentsResponse,
   UserPreferences, ExportDateRange, BlobDownload,
   HealthProfileResponse, HealthProfilePutRequest, HealthProfileDefaults,
+  LicenseStatus, AdminUsersResponse, GrantLicenseRequest,
 } from "@/types/api";
 
 export class ApiError extends Error {
@@ -97,6 +98,12 @@ export function createApiClient(baseUrl: string) {
     getHealthProfile: () => request<HealthProfileResponse>(`/api/health-profile`),
     putHealthProfile: (body: HealthProfilePutRequest) => request<HealthProfileResponse>(`/api/health-profile`, { method: "PUT", body: JSON.stringify(body) }),
     getHealthProfileDefaults: () => request<HealthProfileDefaults>(`/api/health-profile/defaults`),
+    getLicenseStatus: () => request<LicenseStatus>(`/api/license/status`),
+    getAdminUsers: () => request<AdminUsersResponse>(`/api/admin/users`),
+    grantLicense: (body: GrantLicenseRequest) => request<unknown>(`/api/admin/licenses`, { method: "POST", body: JSON.stringify(body) }),
+    revokeLicense: (id: string) => request<unknown>(`/api/admin/licenses/${id}/revoke`, { method: "POST" }),
+    reactivateLicense: (id: string) => request<unknown>(`/api/admin/licenses/${id}/reactivate`, { method: "POST" }),
+    updateLicense: (id: string, body: { expires_at?: string; tier?: string; status?: string; notes?: string }) => request<unknown>(`/api/admin/licenses/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   };
 }
 

@@ -240,3 +240,25 @@ test("getHealthProfileDefaults returns suggestion lists", async () => {
   const r = await createApiClient("http://api.test").getHealthProfileDefaults();
   expect(r.allergens).toEqual(["Peanuts"]);
 });
+
+test("getLicenseStatus returns the state", async () => {
+  server.use(http.get("http://api.test/api/license/status", () => HttpResponse.json({ status: "active", expires_at: null })));
+  const { createApiClient } = await import("./api");
+  expect((await createApiClient("http://api.test").getLicenseStatus()).status).toBe("active");
+});
+
+test("getAdminUsers + grant/revoke hit the right endpoints", async () => {
+  let granted: unknown = null; let revoked = false;
+  server.use(
+    http.get("http://api.test/api/admin/users", () => HttpResponse.json({ users: [{ user_id: "u1", email: "a@x", created_at: "x", license: { status: "active" } }] })),
+    http.post("http://api.test/api/admin/licenses", async ({ request }) => { granted = await request.json(); return HttpResponse.json({ user_id: "u1", status: "active" }); }),
+    http.post("http://api.test/api/admin/licenses/u1/revoke", () => { revoked = true; return HttpResponse.json({ user_id: "u1", status: "revoked" }); }),
+  );
+  const { createApiClient } = await import("./api");
+  const api = createApiClient("http://api.test");
+  expect((await api.getAdminUsers()).users).toHaveLength(1);
+  await api.grantLicense({ user_id: "u1" });
+  await api.revokeLicense("u1");
+  expect(granted).toMatchObject({ user_id: "u1" });
+  expect(revoked).toBe(true);
+});

@@ -15,6 +15,7 @@ import 'models/photo_analysis.dart';
 import 'models/trends_data.dart';
 import 'models/trends_turn.dart';
 import 'models/user_preferences.dart';
+import 'no_active_license_exception.dart';
 import 'offline_exception.dart';
 import '../../features/photos/models/photo_upload_response.dart';
 
@@ -44,8 +45,34 @@ class HeartyApiClient {
       if (offline is OfflineException) {
         Error.throwWithStackTrace(offline, e.stackTrace);
       }
+      // 403 {"detail":"no_active_license"} → typed exception so callers can
+      // route to the gated "no active access" state. All other errors pass
+      // through unchanged.
+      final data = e.response?.data;
+      if (e.response?.statusCode == 403 &&
+          data is Map &&
+          data['detail'] == 'no_active_license') {
+        Error.throwWithStackTrace(
+          const NoActiveLicenseException(),
+          e.stackTrace,
+        );
+      }
       rethrow;
     }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Licensing
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Fetches the caller's license state from GET /api/license/status.
+  /// Returns the `status` string (`active` | `none` | `revoked` | `expired`).
+  Future<String> licenseStatus() {
+    return _call(() async {
+      final response =
+          await _dio.get<Map<String, dynamic>>('/api/license/status');
+      return response.data!['status'] as String;
+    });
   }
 
   // ──────────────────────────────────────────────────────────────────────────

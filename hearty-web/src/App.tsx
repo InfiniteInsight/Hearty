@@ -11,6 +11,7 @@ import Conversation from "./pages/Conversation";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
+import Admin from "./pages/Admin";
 export default function App() {
   return (
     <Routes>
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/admin" element={<Admin />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
