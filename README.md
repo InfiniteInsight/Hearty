@@ -1,16 +1,27 @@
 # Hearty
 
-Food and symptom journal. Flutter Android client + FastAPI backend.
+Food and symptom journal. Flutter Android client + React web dashboard + FastAPI backend.
 
 ## Repo layout
 
 ```
 hearty_app/      Flutter Android app
+hearty-web/      React web dashboard (Vite SPA)
 hearty-api/      FastAPI backend (Python)
 hearty-mcp/      MCP server
 supabase/        Supabase migrations and config
 docs/            Specs and implementation plans
 ```
+
+## Production
+
+| Piece | Host | URL |
+|---|---|---|
+| Web dashboard | Vercel | https://hearty-web-blush.vercel.app |
+| Backend (FastAPI) | Google Cloud Run (`us-central1`) | https://hearty-api-5aclgyfsva-uc.a.run.app |
+| Database / Auth / Storage | Supabase | project `ehuanqnkqehpivwuqpqw` |
+
+See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for the full deploy + redeploy reference. The rest of this README covers local Android dev.
 
 ## Prerequisites
 

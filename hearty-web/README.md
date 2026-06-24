@@ -137,24 +137,24 @@ src/
 
 ## Deployment (Vercel)
 
+**Live:** https://hearty-web-blush.vercel.app (Vercel team "Evan's projects", project `hearty-web`). Full deploy/redeploy reference: [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md).
+
 The web app is a Vite SPA in `hearty-web/`. Vercel hosts it with **Root Directory = `hearty-web`** (framework preset: **Vite**, build `npm run build`, output `dist`). `vercel.json` adds the SPA rewrite so deep links and refreshes resolve to `index.html`.
 
-### One-time setup (Vercel dashboard)
-1. **Import the GitHub repo** into a new Vercel project; set **Root Directory = `hearty-web`**.
-2. **Environment variables** (Production + Preview):
-   - `VITE_SUPABASE_URL` — your Supabase project URL
-   - `VITE_SUPABASE_ANON_KEY` — the Supabase anon/publishable key (safe for the browser; never the service key)
-   - `VITE_API_URL` — the deployed FastAPI base URL (e.g. `https://api.hearty.app`)
-3. **Deploys:** production builds from `master`; every PR gets a preview URL.
+### Environment variables (Production + Preview)
+- `VITE_SUPABASE_URL` = `https://ehuanqnkqehpivwuqpqw.supabase.co`
+- `VITE_SUPABASE_ANON_KEY` — the Supabase anon/publishable key (safe for the browser; never the service key)
+- `VITE_API_URL` = `https://hearty-api-5aclgyfsva-uc.a.run.app` (the Cloud Run backend)
+
+`VITE_*` vars are inlined at build time — set them before deploying. Redeploy: `cd hearty-web && npx vercel@latest deploy --prod` (or `deploy` for a preview).
 
 ### Supabase Auth (per origin)
-Add the app origins to **Supabase → Authentication → URL Configuration → Redirect URLs**:
-- `https://<your-prod-domain>/auth/callback`
-- `https://<your-vercel-preview-domain>/auth/callback` (or the wildcard preview pattern)
-- `http://localhost:5173/auth/callback` (local dev)
+Allowed redirect URLs (**Supabase → Authentication → URL Configuration**, or via the Management API — see DEPLOYMENT.md):
+- `https://hearty-web-blush.vercel.app/**` (production)
+- `http://localhost:5173/**` (local dev)
 
 ### Backend CORS
-Set the FastAPI backend's `ALLOWED_ORIGINS` env to include the production (and preview) origins, e.g. `ALLOWED_ORIGINS=https://<your-prod-domain>,https://<preview>`. (Defaults to `*`; lock it down for production.)
+The Cloud Run backend's `ALLOWED_ORIGINS` env includes the production origin (`https://hearty-web-blush.vercel.app`). Update it with `gcloud run services update hearty-api --region us-central1 --update-env-vars ALLOWED_ORIGINS=...`. (Defaults to `*` when unset.)
 
 ### Realtime prerequisite
 For live sync, `meals`/`symptoms` need Realtime enabled + an `authenticated` own-rows SELECT RLS policy (see the realtime note in this README); otherwise refetch-on-focus + manual Refresh is the guaranteed path.

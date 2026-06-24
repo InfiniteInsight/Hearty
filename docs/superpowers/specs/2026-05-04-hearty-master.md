@@ -32,7 +32,7 @@
 | Database | Supabase (PostgreSQL + Auth + RLS + Storage) | All user data; Phase 1 |
 | Auth | Supabase Auth — Google OAuth (Android), magic link (web) | Phase 1 |
 | File Storage | Supabase Storage | Food photos |
-| Hosting | Fly.io free tier (FastAPI) + Vercel (web) | Standard deploys |
+| Hosting | Google Cloud Run (FastAPI, scale-to-zero) + Vercel (web) | Deployed — see docs/DEPLOYMENT.md |
 | PDF Export | `react-pdf` or `pdfmake` | Doctor-sharing format |
 | Charting | Recharts | Web dashboard only |
 | TTS / Voice | Flutter TTS + platform STT; Porcupine wake word as foreground service; Claude voice mode via MCP | Porcupine foreground service; no VoiceInteractionService |
