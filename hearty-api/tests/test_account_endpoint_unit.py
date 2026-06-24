@@ -5,7 +5,8 @@ from app.routers import account as acct
 
 
 class _Q:
-    """Records delete calls; returns empty data for selects."""
+    """Records delete calls; a food_log_photos select returns one row with a
+    real photo_url (the storage path) so storage cleanup is actually exercised."""
     def __init__(self, log, table):
         self.log = log
         self.table = table
@@ -27,6 +28,9 @@ class _Q:
     def execute(self):
         if self._op == "delete":
             self.log.append(("delete", self.table, self._eq[1]))
+            return type("R", (), {"data": []})()
+        if self._op == "select" and self.table == "food_log_photos":
+            return type("R", (), {"data": [{"photo_url": "u1/p1.jpg"}]})()
         return type("R", (), {"data": []})()
 
 
@@ -67,6 +71,10 @@ def test_delete_account_cascades_and_deletes_auth_user(monkeypatch):
     assert all(e[2] == "u1" for e in fake.log if e[0] == "delete")
     assert ("admin_delete_user", "u1") in fake.log
     assert "food_cache" not in deleted and "waitlist" not in deleted
+    # storage objects are actually removed (regression: account.py once selected a
+    # non-existent 'storage_path' column, silently orphaning every user's photos).
+    assert ("storage_from", "food-photos") in fake.log
+    assert ("storage_remove", ("u1/p1.jpg",)) in fake.log
     app.dependency_overrides.clear()
 
 
