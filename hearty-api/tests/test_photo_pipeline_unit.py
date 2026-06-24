@@ -89,3 +89,51 @@ def test_jpeg_bytes_are_sent_as_jpeg(monkeypatch):
     monkeypatch.setattr(pp.photo_store, "set_result", lambda u, p, d: None)
     pp.process_photo("p1", "u1")
     assert captured["ct"] == "image/jpeg"
+
+
+def test_success_purges_image(monkeypatch):
+    rec = {}
+    monkeypatch.setattr(pp.photo_store, "get_photo", lambda u, p: {
+        "id": p, "user_id": u, "photo_url": "u1/p1.jpg",
+        "photo_type": "food_plate", "processing_status": "processing",
+        "extracted_data": None})
+    monkeypatch.setattr(pp.photo_store, "download_bytes", lambda path: b"img")
+    monkeypatch.setattr(pp.food_plate, "analyze_food_plate",
+                        lambda data, ct: {"foods": [], "source": "food_plate_vision"})
+    monkeypatch.setattr(pp.photo_store, "set_result", lambda u, p, d: None)
+    monkeypatch.setattr(pp.photo_store, "purge_image",
+                        lambda u, p, path: rec.update({"purged": (u, p, path)}))
+    pp.process_photo("p1", "u1")
+    assert rec["purged"] == ("u1", "p1", "u1/p1.jpg")
+
+
+def test_failure_does_not_purge(monkeypatch):
+    rec = {"purged": False}
+    monkeypatch.setattr(pp.photo_store, "get_photo", lambda u, p: {
+        "id": p, "user_id": u, "photo_url": "u1/p1.jpg", "photo_type": "food_plate",
+        "processing_status": "processing", "extracted_data": None})
+    monkeypatch.setattr(pp.photo_store, "download_bytes", lambda path: b"img")
+    def _boom(data, ct): raise RuntimeError("vision down")
+    monkeypatch.setattr(pp.food_plate, "analyze_food_plate", _boom)
+    monkeypatch.setattr(pp.photo_store, "set_failed", lambda u, p, m: None)
+    monkeypatch.setattr(pp.photo_store, "purge_image",
+                        lambda u, p, path: rec.update({"purged": True}))
+    pp.process_photo("p1", "u1")
+    assert rec["purged"] is False
+
+
+def test_purge_failure_does_not_mark_failed(monkeypatch):
+    rec = {}
+    monkeypatch.setattr(pp.photo_store, "get_photo", lambda u, p: {
+        "id": p, "user_id": u, "photo_url": "u1/p1.jpg",
+        "photo_type": "food_plate", "processing_status": "processing",
+        "extracted_data": None})
+    monkeypatch.setattr(pp.photo_store, "download_bytes", lambda path: b"img")
+    monkeypatch.setattr(pp.food_plate, "analyze_food_plate",
+                        lambda data, ct: {"foods": [], "source": "food_plate_vision"})
+    monkeypatch.setattr(pp.photo_store, "set_result", lambda u, p, d: rec.update({"result": True}))
+    monkeypatch.setattr(pp.photo_store, "set_failed", lambda u, p, m: rec.update({"failed": True}))
+    def _boom(u, p, path): raise RuntimeError("storage down")
+    monkeypatch.setattr(pp.photo_store, "purge_image", _boom)
+    pp.process_photo("p1", "u1")
+    assert rec.get("result") is True and "failed" not in rec
