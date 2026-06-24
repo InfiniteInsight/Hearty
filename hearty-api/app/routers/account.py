@@ -44,11 +44,12 @@ async def delete_account(user=Depends(get_current_user)):
     try:
         photos = (
             supabase.table("food_log_photos")
-            .select("storage_path")
+            .select("photo_url")
             .eq("user_id", user_id)
             .execute()
         ).data or []
-        paths = [p["storage_path"] for p in photos if p.get("storage_path")]
+        # photo_url IS the storage path ({user_id}/{photo_id}.jpg) — see photo_store.
+        paths = [p["photo_url"] for p in photos if p.get("photo_url")]
         if paths:
             supabase.storage.from_(PHOTO_BUCKET).remove(paths)
     except Exception as e:  # pragma: no cover - defensive

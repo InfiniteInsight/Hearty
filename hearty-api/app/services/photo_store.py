@@ -3,6 +3,7 @@ Uses the service-key client (bypasses RLS) so every table read/write is manually
 user-scoped. Storage paths are always {user_id}/{photo_id}.jpg."""
 
 import os
+from datetime import datetime, timezone
 from supabase import create_client
 
 PHOTO_BUCKET = os.environ.get("PHOTO_BUCKET", "food-photos")
@@ -53,3 +54,26 @@ def set_failed(user_id: str, photo_id: str, message: str) -> None:
     supabase.table("food_log_photos").update(
         {"processing_status": "failed", "extracted_data": {"error": message}}) \
         .eq("user_id", user_id).eq("id", photo_id).execute()
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def purge_image(user_id: str, photo_id: str, path: str) -> None:
+    """Delete the raw image from Storage and stamp the row purged. Storage
+    remove is idempotent on a missing key, so this is safe to call repeatedly."""
+    supabase.storage.from_(PHOTO_BUCKET).remove([path])
+    supabase.table("food_log_photos").update({"image_purged_at": _now_iso()}) \
+        .eq("user_id", user_id).eq("id", photo_id).execute()
+
+
+def list_purgeable(cutoff_iso: str) -> list[dict]:
+    """Photos whose raw image is still stored and uploaded before the cutoff."""
+    return (
+        supabase.table("food_log_photos")
+        .select("id,user_id,photo_url")
+        .is_("image_purged_at", "null")
+        .lt("created_at", cutoff_iso)
+        .execute()
+    ).data or []

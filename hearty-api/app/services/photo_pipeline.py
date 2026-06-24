@@ -37,6 +37,14 @@ def process_photo(photo_id: str, user_id: str) -> None:
                 user_id, photo_id, f"Photo type '{photo_type}' not yet supported")
             return
         photo_store.set_result(user_id, photo_id, result)
+        # Retention: a successfully analyzed image has served its only purpose
+        # (the pipeline read it once). Delete it now — best-effort, so a storage
+        # hiccup never flips this already-successful photo to 'failed'; the
+        # /internal/photos/purge backstop catches any miss.
+        try:
+            photo_store.purge_image(user_id, photo_id, row["photo_url"])
+        except Exception as e:
+            logger.warning("post-success image purge failed for %s: %s", photo_id, e)
     except Exception as e:  # non-blocking: record and move on
         logger.warning("process_photo failed for %s: %s", photo_id, e)
         photo_store.set_failed(
