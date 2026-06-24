@@ -44,6 +44,11 @@ class UpdateRequest(BaseModel):
     notes: str | None = None
 
 
+class SettingsUpdate(BaseModel):
+    provisioning_mode: str | None = None
+    trial_days: int | None = None
+
+
 @router.get("/api/admin/users")
 async def list_users(admin=Depends(get_current_admin)) -> dict:
     users = supabase.auth.admin.list_users()
@@ -102,4 +107,35 @@ async def reactivate(user_id: str, admin=Depends(get_current_admin)) -> dict:
     res = supabase.table("licenses").update({"status": "active", "updated_at": _now()}).eq("user_id", user_id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="license not found")
+    return res.data[0]
+
+
+@router.get("/api/admin/settings")
+async def get_settings(admin=Depends(get_current_admin)) -> dict:
+    rows = (
+        supabase.table("app_settings")
+        .select("provisioning_mode,trial_days")
+        .eq("id", 1)
+        .limit(1)
+        .execute()
+    ).data or []
+    return rows[0] if rows else {"provisioning_mode": "open", "trial_days": 14}
+
+
+@router.put("/api/admin/settings")
+async def update_settings(body: SettingsUpdate, admin=Depends(get_current_admin)) -> dict:
+    updates: dict = {}
+    if body.provisioning_mode is not None:
+        if body.provisioning_mode not in ("open", "trial", "paywall"):
+            raise HTTPException(status_code=400, detail="invalid provisioning_mode")
+        updates["provisioning_mode"] = body.provisioning_mode
+    if body.trial_days is not None:
+        if not 0 < body.trial_days <= 3650:
+            raise HTTPException(status_code=400, detail="trial_days must be between 1 and 3650")
+        updates["trial_days"] = body.trial_days
+    updates["updated_at"] = _now()
+    updates["updated_by"] = admin["id"]
+    res = supabase.table("app_settings").update(updates).eq("id", 1).execute()
+    if not res.data:
+        raise HTTPException(status_code=500, detail="settings row missing")
     return res.data[0]

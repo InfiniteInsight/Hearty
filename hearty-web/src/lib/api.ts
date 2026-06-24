@@ -10,6 +10,7 @@ import type {
   UserPreferences, ExportDateRange, BlobDownload,
   HealthProfileResponse, HealthProfilePutRequest, HealthProfileDefaults,
   LicenseStatus, AdminUsersResponse, GrantLicenseRequest,
+  AppSettings,
 } from "@/types/api";
 
 export class ApiError extends Error {
@@ -104,6 +105,9 @@ export function createApiClient(baseUrl: string) {
     revokeLicense: (id: string) => request<unknown>(`/api/admin/licenses/${id}/revoke`, { method: "POST" }),
     reactivateLicense: (id: string) => request<unknown>(`/api/admin/licenses/${id}/reactivate`, { method: "POST" }),
     updateLicense: (id: string, body: { expires_at?: string; tier?: string; status?: string; notes?: string }) => request<unknown>(`/api/admin/licenses/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    getAppSettings: () => request<AppSettings>(`/api/admin/settings`),
+    updateAppSettings: (body: Partial<AppSettings>) =>
+      request<AppSettings>(`/api/admin/settings`, { method: "PUT", body: JSON.stringify(body) }),
   };
 }
 

@@ -129,24 +129,23 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         return '/home';
       }
 
-      // License gate: only applies once a fully onboarded user is in the app.
-      // Leave the auth/onboarding/setup flows alone so sign-in and account
-      // creation are never blocked by a (not-yet-fetched) license status.
-      final inAppFlow = isAuthenticated &&
-          hasCompletedOnboarding &&
-          !isOnSignIn &&
-          !isOnOnboarding &&
-          !isOnSetup &&
-          !isOnNotificationSetup &&
-          !isOnConversationStyleSetup;
-      if (inAppFlow) {
+      // License gate applies to any authenticated user in the app area (incl.
+      // /onboarding), so a gated user lands on /no-access instead of 403ing
+      // through onboarding. Active users pass straight through.
+      if (inLicensedArea(isAuthenticated: isAuthenticated, location: location)) {
         final licenseStatus = ref.read(licenseStatusProvider).valueOrNull;
         final licenseTarget = licenseRedirect(
           isAuthenticated: isAuthenticated,
           status: licenseStatus,
           location: location,
         );
-        if (licenseTarget != null) return licenseTarget;
+        if (licenseTarget != null) {
+          // A newly-activated user still mid-signup (e.g. paywall→granted while
+          // waiting on /no-access) would otherwise land on /home un-onboarded.
+          // Route them through onboarding first.
+          if (licenseTarget == '/home' && !hasCompletedOnboarding) return '/onboarding';
+          return licenseTarget;
+        }
       }
       return null;
     },

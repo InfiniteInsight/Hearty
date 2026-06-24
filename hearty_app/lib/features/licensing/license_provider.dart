@@ -50,3 +50,13 @@ String? licenseRedirect({
   if (isOnNoAccess) return '/home';
   return null;
 }
+
+/// Whether the license gate should run at [location] for an authenticated user.
+/// Excludes the pre-account auth/setup screens; INCLUDES `/onboarding` so a gated
+/// (paywall/expired) user is routed to `/no-access` before entering onboarding
+/// (which would otherwise call gated endpoints and 403).
+bool inLicensedArea({required bool isAuthenticated, required String location}) {
+  if (!isAuthenticated) return false;
+  const exempt = {'/sign-in', '/setup', '/notification-setup', '/conversation-style-setup'};
+  return !exempt.contains(location);
+}

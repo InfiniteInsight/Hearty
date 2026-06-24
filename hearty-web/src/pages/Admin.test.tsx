@@ -18,3 +18,17 @@ test("lists subscribers and revokes a license", async () => {
   await userEvent.click(screen.getByRole("button", { name: /revoke/i }));
   await vi.waitFor(() => expect(revoked).toBe(true));
 });
+
+test("shows signup policy and saves a mode change", async () => {
+  let saved: unknown = null;
+  server.use(
+    http.get("*/api/admin/users", () => HttpResponse.json({ users: [] })),
+    http.get("*/api/admin/settings", () => HttpResponse.json({ provisioning_mode: "open", trial_days: 14 })),
+    http.put("*/api/admin/settings", async ({ request }) => { saved = await request.json(); return HttpResponse.json({ provisioning_mode: "paywall", trial_days: 14 }); }),
+  );
+  renderWithProviders(<Admin />, { route: "/admin" });
+  const select = await screen.findByLabelText(/signup policy/i);
+  await userEvent.selectOptions(select, "paywall");
+  await userEvent.click(screen.getByRole("button", { name: /save policy/i }));
+  await vi.waitFor(() => expect(saved).toMatchObject({ provisioning_mode: "paywall" }));
+});

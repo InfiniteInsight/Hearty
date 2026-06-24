@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useAdminUsers, useAdminActions } from "../hooks/useAdmin";
-import type { AdminUser } from "@/types/api";
+import { useAdminUsers, useAdminActions, useAppSettings, useUpdateAppSettings } from "../hooks/useAdmin";
+import type { AdminUser, ProvisioningMode } from "@/types/api";
 
 function formatDate(s: string | null | undefined) {
   if (!s) return "—";
@@ -65,6 +65,63 @@ function LicenseActions({ user, busy, actions }: {
   );
 }
 
+function SignupPolicy() {
+  const settings = useAppSettings();
+  const update = useUpdateAppSettings();
+  const [mode, setMode] = useState<ProvisioningMode>("open");
+  const [trialDays, setTrialDays] = useState(14);
+  // Seed local state from the server once. A useState flag (not a ref) — this
+  // project's lint rule forbids accessing refs during render.
+  const [loaded, setLoaded] = useState(false);
+  if (settings.isSuccess && !loaded) {
+    setMode(settings.data.provisioning_mode);
+    setTrialDays(settings.data.trial_days);
+    setLoaded(true);
+  }
+  return (
+    <div className="rounded-2xl border border-surface-border bg-surface p-4 flex flex-col gap-3">
+      <h2 className="font-display text-xl">Signup policy</h2>
+      <p className="text-xs text-text-faint">Applies to future signups only. Existing users are unaffected.</p>
+      <div className="flex flex-wrap items-end gap-4">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-text-muted">Signup policy</span>
+          <select
+            aria-label="Signup policy"
+            value={mode}
+            onChange={(e) => setMode(e.target.value as ProvisioningMode)}
+            className="rounded border border-surface-border bg-background px-2 py-1 text-text"
+          >
+            <option value="open">Open — auto-grant access</option>
+            <option value="trial">Trial — time-limited access</option>
+            <option value="paywall">Paywall — gated until granted</option>
+          </select>
+        </label>
+        {mode === "trial" && (
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-text-muted">Trial days</span>
+            <input
+              type="number"
+              min={1}
+              value={trialDays}
+              onChange={(e) => setTrialDays(Number(e.target.value))}
+              className="w-24 rounded border border-surface-border bg-background px-2 py-1 text-text"
+            />
+          </label>
+        )}
+        <button
+          disabled={update.isPending}
+          onClick={() => update.mutate({ provisioning_mode: mode, trial_days: trialDays })}
+          className="rounded px-3 py-1.5 text-sm bg-brand text-black hover:opacity-80 disabled:opacity-40"
+        >
+          Save policy
+        </button>
+      </div>
+      {update.isError && <p className="text-sm text-accent-red">Failed to save policy. Try again.</p>}
+      {update.isSuccess && <p className="text-sm text-good">Policy saved.</p>}
+    </div>
+  );
+}
+
 export default function Admin() {
   const list = useAdminUsers();
   const a = useAdminActions();
@@ -81,6 +138,7 @@ export default function Admin() {
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
       <h1 className="font-display text-3xl">Subscribers</h1>
+      <SignupPolicy />
       {err && <p className="text-sm text-accent-red">{err}</p>}
       {list.isPending && <p className="text-text-faint">Loading…</p>}
       {list.isError && <p className="text-sm text-accent-red">Couldn't load subscribers.</p>}

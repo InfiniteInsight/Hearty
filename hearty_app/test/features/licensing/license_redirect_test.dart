@@ -89,4 +89,21 @@ void main() {
       );
     });
   });
+
+  group('inLicensedArea', () {
+    test('false when unauthenticated', () {
+      expect(inLicensedArea(isAuthenticated: false, location: '/home'), isFalse);
+    });
+    test('false on auth/setup screens', () {
+      for (final loc in ['/sign-in', '/setup', '/notification-setup', '/conversation-style-setup']) {
+        expect(inLicensedArea(isAuthenticated: true, location: loc), isFalse, reason: loc);
+      }
+    });
+    test('true on onboarding (so gated users are diverted before onboarding)', () {
+      expect(inLicensedArea(isAuthenticated: true, location: '/onboarding'), isTrue);
+    });
+    test('true in the app proper', () {
+      expect(inLicensedArea(isAuthenticated: true, location: '/home'), isTrue);
+    });
+  });
 }
