@@ -130,8 +130,8 @@ async def update_settings(body: SettingsUpdate, admin=Depends(get_current_admin)
             raise HTTPException(status_code=400, detail="invalid provisioning_mode")
         updates["provisioning_mode"] = body.provisioning_mode
     if body.trial_days is not None:
-        if body.trial_days <= 0:
-            raise HTTPException(status_code=400, detail="trial_days must be positive")
+        if not 0 < body.trial_days <= 3650:
+            raise HTTPException(status_code=400, detail="trial_days must be between 1 and 3650")
         updates["trial_days"] = body.trial_days
     updates["updated_at"] = _now()
     updates["updated_by"] = admin["id"]

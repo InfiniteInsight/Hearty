@@ -98,6 +98,6 @@ def test_put_settings_rejects_bad_mode(monkeypatch):
 def test_put_settings_rejects_bad_trial_days(monkeypatch):
     _admin()
     monkeypatch.setattr(adm, "supabase", _FakeSupabase(rows=[]))
-    r = TestClient(app).put("/api/admin/settings", json={"trial_days": 0})
-    assert r.status_code == 400
+    assert TestClient(app).put("/api/admin/settings", json={"trial_days": 0}).status_code == 400
+    assert TestClient(app).put("/api/admin/settings", json={"trial_days": 99999}).status_code == 400
     app.dependency_overrides.clear()

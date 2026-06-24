@@ -12,6 +12,6 @@ alter table app_settings enable row level security;
 insert into app_settings (id) values (1) on conflict (id) do nothing;
 
 -- Allow auto-provisioned trial licenses.
-alter table licenses drop constraint licenses_activation_source_check;
+alter table licenses drop constraint if exists licenses_activation_source_check;
 alter table licenses add constraint licenses_activation_source_check
   check (activation_source in ('manual','web_checkout','play_billing','comp','trial'));
