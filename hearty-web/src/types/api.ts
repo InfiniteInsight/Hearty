@@ -177,3 +177,6 @@ export interface AdminUserLicense { status: string; expires_at?: string | null; 
 export interface AdminUser { user_id: string; email: string; created_at: string; license: AdminUserLicense | null }
 export interface AdminUsersResponse { users: AdminUser[] }
 export interface GrantLicenseRequest { user_id: string; expires_at?: string; tier?: string; notes?: string }
+
+export type ProvisioningMode = "open" | "trial" | "paywall";
+export interface AppSettings { provisioning_mode: ProvisioningMode; trial_days: number }
