@@ -30,8 +30,11 @@ create table if not exists knowledge_base (
   title text,
   content text not null,
   content_embedding vector(1536),       -- OpenAI text-embedding-3-small
-  conditions text[] default '{}',       -- e.g. {'ibs','gerd','celiac'}
-  tags text[] default '{}',
+  conditions text[] not null default '{}',  -- e.g. {'ibs','gerd','celiac'}; NOT NULL so the
+                                             -- `conditions = '{}'` eligibility test can't be
+                                             -- defeated by a null (which would hide the row from
+                                             -- *every* query).
+  tags text[] not null default '{}',
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
@@ -128,7 +131,7 @@ Web — a **"Knowledge base"** panel on `/admin`: list entries (title / source /
 
 ## Testing
 **Backend (pytest):**
-- `embeddings.embed`: monkeypatch `litellm.embedding` → returns the vector.
+- `embeddings.embed`: monkeypatch `litellm.embedding` to return a recorded-shape `EmbeddingResponse` (not a bare stub) and assert `embed` pulls `resp.data[0]["embedding"]`. The `data[0]["embedding"]` access is an external-API assumption — pin it against litellm's real response shape at implementation (one recorded fixture), not just a monkeypatch that echoes whatever the assert expects.
 - `knowledge.add_entry`: embeds + inserts (fake supabase); `search`: embeds query + calls `match_knowledge` RPC with the right args + returns rows; **error/empty → `[]`**; `format_context`: block when rows, `""` when none.
 - `build_system_prompt`/`generate_summary`: `research_context` appears in the prompt when provided, absent when `""`.
 - `trends.py` `_research_for`: returns formatted context on hits; `""` when `search` raises (best-effort).
