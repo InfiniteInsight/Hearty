@@ -32,3 +32,21 @@ test("shows signup policy and saves a mode change", async () => {
   await userEvent.click(screen.getByRole("button", { name: /save policy/i }));
   await vi.waitFor(() => expect(saved).toMatchObject({ provisioning_mode: "paywall" }));
 });
+
+test("shows system health and runs an LLM test", async () => {
+  let tested = false;
+  server.use(
+    http.get("*/api/admin/users", () => HttpResponse.json({ users: [] })),
+    http.get("*/api/admin/health", () => HttpResponse.json({
+      backend: { status: "ok", version: "1.0.0", revision: "r1", time: "2026-06-25T00:00:00Z" },
+      supabase: { status: "down", error: "timeout" },
+      llm: { status: "degraded", last_error: "boom", model: "m" },
+    })),
+    http.post("*/api/admin/health/llm-test", () => { tested = true; return HttpResponse.json({ ok: true, model: "m", latency_ms: 9 }); }),
+  );
+  renderWithProviders(<Admin />, { route: "/admin" });
+  expect(await screen.findByText(/system health/i)).toBeInTheDocument();
+  expect(await screen.findByText(/down/i)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: /test llm/i }));
+  await vi.waitFor(() => expect(tested).toBe(true));
+});

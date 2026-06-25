@@ -35,3 +35,15 @@ export function useUpdateAppSettings() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "settings"] }),
   });
 }
+
+export function useHealth() {
+  return useQuery({ queryKey: ["admin", "health"], queryFn: () => api.getHealth() });
+}
+
+export function useTestLlm() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.testLlm(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "health"] }),
+  });
+}

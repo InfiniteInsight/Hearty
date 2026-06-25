@@ -180,3 +180,11 @@ export interface GrantLicenseRequest { user_id: string; expires_at?: string; tie
 
 export type ProvisioningMode = "open" | "trial" | "paywall";
 export interface AppSettings { provisioning_mode: ProvisioningMode; trial_days: number }
+export interface BackendHealth { status: string; version: string; revision: string; time: string }
+export interface SupabaseHealth { status: string; latency_ms?: number; error?: string }
+export interface LlmHealth {
+  status: "ok" | "degraded" | "idle";
+  last_ok_at?: string | null; last_error_at?: string | null; last_error?: string | null; model?: string | null;
+}
+export interface HealthStatus { backend: BackendHealth; supabase: SupabaseHealth; llm: LlmHealth }
+export interface LlmTestResult { ok: boolean; model: string; latency_ms?: number; error?: string }
