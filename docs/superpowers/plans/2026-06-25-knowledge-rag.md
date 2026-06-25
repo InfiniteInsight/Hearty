@@ -650,17 +650,41 @@ with:
         stats, health_context=health_context, research_context=research_context)
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [ ] **Step 6: Fix the two existing conversation-endpoint tests (deterministic — do this, don't skip)**
 
-Run: `cd hearty-api && .venv/bin/pytest tests/test_research_orchestration_unit.py tests/test_trends_conversation_endpoint_unit.py -v`
-Expected: PASS — new tests pass; the existing conversation-endpoint test stays green (it monkeypatches `generate_turn`, and `_research_for` degrades to `""` under the fake supabase).
+Two existing unit tests POST to `/api/trends/conversation` and monkeypatch `generate_turn` with a lambda that has NO `research_context` param. After Task 5 the endpoint (a) passes `research_context=...` → those lambdas raise `TypeError` → 500, and (b) runs `_research_for`, which calls the REAL `litellm.embedding` — a **billed, flaky network call** the moment `OPENAI_API_KEY` lands in `.env` at Task 10 (with today's empty key it silently returns `""` and the test still "passes", which is the trap). Neither test even stubs the knowledge client, and `test_trends_auto_analysis_unit.py` doesn't stub `trends_module.supabase` either, so `_user_condition_slugs` would hit **prod Supabase**. Fix both deterministically — never rely on the empty-key degradation.
 
-> If the existing endpoint test fails because `knowledge.search`/`_user_condition_slugs` touch the real client, that is expected-degraded behavior returning `""` — confirm the test still asserts its original response. If it newly errors, monkeypatch `trends._research_for` to `lambda q, u: ""` in that test's setup.
+**`tests/test_trends_conversation_endpoint_unit.py`** → in `test_conversation_endpoint_returns_reply`, replace the `generate_turn` monkeypatch and add a `_research_for` stub:
 
-- [ ] **Step 7: Commit**
+```python
+    monkeypatch.setattr(
+        trends_module.trends_conversation, "generate_turn",
+        lambda signals, history, health_context="", research_context="":
+            TrendsConversationResponse(reply="hi", is_closing=False),
+    )
+    monkeypatch.setattr(trends_module, "_research_for", lambda query, user_id: "")
+```
+
+**`tests/test_trends_auto_analysis_unit.py`** → in `test_conversation_first_turn_refreshes_but_later_turns_dont`, widen the `generate_turn` lambda (lines 87-89) and add the stub:
+
+```python
+    monkeypatch.setattr(trends_module.trends_conversation, "generate_turn",
+                        lambda signals, history, health_context="", research_context="":
+                            TrendsConversationResponse(reply="hi"))
+    monkeypatch.setattr(trends_module, "_research_for", lambda query, user_id: "")
+```
+
+- [ ] **Step 7: Run tests to verify they pass**
+
+Run: `cd hearty-api && .venv/bin/pytest tests/test_research_orchestration_unit.py tests/test_trends_conversation_endpoint_unit.py tests/test_trends_auto_analysis_unit.py -v`
+Expected: PASS — new orchestration tests pass and both patched endpoint tests stay green with **no network call** (the `_research_for` stub guarantees determinism). `tests/test_api.py::test_get_summary_week` is a separate live-server integration test (httpx against `api_base`) — it already exercises the real LLM and is out of scope for the unit suite.
+
+- [ ] **Step 8: Commit**
 
 ```bash
-git add hearty-api/app/routers/trends.py hearty-api/tests/test_research_orchestration_unit.py
+git add hearty-api/app/routers/trends.py hearty-api/tests/test_research_orchestration_unit.py \
+        hearty-api/tests/test_trends_conversation_endpoint_unit.py \
+        hearty-api/tests/test_trends_auto_analysis_unit.py
 git commit -m "feat(rag): orchestrate retrieval into conversation + summary endpoints"
 ```
 
@@ -1131,7 +1155,13 @@ Via the deployed `/admin` Knowledge base panel, add one untagged entry and one `
 - Toggle an entry inactive and confirm it drops out of retrieval.
 - Confirm an empty/all-inactive corpus still produces a normal AI response (best-effort `""`).
 
-- [ ] **Step 6: Finish the branch**
+> **This seed is the first time `embeddings.embed` runs for real** — the spike used dummy vectors and the unit tests monkeypatch the response shape, so `resp.data[0]["embedding"]` is only truly verified here. If adding an entry 502s with `KeyError: 'embedding'` (or similar), litellm's `EmbeddingResponse` shape differs from the assumption — fix `embeddings.embed` accordingly (e.g. `resp.data[0].embedding` / `resp["data"][0]["embedding"]`).
+
+- [ ] **Step 6: (Optional) rotate the leaked service key here**
+
+This step is a Cloud Run redeploy — the natural moment to also rotate the `SUPABASE_SERVICE_KEY` that was printed into a session transcript earlier (see the security flag raised during spec review), **if the user opted to rotate**. Rotating the legacy JWT-derived service key means rotating the project JWT secret (also invalidates the anon key) and re-supplying new keys to `.env`, this redeploy's env-file, Vercel, and the phone app — or migrating to Supabase's independently-rotatable secret keys. Skip if the user chose not to rotate.
+
+- [ ] **Step 7: Finish the branch**
 
 Use superpowers:finishing-a-development-branch (push + PR, or merge) per the user's choice.
 
