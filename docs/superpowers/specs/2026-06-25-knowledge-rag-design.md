@@ -36,8 +36,12 @@ create table if not exists knowledge_base (
   created_at timestamptz not null default now()
 );
 alter table knowledge_base enable row level security;  -- service-key only; not user data
-create index if not exists knowledge_base_embedding_idx
-  on knowledge_base using ivfflat (content_embedding vector_cosine_ops) with (lists = 100);
+-- No ANN index in v1: the corpus is tiny, so an exact sequential scan is instant and gives
+-- perfect recall. An ivfflat index with lists=100 would actually *hurt* recall at this size
+-- (too few rows per list). Add an HNSW index (better recall than ivfflat) only once the
+-- corpus grows to thousands of rows:
+--   create index knowledge_base_embedding_idx
+--     on knowledge_base using hnsw (content_embedding vector_cosine_ops);
 
 -- Top-k cosine retrieval (PostgREST can't do vector ops via the query builder).
 create or replace function match_knowledge(
@@ -50,12 +54,14 @@ language sql stable as $$
          1 - (kb.content_embedding <=> query_embedding) as similarity
   from knowledge_base kb
   where kb.active
-    and (filter_conditions is null or kb.conditions && filter_conditions)
+    and (filter_conditions is null               -- caller has no conditions: no filter
+         or kb.conditions = '{}'                  -- untagged = general research, always eligible
+         or kb.conditions && filter_conditions)   -- else require a condition overlap
   order by kb.content_embedding <=> query_embedding
   limit match_count;
 $$;
 ```
-Service-key client retrieves via `supabase.rpc("match_knowledge", {...})`. If PostgREST won't coerce the JSON array to `vector(1536)` on the RPC param, fall back to a `text` param cast inside (`query_embedding::vector`) — decided at implementation against the live client.
+Service-key client retrieves via `supabase.rpc("match_knowledge", {...})`. **Binding verified against prod (2026-06-25 spike):** a raw Python `list[float]` of length 1536 binds directly to `vector(1536)` on **both** the insert write-path (`table(...).insert({"emb": vec})`) and the RPC `query_embedding` param — the spike's `match_spike` RPC returned `similarity: 1.0` for an identical query vector. No `::vector` cast or string-literal (`'[...]'`) form is needed; pass plain Python lists everywhere.
 
 ### 2. Embedding service — `app/services/embeddings.py`
 ```python
@@ -64,6 +70,8 @@ def embed(text: str) -> list[float]:
     return resp.data[0]["embedding"]
 ```
 Same model for ingestion and query (required for valid similarity). Needs `OPENAI_API_KEY` (new deploy-time env var). One thin module.
+
+> **Deploy note:** Cloud Run's `gcloud run deploy --env-vars-file` **replaces the entire env set** (not additive). `OPENAI_API_KEY` must be added to `.env` *and* to the env-file key list in `docs/DEPLOYMENT.md`'s redeploy procedure, alongside the existing 8 keys — otherwise the next redeploy that omits it silently un-sets it and embedding (and thus all retrieval) starts failing closed to `""` research_context.
 
 ### 3. Knowledge store + retrieval — `app/services/knowledge.py`
 - `add_entry(title, content, conditions, source="manual", source_id=None) -> dict` — `embed(content)` then insert; returns the row (without the embedding).
@@ -96,7 +104,7 @@ Backend (`app/routers/admin.py`, all `Depends(get_current_admin)`):
 Web — a **"Knowledge base"** panel on `/admin`: list entries (title / source / conditions / active toggle / delete) + an add form (title, content textarea, conditions, source). v1 entries are `active` immediately (owner is the trusted curator; no review queue yet).
 
 ### 6. Health-profile scoping
-`search` filters by the user's conditions (from Spec 08 `health_profile.conditions`) via `match_knowledge`'s `filter_conditions` (corpus row matches if `conditions && filter_conditions`). A GERD user gets GERD-tagged research. If the user has no conditions, pass `null` (no filter).
+`search` filters by the user's conditions (from Spec 08 `health_profile.conditions`) via `match_knowledge`'s `filter_conditions`. A GERD user gets GERD-tagged research **plus** any untagged general research (a corpus row with empty `conditions` is always eligible — it isn't hidden from users who happen to have conditions). If the user has no conditions, pass `null` (no filter — everything is eligible). So the only thing the filter ever excludes is research tagged for *other* conditions.
 
 ## Data flow (a trends conversation turn)
 1. User sends a message → `trends.py` turn endpoint.
@@ -116,7 +124,7 @@ Web — a **"Knowledge base"** panel on `/admin`: list entries (title / source /
 
 ## Cost / performance
 - One embedding per RAG'd AI call (query) + one vector search — `text-embedding-3-small` ≈ $0.02/1M tokens (negligible); adds ~50–150 ms. Ingestion embeds once per entry on add.
-- ivfflat index is fine; at a small corpus even a scan is instant.
+- No ANN index in v1 — an exact sequential scan over a tiny corpus is instant and gives perfect recall. Switch to an HNSW index only when the corpus reaches thousands of rows (ivfflat with `lists=100` would hurt recall at v1 sizes).
 
 ## Testing
 **Backend (pytest):**
@@ -128,7 +136,7 @@ Web — a **"Knowledge base"** panel on `/admin`: list entries (title / source /
 
 **Web (Vitest + RTL + MSW):** the Knowledge base panel lists entries from a mocked payload, the add form posts, delete/toggle hit the right endpoints. Existing `/admin` tests stay green.
 
-**Live (deploy-time):** set `OPENAI_API_KEY`; apply the migration (enables `vector`); add a couple of seed entries via `/admin`; confirm a trends conversation/summary reflects the research (and still works with an empty corpus).
+**Live (deploy-time):** add `OPENAI_API_KEY` to `.env` **and** the `docs/DEPLOYMENT.md` redeploy env-file key list (see the deploy note in §2 — `--env-vars-file` is full-replace); apply the migration (enables `vector`, creates `knowledge_base` + `match_knowledge`); add a couple of seed entries via `/admin`; confirm a trends conversation/summary reflects the research (and still works with an empty corpus). The pgvector binding is already prod-verified (§1 spike), so no further binding check is needed.
 
 ## Deferred (future Layer-1 iterations)
 Automated PubMed (NCBI E-utilities) / NHS / NIH ingestion on a schedule, MeSH-term pulls, a human review queue (`reviewed` workflow), source-freshness alerts, and a larger seeded corpus.
