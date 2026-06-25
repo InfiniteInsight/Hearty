@@ -12,6 +12,8 @@ _allowed_origins = [o.strip() for o in _origins_env.split(",") if o.strip()] or 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.services import llm_health
+    llm_health.register()
     yield
 
 app = FastAPI(

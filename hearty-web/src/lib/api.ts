@@ -10,7 +10,7 @@ import type {
   UserPreferences, ExportDateRange, BlobDownload,
   HealthProfileResponse, HealthProfilePutRequest, HealthProfileDefaults,
   LicenseStatus, AdminUsersResponse, GrantLicenseRequest,
-  AppSettings,
+  AppSettings, HealthStatus, LlmTestResult,
 } from "@/types/api";
 
 export class ApiError extends Error {
@@ -108,6 +108,8 @@ export function createApiClient(baseUrl: string) {
     getAppSettings: () => request<AppSettings>(`/api/admin/settings`),
     updateAppSettings: (body: Partial<AppSettings>) =>
       request<AppSettings>(`/api/admin/settings`, { method: "PUT", body: JSON.stringify(body) }),
+    getHealth: () => request<HealthStatus>(`/api/admin/health`),
+    testLlm: () => request<LlmTestResult>(`/api/admin/health/llm-test`, { method: "POST" }),
   };
 }
 

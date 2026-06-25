@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAdminUsers, useAdminActions, useAppSettings, useUpdateAppSettings } from "../hooks/useAdmin";
+import { useAdminUsers, useAdminActions, useAppSettings, useUpdateAppSettings, useHealth, useTestLlm } from "../hooks/useAdmin";
 import type { AdminUser, ProvisioningMode } from "@/types/api";
 
 function formatDate(s: string | null | undefined) {
@@ -122,6 +122,65 @@ function SignupPolicy() {
   );
 }
 
+function pillClass(status: string): string {
+  if (status === "ok") return "bg-good/15 text-good";
+  if (status === "idle") return "bg-warn/15 text-warn";
+  return "bg-accent-red/15 text-accent-red"; // down / degraded
+}
+
+function SystemHealth() {
+  const health = useHealth();
+  const test = useTestLlm();
+  const h = health.data;
+  return (
+    <div className="rounded-2xl border border-surface-border bg-surface p-4 flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-xl">System health</h2>
+        <div className="flex gap-2">
+          <button onClick={() => { test.reset(); health.refetch(); }} disabled={health.isFetching}
+            className="rounded px-3 py-1 text-xs border border-surface-border text-text-muted hover:text-text disabled:opacity-40">
+            Re-check
+          </button>
+          <button onClick={() => test.mutate()} disabled={test.isPending || health.isFetching}
+            className="rounded px-3 py-1 text-xs bg-brand text-black hover:opacity-80 disabled:opacity-40">
+            {test.isPending ? "Testing…" : "Test LLM"}
+          </button>
+        </div>
+      </div>
+      {health.isPending && <p className="text-text-faint text-sm">Checking…</p>}
+      {health.isError && <p className="text-accent-red text-sm">Couldn't load health.</p>}
+      {h && (
+        <div className="flex flex-col divide-y divide-surface-border">
+          <HealthRow label="Backend" status={h.backend.status} detail={`rev ${h.backend.revision} · v${h.backend.version}`} />
+          <HealthRow label="Database" status={h.supabase.status}
+            detail={h.supabase.status === "ok" ? `${h.supabase.latency_ms ?? "—"} ms` : (h.supabase.error ?? "")} />
+          <HealthRow label="AI / LLM" status={h.llm.status}
+            detail={h.llm.status === "degraded" ? (h.llm.last_error ?? "") :
+                    h.llm.status === "idle" ? "no recent calls" : `last ok · ${h.llm.model ?? ""}`} />
+        </div>
+      )}
+      {test.isError && <p className="text-accent-red text-sm">LLM test failed.</p>}
+      {test.data && (
+        <p className={`text-sm ${test.data.ok ? "text-good" : "text-accent-red"}`}>
+          {test.data.ok ? `LLM ok (${test.data.latency_ms} ms)` : `LLM test failed: ${test.data.error}`}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function HealthRow({ label, status, detail }: { label: string; status: string; detail: string }) {
+  return (
+    <div className="flex items-center justify-between py-2">
+      <span className="text-sm text-text">{label}</span>
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-text-muted">{detail}</span>
+        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${pillClass(status)}`}>{status}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function Admin() {
   const list = useAdminUsers();
   const a = useAdminActions();
@@ -138,6 +197,7 @@ export default function Admin() {
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
       <h1 className="font-display text-3xl">Subscribers</h1>
+      <SystemHealth />
       <SignupPolicy />
       {err && <p className="text-sm text-accent-red">{err}</p>}
       {list.isPending && <p className="text-text-faint">Loading…</p>}

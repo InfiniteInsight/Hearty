@@ -1,4 +1,6 @@
 import os
+import time
+import litellm
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -28,6 +30,28 @@ def _effective_status(row: dict) -> str:
         if exp_dt <= datetime.now(timezone.utc):
             return "expired"
     return status
+
+
+def _parse_ts(ts):
+    return datetime.fromisoformat(str(ts).replace("Z", "+00:00")) if ts else None
+
+
+def _llm_status(row: dict | None) -> dict:
+    """Derive LLM health from the service_health row: ok / degraded / idle."""
+    row = row or {}
+    ok_at, err_at = row.get("llm_last_ok_at"), row.get("llm_last_error_at")
+    out = {"last_ok_at": ok_at, "last_error_at": err_at, "last_error": None,
+           "model": row.get("llm_last_model")}
+    if not ok_at and not err_at:
+        out["status"] = "idle"
+        return out
+    okd, errd = _parse_ts(ok_at), _parse_ts(err_at)
+    if errd and (not okd or errd > okd):
+        out["status"] = "degraded"
+        out["last_error"] = row.get("llm_last_error")
+    else:
+        out["status"] = "ok"
+    return out
 
 
 class GrantRequest(BaseModel):
@@ -139,3 +163,29 @@ async def update_settings(body: SettingsUpdate, admin=Depends(get_current_admin)
     if not res.data:
         raise HTTPException(status_code=500, detail="settings row missing")
     return res.data[0]
+
+
+@router.get("/api/admin/health")
+async def health(admin=Depends(get_current_admin)) -> dict:
+    backend = {"status": "ok", "version": "1.0.0",
+               "revision": os.environ.get("K_REVISION", "local"), "time": _now()}
+    t0 = time.monotonic()
+    try:
+        rows = supabase.table("service_health").select("*").eq("id", 1).limit(1).execute().data or []
+        sb = {"status": "ok", "latency_ms": round((time.monotonic() - t0) * 1000)}
+        llm = _llm_status(rows[0] if rows else None)
+    except Exception as e:  # dependency down must not 500 the health check
+        sb = {"status": "down", "error": str(e)[:300]}
+        llm = _llm_status(None)
+    return {"backend": backend, "supabase": sb, "llm": llm}
+
+
+@router.post("/api/admin/health/llm-test")
+async def llm_test(admin=Depends(get_current_admin)) -> dict:
+    model = os.environ.get("LLM_MODEL", "claude-sonnet-4-6")
+    t0 = time.monotonic()
+    try:
+        litellm.completion(model=model, messages=[{"role": "user", "content": "ping"}], max_tokens=1)
+        return {"ok": True, "model": model, "latency_ms": round((time.monotonic() - t0) * 1000)}
+    except Exception as e:  # the global callback records the failure; report it cleanly
+        return {"ok": False, "model": model, "error": str(e)[:300]}
