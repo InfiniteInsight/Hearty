@@ -2,6 +2,8 @@ import httpx
 import uuid
 import pytest
 
+pytestmark = pytest.mark.integration
+
 # ── Happy paths ──────────────────────────────────────────────────────────────
 
 def test_health_check(api_base):
