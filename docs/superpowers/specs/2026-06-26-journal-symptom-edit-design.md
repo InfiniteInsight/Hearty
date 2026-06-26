@@ -17,13 +17,15 @@ Let users **edit and delete symptoms** from the web Journal. Today the Journal s
 
 ## Architecture
 
-### 1. Backend — allow editing `symptom_type` (small)
-`hearty-api/app/routers/symptoms.py` `update_symptom` already updates `raw_description` (always) and optional `severity`/`onset_minutes`. Add `symptom_type`:
-- `SymptomUpdateRequest` (pydantic schema, in `app/models/schemas.py`): add `symptom_type: str | None = None`.
-- In `update_symptom`: `if body.symptom_type is not None: updates["symptom_type"] = body.symptom_type`.
-- Ownership check (`.eq("user_id", ...)` + 404) and the rest are unchanged.
+### 1. Backend — add `symptom_type`, stop clobbering `raw_description` (small)
+`SymptomUpdateRequest` lives in `hearty-api/app/routers/symptoms.py` (not `schemas.py`). Today it's `{description: str (required), severity?, onset_minutes?}` and `update_symptom` **always** sets `updates = {"raw_description": body.description}`.
 
-No validation enum on the backend in v1 (the frontend constrains via a dropdown; the column is free text today). Keep it permissive and consistent with the existing fields.
+**Discovery (drove a small refinement):** `SymptomResponse` does **not** expose the symptom's description/`raw_description` (fields: symptom_type, severity, onset_minutes, duration_minutes, bathroom_*, stool_consistency, notes, logged_at). So the editor can't pre-fill description, and the current always-overwrite behavior means a type/severity edit would **blank out the AI's original raw text**. Fix:
+- `SymptomUpdateRequest`: make `description: Optional[str] = None` and add `symptom_type: Optional[str] = None` (keep `severity`/`onset_minutes` optional).
+- `update_symptom`: build `updates` conditionally — `if body.description is not None: updates["raw_description"] = body.description`; `if body.symptom_type is not None: updates["symptom_type"] = body.symptom_type`; same for severity/onset. So omitting a field leaves it untouched (no clobber).
+- Ownership check (`.eq("user_id", ...)` + 404) and `SymptomResponse` return are unchanged.
+
+No backend enum validation on `symptom_type` in v1 (the frontend constrains via a dropdown; the column is free text today). Permissive + consistent with the existing fields. The existing `api.test.ts` call `patchSymptom("s1", {description, severity})` stays valid.
 
 ### 2. Web — shared symptom-type list
 Today `Journal.tsx` hardcodes a 15-item `SYMPTOM_TYPES` subset that's missing real types (indigestion, upset_stomach, sour_stomach, gut_rot). Extract the **canonical** list to `hearty-web/src/lib/symptoms.ts` (`export const SYMPTOM_TYPES = [...]`) — the full set from the extraction prompt — and import it in both `Journal.tsx` (filter dropdown) and the new editor (so they agree).
@@ -31,12 +33,12 @@ Today `Journal.tsx` hardcodes a 15-item `SYMPTOM_TYPES` subset that's missing re
 ### 3. Web — `SymptomRow` component
 New `hearty-web/src/components/journal/SymptomRow.tsx`: renders one symptom with edit + delete, mirroring `MealCard`'s meal edit/delete idiom (local `editing`/`confirmDelete`/`busy`/`err` state; `useQueryClient` invalidation).
 - **Read view:** `{symptom_type}{severity != null ? ` ${severity}` : ""}` + **Edit** and **Delete** buttons.
-- **Edit view (inline):** `symptom_type` dropdown (from the shared list), `severity` number (1–10), `onset_minutes` number, `description` text; **Save** → `api.patchSymptom(id, { description, symptom_type, severity, onset_minutes })`; **Cancel** restores.
+- **Edit view (inline):** `symptom_type` dropdown (from the shared list), `severity` number (1–10), `onset_minutes` number — all pre-fillable from `SymptomResponse`. **Save** → `api.patchSymptom(id, { symptom_type, severity, onset_minutes })`; **Cancel** restores. (Description is intentionally **not** editable here — it isn't in `SymptomResponse` to pre-fill, and the backend now leaves `raw_description` untouched when description is omitted, so the AI's original text is preserved.)
 - **Delete:** two-step confirm ("Delete" → "Confirm delete" / "Cancel"), `api.deleteSymptom(id)`.
 - On success: invalidate `["meals"]`, `["summary"]`, `["trends"]` (same set `MealCard` uses) so Journal, Dashboard, and signals refresh.
 
 ### 4. Web — `MealCard` integration
-In the expanded panel (`open` section), add a **"Symptoms"** subsection listing `meal.symptoms` as `SymptomRow`s (when the meal has any). The collapsed-card symptom **chips stay unchanged** as the at-a-glance summary. `SymptomUpdateRequest` TS type gains `symptom_type?: string`.
+In the expanded panel (`open` section), add a **"Symptoms"** subsection listing `meal.symptoms` as `SymptomRow`s (when the meal has any). The collapsed-card symptom **chips stay unchanged** as the at-a-glance summary. The `SymptomUpdateRequest` TS type becomes `{ description?: string; symptom_type?: string; severity?: number; onset_minutes?: number }` (description relaxed to optional, `symptom_type` added).
 
 ## Data flow (edit a symptom)
 1. User expands a meal card → sees the Symptoms subsection.
