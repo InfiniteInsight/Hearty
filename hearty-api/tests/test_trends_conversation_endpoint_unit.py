@@ -27,9 +27,10 @@ def test_conversation_endpoint_returns_reply(monkeypatch):
     monkeypatch.setattr(trends_module, "load_health_profile_context", lambda uid: "")
     monkeypatch.setattr(
         trends_module.trends_conversation, "generate_turn",
-        lambda signals, history, health_context="": TrendsConversationResponse(
-            reply="hi", is_closing=False),
+        lambda signals, history, health_context="", research_context="":
+            TrendsConversationResponse(reply="hi", is_closing=False),
     )
+    monkeypatch.setattr(trends_module, "_research_for", lambda query, user_id: "")
     client = TestClient(app)
     r = client.post("/api/trends/conversation", json={"history": []})
     assert r.status_code == 200

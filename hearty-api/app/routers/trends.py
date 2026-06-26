@@ -18,6 +18,7 @@ from app.models.schemas import (
 from app.services import (
     ai_extraction, trend_engine, signal_engine,
     signal_presenter, trends_conversation, signal_persistence,
+    knowledge,
 )
 from app.services.food_category_service import category_label
 
@@ -26,6 +27,36 @@ router = APIRouter()
 supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"])
 
 TRENDS_MIN_RECOMPUTE_MINUTES = float(os.environ.get("TRENDS_MIN_RECOMPUTE_MINUTES", "10"))
+
+
+def _user_condition_slugs(user_id: str) -> list[str]:
+    """Lowercased condition names from the user's health profile, used as
+    match_knowledge filter_conditions. Best-effort: [] on any failure.
+
+    v1 limitation: matching is exact-on-lowercased-name (e.g. profile "GERD" ->
+    'gerd' matches a corpus tag 'gerd'). A mismatch only costs the condition-
+    specific boost; untagged general research is always eligible regardless."""
+    try:
+        row = (supabase.table("health_profile")
+               .select("conditions").eq("user_id", user_id)
+               .maybe_single().execute()).data
+        conds = (row or {}).get("conditions") or []
+        return [c["name"].lower() for c in conds
+                if isinstance(c, dict) and c.get("name")]
+    except Exception as e:  # pragma: no cover - defensive
+        logger.error("_user_condition_slugs failed: %s", e, exc_info=True)
+        return []
+
+
+def _research_for(query: str, user_id: str) -> str:
+    """Best-effort RAG context block for ``query``. '' on any failure so
+    retrieval never blocks the AI call it augments."""
+    try:
+        conditions = _user_condition_slugs(user_id) or None
+        return knowledge.format_context(knowledge.search(query, conditions=conditions))
+    except Exception as e:  # pragma: no cover - defensive
+        logger.error("_research_for failed: %s", e, exc_info=True)
+        return ""
 
 
 # ── Signal endpoints (Plan 11) ────────────────────────────────────────────────
@@ -298,8 +329,12 @@ async def trends_conversation_turn(
         ensure_fresh_signals(user_id)
     signals = signal_presenter.load_presented_signals(supabase, user_id)
     health_context = load_health_profile_context(user_id)
+    last_user = next((t.content for t in reversed(body.history) if t.role == "user"), None)
+    query = last_user or " ".join(s.category for s in signals[:3]) or "food symptom patterns"
+    research_context = _research_for(query, user_id)
     return trends_conversation.generate_turn(
-        signals, body.history, health_context=health_context)
+        signals, body.history, health_context=health_context,
+        research_context=research_context)
 
 
 @router.post("/api/trends/signal-verdict", status_code=200)
@@ -418,7 +453,10 @@ async def get_summary(
         "top_triggers": [t.model_dump() for t in top_triggers],
     }
     health_context = load_health_profile_context(user["id"])
-    summary_text = ai_extraction.generate_summary(stats, health_context=health_context)
+    query = " ".join(t["symptom_type"] for t in top_symptoms[:3]) or "food symptom patterns"
+    research_context = _research_for(query, user["id"])
+    summary_text = ai_extraction.generate_summary(
+        stats, health_context=health_context, research_context=research_context)
 
     return SummaryResponse(
         period=period,
