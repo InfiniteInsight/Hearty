@@ -11,7 +11,11 @@ def test_system_prompt_overlay_before_health_and_research():
 
 
 def test_system_prompt_empty_overlay_byte_identical():
-    assert build_system_prompt([], style_overlay="") == build_system_prompt([])
+    base = build_system_prompt([])
+    # empty overlay adds nothing...
+    assert build_system_prompt([], style_overlay="") == base
+    # ...and a non-empty overlay appends exactly one block right after the base.
+    assert build_system_prompt([], style_overlay="GUIDE") == f"{base}\n\nGUIDE"
 
 
 def test_generate_summary_overlay_before_health(monkeypatch):
