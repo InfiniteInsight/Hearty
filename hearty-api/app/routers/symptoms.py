@@ -86,7 +86,8 @@ async def get_symptoms(
 
 
 class SymptomUpdateRequest(BaseModel):
-    description: str
+    description: Optional[str] = None
+    symptom_type: Optional[str] = None
     severity: Optional[int] = None
     onset_minutes: Optional[int] = None
 
@@ -107,11 +108,22 @@ async def update_symptom(
     if not existing.data:
         raise HTTPException(status_code=404, detail="Symptom not found")
 
-    updates: dict = {"raw_description": body.description}
+    updates: dict = {}
+    if body.description is not None:
+        updates["raw_description"] = body.description
+    if body.symptom_type is not None:
+        updates["symptom_type"] = body.symptom_type
     if body.severity is not None:
         updates["severity"] = body.severity
     if body.onset_minutes is not None:
         updates["onset_minutes"] = body.onset_minutes
+
+    if not updates:
+        # nothing to change — return the current row unmodified
+        current = (
+            supabase.table("symptoms").select("*").eq("id", str(symptom_id)).execute()
+        )
+        return SymptomResponse(**current.data[0])
 
     result = (
         supabase.table("symptoms")
