@@ -1,0 +1,206 @@
+[
+  {
+    "title": "FODMAPs and IBS symptoms",
+    "content": "FODMAPs are fermentable short-chain carbohydrates (found in foods such as onion, garlic, wheat, certain fruits, and legumes) that are poorly absorbed in some people and can draw water into the gut and ferment in the colon. Many people with IBS report that higher-FODMAP foods are commonly associated with bloating, gas, and abdominal discomfort.",
+    "conditions": ["ibs"],
+    "source": "manual"
+  },
+  {
+    "title": "Onion and garlic as common IBS triggers",
+    "content": "Onion and garlic are high in fructans, a type of FODMAP that many people with IBS find difficult to tolerate. Symptoms such as bloating and cramping are often reported even with small amounts, including the flavoring in sauces and stocks.",
+    "conditions": ["ibs"],
+    "source": "manual"
+  },
+  {
+    "title": "Low-FODMAP approach as a structured elimination pattern",
+    "content": "A low-FODMAP eating pattern is commonly used as a temporary, structured elimination-and-reintroduction approach to help identify which fermentable carbohydrates a person with IBS tolerates. It is typically described as a short-term diagnostic tool rather than a permanent way of eating, and is often done with guidance from a dietitian.",
+    "conditions": ["ibs"],
+    "source": "manual"
+  },
+  {
+    "title": "Legumes, fiber, and IBS",
+    "content": "Beans, lentils, and other legumes contain galacto-oligosaccharides, a FODMAP that ferments in the gut. Many people with IBS notice that larger portions are associated with gas and bloating, while smaller portions or canned-and-rinsed versions are sometimes better tolerated.",
+    "conditions": ["ibs"],
+    "source": "manual"
+  },
+  {
+    "title": "Caffeine and IBS",
+    "content": "Caffeine can stimulate gut motility, and many people with IBS report that coffee and other caffeinated drinks are associated with urgency or looser stools. Individual tolerance varies widely.",
+    "conditions": ["ibs"],
+    "source": "manual"
+  },
+  {
+    "title": "Caffeine and GERD",
+    "content": "Caffeine and coffee are commonly associated with reflux symptoms in some people, as they may relax the lower esophageal sphincter or increase acid sensitivity. Many people with GERD notice that coffee, including decaf in some cases, is linked to heartburn.",
+    "conditions": ["gerd"],
+    "source": "manual"
+  },
+  {
+    "title": "High-fat meals and reflux",
+    "content": "High-fat and fried meals are commonly associated with reflux symptoms, as fatty foods may slow stomach emptying and relax the lower esophageal sphincter. Many people with GERD report more heartburn after rich, greasy meals.",
+    "conditions": ["gerd"],
+    "source": "manual"
+  },
+  {
+    "title": "Alcohol and reflux",
+    "content": "Alcohol is commonly associated with reflux symptoms in some people, as it may relax the lower esophageal sphincter and irritate the esophageal lining. Many people with GERD notice heartburn after wine, beer, or spirits.",
+    "conditions": ["gerd"],
+    "source": "manual"
+  },
+  {
+    "title": "Citrus and tomato as common reflux triggers",
+    "content": "Acidic foods such as citrus fruits, juices, and tomato-based dishes are frequently reported as reflux triggers. Many people with GERD find these foods are associated with heartburn or a sour taste, though tolerance varies.",
+    "conditions": ["gerd"],
+    "source": "manual"
+  },
+  {
+    "title": "Chocolate and reflux",
+    "content": "Chocolate is commonly associated with reflux symptoms in some people, as it contains compounds that may relax the lower esophageal sphincter. Many people with GERD report heartburn after chocolate, particularly in larger amounts.",
+    "conditions": ["gerd"],
+    "source": "manual"
+  },
+  {
+    "title": "Peppermint and reflux",
+    "content": "Peppermint and spearmint are sometimes associated with reflux symptoms, as mint may relax the lower esophageal sphincter. While mint is often used to soothe the stomach, some people with GERD notice that it is linked to heartburn.",
+    "conditions": ["gerd"],
+    "source": "manual"
+  },
+  {
+    "title": "Large meals and reflux",
+    "content": "Large meals can increase pressure in the stomach and are commonly associated with reflux symptoms. Many people with GERD find that smaller, more frequent meals are linked to less heartburn than a few large ones.",
+    "conditions": ["gerd"],
+    "source": "manual"
+  },
+  {
+    "title": "Late or pre-bedtime eating and reflux",
+    "content": "Eating shortly before lying down is commonly associated with nighttime reflux, since being horizontal makes it easier for stomach contents to move back into the esophagus. Many people with GERD report fewer nighttime symptoms when their last meal is several hours before bed.",
+    "conditions": ["gerd"],
+    "source": "manual"
+  },
+  {
+    "title": "Spicy foods and reflux",
+    "content": "Spicy foods are reported by some people as a reflux trigger, possibly by irritating the esophagus or increasing discomfort. Tolerance varies widely, and many people with GERD find their response to spice is individual.",
+    "conditions": ["gerd"],
+    "source": "manual"
+  },
+  {
+    "title": "Gluten and celiac disease",
+    "content": "In celiac disease, eating gluten (a protein found in wheat, barley, and rye) triggers an immune reaction that damages the small intestine. A strict, lifelong gluten-free eating pattern is the established management approach, and even small amounts of gluten are commonly associated with symptoms and intestinal damage.",
+    "conditions": ["celiac"],
+    "source": "manual"
+  },
+  {
+    "title": "Cross-contamination and celiac disease",
+    "content": "For people with celiac disease, gluten cross-contamination from shared toasters, cutting boards, fryers, or utensils can introduce enough gluten to cause a reaction. Many people with celiac disease find that dedicated preparation surfaces and careful kitchen practices help reduce accidental exposure.",
+    "conditions": ["celiac"],
+    "source": "manual"
+  },
+  {
+    "title": "Hidden sources of gluten",
+    "content": "Gluten can appear in less obvious places such as soy sauce, malt, some soups and sauces, seasoning blends, and certain processed foods. People with celiac disease often find that reading ingredient labels and checking for gluten-free certification helps them identify hidden sources.",
+    "conditions": ["celiac"],
+    "source": "manual"
+  },
+  {
+    "title": "Oats and celiac disease",
+    "content": "Oats are naturally gluten-free but are frequently cross-contaminated with wheat, barley, or rye during growing and processing. Many people with celiac disease use specifically labeled gluten-free oats, and a small number find they react even to uncontaminated oats.",
+    "conditions": ["celiac"],
+    "source": "manual"
+  },
+  {
+    "title": "Lactose intolerance and dairy",
+    "content": "Lactose intolerance occurs when the body produces too little lactase to digest lactose, the sugar in milk and dairy. Many people with lactose intolerance report that milk and other dairy are associated with bloating, gas, cramping, or diarrhea, typically within a few hours of eating.",
+    "conditions": ["lactose"],
+    "source": "manual"
+  },
+  {
+    "title": "Lactose content varies by dairy food",
+    "content": "Different dairy foods contain different amounts of lactose; hard aged cheeses and yogurt with live cultures are often lower in lactose than milk. Many people with lactose intolerance find that small portions or lower-lactose dairy are better tolerated than a large glass of milk.",
+    "conditions": ["lactose"],
+    "source": "manual"
+  },
+  {
+    "title": "Hidden lactose in processed foods",
+    "content": "Lactose can be present in foods that are not obviously dairy, such as some breads, processed meats, baked goods, and packaged sauces, where milk solids or whey are used as ingredients. People with lactose intolerance often find that checking labels helps explain unexpected symptoms.",
+    "conditions": ["lactose"],
+    "source": "manual"
+  },
+  {
+    "title": "Histamine intolerance and high-histamine foods",
+    "content": "Histamine intolerance is thought to occur when the body has difficulty breaking down histamine from food. Aged, fermented, and cured foods such as aged cheese, cured meats, sauerkraut, and some alcohol are commonly associated with symptoms in people who are sensitive.",
+    "conditions": ["histamine"],
+    "source": "manual"
+  },
+  {
+    "title": "Leftovers and histamine",
+    "content": "Histamine levels in protein-rich foods can rise as they are stored, even when refrigerated. Many people with histamine intolerance report that leftovers and aged or slowly-cooled foods are associated with more symptoms than freshly prepared meals.",
+    "conditions": ["histamine"],
+    "source": "manual"
+  },
+  {
+    "title": "Fermented foods and histamine",
+    "content": "Fermentation tends to increase the histamine content of foods, so items such as sauerkraut, kimchi, kombucha, soy sauce, and aged cheese are often high in histamine. People sensitive to histamine commonly report symptoms after these foods even though they are tolerated well by most people.",
+    "conditions": ["histamine"],
+    "source": "manual"
+  },
+  {
+    "title": "Alcohol and histamine",
+    "content": "Some alcoholic drinks, particularly red wine and beer, contain histamine and may also slow the body's breakdown of histamine. Many people with histamine intolerance report that these drinks are associated with flushing, headache, or congestion.",
+    "conditions": ["histamine"],
+    "source": "manual"
+  },
+  {
+    "title": "Fiber and regularity",
+    "content": "Dietary fiber from whole grains, fruits, vegetables, and legumes adds bulk and helps food move through the digestive tract, and is generally associated with more regular bowel habits. Increasing fiber gradually and with adequate fluids is commonly described as gentler on the gut than a sudden large increase.",
+    "conditions": [],
+    "source": "manual"
+  },
+  {
+    "title": "Soluble versus insoluble fiber",
+    "content": "Soluble fiber (found in oats, beans, and some fruits) forms a gel and can soften stool, while insoluble fiber (found in whole grains and vegetable skins) adds bulk. People notice different effects from each, and a mix of both is generally part of a balanced eating pattern.",
+    "conditions": [],
+    "source": "manual"
+  },
+  {
+    "title": "Hydration and digestion",
+    "content": "Adequate fluid intake helps fiber work effectively and supports softer, easier-to-pass stools. Low fluid intake is commonly associated with harder stools and constipation, particularly when fiber intake is high.",
+    "conditions": [],
+    "source": "manual"
+  },
+  {
+    "title": "General effects of caffeine",
+    "content": "Caffeine is a stimulant that can increase alertness and also stimulate the digestive tract, which is why many people notice a laxative-like effect from coffee. Sensitivity varies widely, and effects on sleep and the gut differ from person to person.",
+    "conditions": [],
+    "source": "manual"
+  },
+  {
+    "title": "Alcohol and the gut",
+    "content": "Alcohol can irritate the lining of the digestive tract and affect how the gut moves and absorbs nutrients. Many people report that alcohol, especially in larger amounts, is associated with looser stools, stomach upset, or disrupted digestion the next day.",
+    "conditions": [],
+    "source": "manual"
+  },
+  {
+    "title": "Meal size and timing",
+    "content": "Very large meals place more demand on digestion and are commonly associated with feelings of fullness, bloating, and sluggishness. Many people find that more evenly spaced, moderate meals are linked to steadier energy and more comfortable digestion.",
+    "conditions": [],
+    "source": "manual"
+  },
+  {
+    "title": "Eating pace and bloating",
+    "content": "Eating quickly often means swallowing more air and chewing food less thoroughly, both of which are commonly associated with bloating and discomfort. Many people find that slowing down and chewing well is linked to feeling more comfortable after meals.",
+    "conditions": [],
+    "source": "manual"
+  },
+  {
+    "title": "The value of a food and symptom journal",
+    "content": "Keeping a consistent record of foods, timing, and symptoms can help reveal patterns that are hard to notice day to day, since symptoms often appear hours after eating. Tracking observed associations over time is a common first step in understanding personal triggers, and the patterns it surfaces are observations to discuss with a clinician rather than diagnoses.",
+    "conditions": [],
+    "source": "manual"
+  },
+  {
+    "title": "Delayed symptoms and tracking",
+    "content": "Digestive symptoms frequently appear well after a meal rather than immediately, which can make it difficult to connect them to a specific food from memory alone. Recording what and when you eat alongside symptoms is commonly used to surface these delayed associations.",
+    "conditions": [],
+    "source": "manual"
+  }
+]
