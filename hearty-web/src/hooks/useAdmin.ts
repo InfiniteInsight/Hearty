@@ -64,3 +64,33 @@ export function useKnowledgeActions() {
   const setActive = useMutation({ mutationFn: ({ id, active }: { id: string; active: boolean }) => api.setKnowledgeActive(id, active), onSuccess: invalidate });
   return { create, remove, setActive };
 }
+
+export function usePromptOverlays() {
+  return useQuery({
+    queryKey: ["admin", "prompt-overlays"],
+    queryFn: () => api.getPromptOverlays(),
+    staleTime: 30_000,
+  });
+}
+
+export function usePromptOverlayVersions(surface: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "prompt-overlays", surface, "versions"],
+    queryFn: () => api.getPromptOverlayVersions(surface),
+    enabled,
+  });
+}
+
+export function usePromptOverlayActions() {
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin", "prompt-overlays"] });
+  const save = useMutation({
+    mutationFn: ({ surface, guidance }: { surface: string; guidance: string }) => api.updatePromptOverlay(surface, guidance),
+    onSuccess: invalidate,
+  });
+  const revert = useMutation({
+    mutationFn: ({ surface, versionId }: { surface: string; versionId: string }) => api.revertPromptOverlay(surface, versionId),
+    onSuccess: invalidate,
+  });
+  return { save, revert };
+}
