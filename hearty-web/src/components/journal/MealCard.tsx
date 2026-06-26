@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import type { MealWithSymptoms } from "@/types/api";
 import { severityClass } from "../../lib/symptoms";
+import SymptomRow from "./SymptomRow";
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -135,6 +136,12 @@ export default function MealCard({
                 <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-2 py-1 text-xs text-black">Save</button>
                 <button onClick={() => { setEditing(false); setDesc(meal.description); setFoods((meal.foods ?? []).map((f) => f.name).join(", ")); }} className="rounded-lg border border-surface-border px-2 py-1 text-xs">Cancel</button>
               </div>
+            </div>
+          )}
+          {symptoms.length > 0 && (
+            <div className="mt-3 border-t border-surface-border pt-3">
+              <p className="mb-1 text-xs text-text-muted">Symptoms</p>
+              {symptoms.map((s) => <SymptomRow key={s.id} symptom={s} />)}
             </div>
           )}
         </div>

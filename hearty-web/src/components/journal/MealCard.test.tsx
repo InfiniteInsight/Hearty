@@ -95,3 +95,10 @@ test("expanded card shows a link to the Trends page", async () => {
   await userEvent.click(screen.getByRole("button", { name: /oatmeal with milk/i }));
   expect(screen.getByRole("link", { name: /view trends/i })).toHaveAttribute("href", "/trends");
 });
+
+test("expanded panel renders an editable SymptomRow", async () => {
+  renderCard(<MealCard meal={meal} />);
+  await userEvent.click(screen.getByRole("button", { name: /oatmeal with milk/i }));
+  // the symptom's own edit control is distinct from the meal's "Edit"
+  expect(screen.getByRole("button", { name: /edit bloating/i })).toBeInTheDocument();
+});
