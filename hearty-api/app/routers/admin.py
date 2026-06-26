@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from supabase import create_client
 
 from app.auth import get_current_admin
-from app.services import knowledge
+from app.services import knowledge, prompt_overlays
 
 router = APIRouter()
 supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"])
@@ -83,6 +83,14 @@ class KnowledgeCreate(BaseModel):
 
 class KnowledgeActive(BaseModel):
     active: bool
+
+
+class OverlayUpdate(BaseModel):
+    guidance: str
+
+
+class OverlayRevert(BaseModel):
+    version_id: str
 
 
 @router.get("/api/admin/users")
@@ -231,3 +239,32 @@ async def delete_knowledge(entry_id: str, admin=Depends(get_current_admin)) -> d
 async def patch_knowledge(entry_id: str, body: KnowledgeActive,
                           admin=Depends(get_current_admin)) -> dict:
     return knowledge.set_active(entry_id, body.active)
+
+
+@router.get("/api/admin/prompt-overlays")
+async def list_prompt_overlays(admin=Depends(get_current_admin)) -> dict:
+    return {"overlays": prompt_overlays.list_overlays()}
+
+
+@router.put("/api/admin/prompt-overlays/{surface}")
+async def update_prompt_overlay(surface: str, body: OverlayUpdate,
+                                admin=Depends(get_current_admin)) -> dict:
+    try:
+        return prompt_overlays.set_overlay(surface, body.guidance, admin["id"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/api/admin/prompt-overlays/{surface}/versions")
+async def list_prompt_overlay_versions(surface: str,
+                                       admin=Depends(get_current_admin)) -> dict:
+    return {"versions": prompt_overlays.list_versions(surface)}
+
+
+@router.post("/api/admin/prompt-overlays/{surface}/revert")
+async def revert_prompt_overlay(surface: str, body: OverlayRevert,
+                                admin=Depends(get_current_admin)) -> dict:
+    try:
+        return prompt_overlays.revert(surface, body.version_id, admin["id"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
