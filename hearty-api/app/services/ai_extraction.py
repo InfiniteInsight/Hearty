@@ -136,16 +136,20 @@ def extract_symptoms(raw_description: str) -> list[dict]:
         raise ValueError(f"AI returned non-JSON response: {content}") from e
 
 
-def generate_summary(stats: dict, health_context: str = "") -> str:
+def generate_summary(stats: dict, health_context: str = "",
+                     research_context: str = "") -> str:
     """Generate a natural language summary from aggregated health stats.
 
-    When ``health_context`` is non-empty it is appended to the prompt so the
-    summary accounts for the user's health profile (Spec 08 §9.2). An empty
-    context leaves the prompt byte-identical to the no-profile path.
+    When ``health_context``/``research_context`` are non-empty they are appended
+    (health first, then research) so the summary accounts for the user's profile
+    and any retrieved research. Empty contexts leave the prompt byte-identical to
+    the no-context path.
     """
     prompt = SUMMARY_PROMPT.replace("{stats_json}", json.dumps(stats))
     if health_context:
         prompt = f"{prompt}\n\n{health_context}"
+    if research_context:
+        prompt = f"{prompt}\n\n{research_context}"
     response = litellm.completion(
         model=os.environ.get("LLM_MODEL", "claude-sonnet-4-6"),
         messages=[{"role": "user", "content": prompt}],
