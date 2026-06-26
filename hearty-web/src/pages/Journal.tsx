@@ -2,12 +2,7 @@ import { useJournalFilters } from "../hooks/useJournalFilters";
 import { useJournalMeals, JOURNAL_PAGE_SIZE } from "../hooks/useJournalMeals";
 import MealCard from "../components/journal/MealCard";
 import { MEAL_TYPES } from "../lib/charts";
-
-const SYMPTOM_TYPES = [
-  "acid_reflux", "bloating", "gas", "nausea", "urgency", "loose_stool", "constipation",
-  "stomach_pain", "cramping", "fatigue", "brain_fog", "headache", "skin_reaction",
-  "heart_palpitations", "other",
-];
+import { SYMPTOM_TYPES } from "../lib/symptoms";
 
 export default function Journal() {
   const { filters, setFilters } = useJournalFilters();

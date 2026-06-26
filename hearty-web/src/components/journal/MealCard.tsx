@@ -3,17 +3,10 @@ import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import type { MealWithSymptoms } from "@/types/api";
+import { severityClass } from "../../lib/symptoms";
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function severityClass(sev?: number) {
-  if (sev == null) return "bg-surface text-text-muted";
-  if (sev <= 3) return "bg-brand/15 text-brand";
-  if (sev <= 6) return "bg-warn/15 text-warn";
-  return "bg-accent-red/15 text-accent-red";
 }
 
 export default function MealCard({
