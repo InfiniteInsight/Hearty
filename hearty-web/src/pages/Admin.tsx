@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAdminUsers, useAdminActions, useAppSettings, useUpdateAppSettings, useHealth, useTestLlm, useKnowledge, useKnowledgeActions } from "../hooks/useAdmin";
+import { useAdminUsers, useAdminActions, useAppSettings, useUpdateAppSettings, useHealth, useTestLlm, useKnowledge, useKnowledgeActions, usePromptOverlays, usePromptOverlayVersions, usePromptOverlayActions } from "../hooks/useAdmin";
 import type { AdminUser, ProvisioningMode } from "@/types/api";
 
 function formatDate(s: string | null | undefined) {
@@ -260,6 +260,72 @@ function KnowledgeBase() {
   );
 }
 
+const OVERLAY_SURFACES: { surface: string; label: string; help: string }[] = [
+  { surface: "summary", label: "Weekly summary", help: "How Hearty writes your weekly summary." },
+  { surface: "trends_conversation", label: "Trends conversation", help: "How Hearty runs the monthly trends check-in." },
+];
+
+function OverlayEditor({ surface, label, help }: { surface: string; label: string; help: string }) {
+  const overlays = usePromptOverlays();
+  const actions = usePromptOverlayActions();
+  const current = overlays.data?.overlays.find((o) => o.surface === surface);
+  const [text, setText] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const versions = usePromptOverlayVersions(surface, showHistory);
+  if (overlays.isSuccess && !loaded) { setText(current?.guidance ?? ""); setLoaded(true); }
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-surface-border pt-3 first:border-t-0 first:pt-0">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-text">{label}</span>
+        <button onClick={() => setShowHistory((v) => !v)}
+          className="text-xs text-text-muted hover:text-text">
+          {showHistory ? "Hide history" : "History"}
+        </button>
+      </div>
+      <p className="text-xs text-text-faint">{help} The structural rules and the "observations, not diagnoses" guardrail always apply.</p>
+      <textarea aria-label={`${surface} overlay`} value={text} rows={3}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Optional guidance (tone, emphasis, things to mention or avoid)…"
+        className="rounded border border-surface-border bg-background px-2 py-1 text-text" />
+      <button disabled={actions.save.isPending}
+        onClick={() => actions.save.mutate({ surface, guidance: text })}
+        className="self-start rounded px-3 py-1.5 text-sm bg-brand text-black hover:opacity-80 disabled:opacity-40">
+        Save {label.toLowerCase()}
+      </button>
+      {actions.save.isError && <p className="text-sm text-accent-red">Failed to save.</p>}
+      {showHistory && versions.data && (
+        <div className="flex flex-col divide-y divide-surface-border">
+          {versions.data.versions.length === 0 && <p className="text-xs text-text-faint">No history yet.</p>}
+          {versions.data.versions.map((v) => (
+            <div key={v.id} className="flex items-center justify-between py-1.5 gap-3">
+              <span className="text-xs text-text-faint truncate">
+                {new Date(v.created_at).toLocaleString()} · {v.guidance ? v.guidance.slice(0, 60) : "(empty)"}
+              </span>
+              <button disabled={actions.revert.isPending}
+                onClick={() => actions.revert.mutate({ surface, versionId: v.id }, { onSuccess: () => { setText(v.guidance); } })}
+                className="rounded px-2 py-0.5 text-xs border border-surface-border text-text-muted hover:text-text disabled:opacity-40">
+                Revert
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PromptTuning() {
+  return (
+    <div className="rounded-2xl border border-surface-border bg-surface p-4 flex flex-col gap-3">
+      <h2 className="font-display text-xl">Prompt tuning</h2>
+      <p className="text-xs text-text-faint">Tune how Hearty talks. Edits layer on top of the locked core prompts and apply to the next AI call.</p>
+      {OVERLAY_SURFACES.map((s) => <OverlayEditor key={s.surface} {...s} />)}
+    </div>
+  );
+}
+
 export default function Admin() {
   const list = useAdminUsers();
   const a = useAdminActions();
@@ -279,6 +345,7 @@ export default function Admin() {
       <SystemHealth />
       <SignupPolicy />
       <KnowledgeBase />
+      <PromptTuning />
       {err && <p className="text-sm text-accent-red">{err}</p>}
       {list.isPending && <p className="text-text-faint">Loading…</p>}
       {list.isError && <p className="text-sm text-accent-red">Couldn't load subscribers.</p>}
