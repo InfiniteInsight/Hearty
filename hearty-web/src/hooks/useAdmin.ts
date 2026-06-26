@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import type { GrantLicenseRequest, AppSettings } from "@/types/api";
+import type { GrantLicenseRequest, AppSettings, CreateKnowledgeRequest } from "@/types/api";
 
 export function useAdminUsers() {
   return useQuery({
@@ -46,4 +46,21 @@ export function useTestLlm() {
     mutationFn: () => api.testLlm(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "health"] }),
   });
+}
+
+export function useKnowledge() {
+  return useQuery({
+    queryKey: ["admin", "knowledge"],
+    queryFn: () => api.getKnowledge(),
+    staleTime: 30_000,
+  });
+}
+
+export function useKnowledgeActions() {
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin", "knowledge"] });
+  const create = useMutation({ mutationFn: (b: CreateKnowledgeRequest) => api.createKnowledge(b), onSuccess: invalidate });
+  const remove = useMutation({ mutationFn: (id: string) => api.deleteKnowledge(id), onSuccess: invalidate });
+  const setActive = useMutation({ mutationFn: ({ id, active }: { id: string; active: boolean }) => api.setKnowledgeActive(id, active), onSuccess: invalidate });
+  return { create, remove, setActive };
 }
