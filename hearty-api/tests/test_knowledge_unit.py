@@ -16,6 +16,10 @@ class _Query:
 
     def execute(self):
         self.store["calls"].append((self.table, self._op, self._payload, self._filters))
+        # Stash last order info separately so new tests can assert on it without
+        # widening the 4-tuple that existing tests unpack.
+        if self._order is not None:
+            self.store["last_order"] = (self.table, self._order)
         if self._op == "insert":
             row = dict(self._payload); row["id"] = "kb1"
             return types.SimpleNamespace(data=[row])
@@ -90,3 +94,44 @@ def test_set_active_updates_row(monkeypatch):
     table, op, payload, filters = store["calls"][0]
     assert op == "update" and payload == {"active": False} and filters == [("id", "kb9")]
     assert out["active"] is False
+
+
+def test_list_entries_selects_columns_ordered(monkeypatch):
+    """list_entries() must SELECT from knowledge_base ordered by created_at desc."""
+    sentinel_rows = [
+        {"id": "kb2", "title": "B", "created_at": "2024-02-01"},
+        {"id": "kb1", "title": "A", "created_at": "2024-01-01"},
+    ]
+    store = {"calls": [], "rows": sentinel_rows}
+    _setup(monkeypatch, store)
+
+    result = knowledge.list_entries()
+
+    # One call was made to the knowledge_base table with a select op.
+    assert len(store["calls"]) == 1
+    table, op, _, _ = store["calls"][0]
+    assert table == "knowledge_base"
+    assert op == "select"
+
+    # The call was ordered by created_at descending.
+    order_table, (col, desc) = store["last_order"]
+    assert order_table == "knowledge_base"
+    assert col == "created_at"
+    assert desc is True
+
+    # Returns the data payload from the fake.
+    assert result == sentinel_rows
+
+
+def test_delete_entry_by_id(monkeypatch):
+    """delete_entry(id) must issue a DELETE filtered by the given id."""
+    store = {"calls": []}
+    _setup(monkeypatch, store)
+
+    knowledge.delete_entry("kb99")
+
+    assert len(store["calls"]) == 1
+    table, op, _, filters = store["calls"][0]
+    assert table == "knowledge_base"
+    assert op == "delete"
+    assert ("id", "kb99") in filters
