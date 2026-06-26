@@ -25,6 +25,8 @@ Container: `hearty-api/Dockerfile` (uvicorn on port 8080 = Cloud Run default). B
 `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `LLM_MODEL`, `ANTHROPIC_API_KEY` (or the key matching `LLM_MODEL`), `GEMINI_API_KEY` (knowledge-base RAG embeddings — `gemini/gemini-embedding-001`), `BRAVE_SEARCH_API_KEY`, `ALLOWED_ORIGINS`, `CLEANUP_TOKEN`, `PHOTO_RETENTION_HOURS`.
 Optional/defaulted: `PHOTO_BUCKET` (default `food-photos` — matches the prod Storage bucket), `SUPABASE_WEBHOOK_SECRET`.
 
+> **API keys (migrated 2026-06-26):** the project uses Supabase's **new API keys**, and the **legacy `anon`/`service_role` JWT keys are disabled**. `SUPABASE_SERVICE_KEY` is the **secret** key (`sb_secret_…`, full service-role access incl. GoTrue auth-admin); the web's `VITE_SUPABASE_ANON_KEY` is the **publishable** key (`sb_publishable_…`). Manage/rotate both under **Supabase → Settings → API Keys** (independently rotatable — rotating a new key does NOT touch the JWT secret or user sessions). The legacy JWTs are dead; don't reintroduce them. **Flutter app:** its Supabase client must use the **publishable** key too — rebuild with `SUPABASE_ANON_KEY=sb_publishable_…` before it can auth against prod again (the old build embeds the now-disabled legacy anon JWT).
+
 > **CRITICAL:** `--env-vars-file` **replaces the entire env set** (not additive). The build loop below must list **every** key the service needs, or a redeploy silently un-sets the omitted ones. The loop skips any key that's empty in `.env`, so listing an unused optional key is harmless.
 
 **Redeploy** (gcloud is installed at `~/google-cloud-sdk`; auth as the project owner first with `gcloud auth login`):
@@ -62,7 +64,7 @@ Vite SPA in `hearty-web/`. Root Directory = `hearty-web`; `vercel.json` adds the
 
 **Build-time env vars** (Production + Preview):
 - `VITE_SUPABASE_URL` = `https://ehuanqnkqehpivwuqpqw.supabase.co`
-- `VITE_SUPABASE_ANON_KEY` = the Supabase anon key (public client key — never the service key)
+- `VITE_SUPABASE_ANON_KEY` = the Supabase **publishable** key (`sb_publishable_…`, public client key — never the secret key). Legacy anon JWT is disabled.
 - `VITE_API_URL` = `https://hearty-api-5aclgyfsva-uc.a.run.app`
 
 `VITE_*` vars are inlined at build time, so they must be set **before** a deploy.
