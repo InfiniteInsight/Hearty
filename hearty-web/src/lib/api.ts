@@ -12,6 +12,7 @@ import type {
   LicenseStatus, AdminUsersResponse, GrantLicenseRequest,
   AppSettings, HealthStatus, LlmTestResult,
   KnowledgeEntry, KnowledgeListResponse, CreateKnowledgeRequest,
+  PromptOverlay, PromptOverlaysResponse, PromptOverlayVersionsResponse,
 } from "@/types/api";
 
 export class ApiError extends Error {
@@ -118,6 +119,13 @@ export function createApiClient(baseUrl: string) {
       request<unknown>(`/api/admin/knowledge/${id}`, { method: "DELETE" }),
     setKnowledgeActive: (id: string, active: boolean) =>
       request<KnowledgeEntry>(`/api/admin/knowledge/${id}`, { method: "PATCH", body: JSON.stringify({ active }) }),
+    getPromptOverlays: () => request<PromptOverlaysResponse>(`/api/admin/prompt-overlays`),
+    updatePromptOverlay: (surface: string, guidance: string) =>
+      request<PromptOverlay>(`/api/admin/prompt-overlays/${surface}`, { method: "PUT", body: JSON.stringify({ guidance }) }),
+    getPromptOverlayVersions: (surface: string) =>
+      request<PromptOverlayVersionsResponse>(`/api/admin/prompt-overlays/${surface}/versions`),
+    revertPromptOverlay: (surface: string, versionId: string) =>
+      request<PromptOverlay>(`/api/admin/prompt-overlays/${surface}/revert`, { method: "POST", body: JSON.stringify({ version_id: versionId }) }),
   };
 }
 

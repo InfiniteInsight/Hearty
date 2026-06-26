@@ -137,7 +137,7 @@ def extract_symptoms(raw_description: str) -> list[dict]:
 
 
 def generate_summary(stats: dict, health_context: str = "",
-                     research_context: str = "") -> str:
+                     research_context: str = "", style_overlay: str = "") -> str:
     """Generate a natural language summary from aggregated health stats.
 
     When ``health_context``/``research_context`` are non-empty they are appended
@@ -146,6 +146,8 @@ def generate_summary(stats: dict, health_context: str = "",
     the no-context path.
     """
     prompt = SUMMARY_PROMPT.replace("{stats_json}", json.dumps(stats))
+    if style_overlay:
+        prompt = f"{prompt}\n\n{style_overlay}"
     if health_context:
         prompt = f"{prompt}\n\n{health_context}"
     if research_context:

@@ -18,7 +18,7 @@ from app.models.schemas import (
 from app.services import (
     ai_extraction, trend_engine, signal_engine,
     signal_presenter, trends_conversation, signal_persistence,
-    knowledge,
+    knowledge, prompt_overlays,
 )
 from app.services.food_category_service import category_label
 
@@ -332,9 +332,10 @@ async def trends_conversation_turn(
     last_user = next((t.content for t in reversed(body.history) if t.role == "user"), None)
     query = last_user or " ".join(s.category for s in signals[:3]) or "food symptom patterns"
     research_context = _research_for(query, user_id)
+    style_overlay = prompt_overlays.get_overlay("trends_conversation")
     return trends_conversation.generate_turn(
         signals, body.history, health_context=health_context,
-        research_context=research_context)
+        research_context=research_context, style_overlay=style_overlay)
 
 
 @router.post("/api/trends/signal-verdict", status_code=200)
@@ -455,8 +456,10 @@ async def get_summary(
     health_context = load_health_profile_context(user["id"])
     query = " ".join(t["symptom_type"] for t in top_symptoms[:3]) or "food symptom patterns"
     research_context = _research_for(query, user["id"])
+    style_overlay = prompt_overlays.get_overlay("summary")
     summary_text = ai_extraction.generate_summary(
-        stats, health_context=health_context, research_context=research_context)
+        stats, health_context=health_context, research_context=research_context,
+        style_overlay=style_overlay)
 
     return SummaryResponse(
         period=period,

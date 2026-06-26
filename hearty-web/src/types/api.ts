@@ -204,3 +204,10 @@ export interface CreateKnowledgeRequest {
   conditions: string[];
   source?: string;
 }
+
+export interface PromptOverlay { surface: string; guidance: string; updated_at: string }
+export interface PromptOverlaysResponse { overlays: PromptOverlay[] }
+export interface PromptOverlayVersion {
+  id: string; surface: string; guidance: string; created_at: string; created_by: string | null;
+}
+export interface PromptOverlayVersionsResponse { versions: PromptOverlayVersion[] }

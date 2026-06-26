@@ -34,7 +34,8 @@ def _signal_line(s: PresentedSignal) -> str:
 
 def build_system_prompt(signals: list[PresentedSignal],
                         health_context: str = "",
-                        research_context: str = "") -> str:
+                        research_context: str = "",
+                        style_overlay: str = "") -> str:
     signal_block = "\n".join(_signal_line(s) for s in signals) or "(no signals)"
     prompt = f"""You are Hearty, a warm, plain-spoken food-and-symptom companion \
 having a brief monthly check-in conversation with the user about the patterns \
@@ -71,6 +72,8 @@ Respond with ONLY a JSON object, no prose around it:
 }}
 proposed_verdict and proposed_experiment must each reference one of the exact \
 patterns above, or be null."""
+    if style_overlay:
+        prompt = f"{prompt}\n\n{style_overlay}"
     if health_context:
         prompt = f"{prompt}\n\n{health_context}"
     if research_context:
@@ -83,9 +86,10 @@ def generate_turn(
     history: list[ConversationTurn],
     health_context: str = "",
     research_context: str = "",
+    style_overlay: str = "",
 ) -> TrendsConversationResponse:
     messages = [{"role": "system",
-                 "content": build_system_prompt(signals, health_context, research_context)}]
+                 "content": build_system_prompt(signals, health_context, research_context, style_overlay)}]
     for turn in history:
         messages.append({"role": turn.role, "content": turn.content})
     if not history:
