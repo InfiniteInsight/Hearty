@@ -29,7 +29,7 @@ create table if not exists knowledge_base (
   source_id text,
   title text,
   content text not null,
-  content_embedding vector(1536),       -- OpenAI text-embedding-3-small
+  content_embedding vector(3072),       -- Gemini gemini-embedding-001 (3072 dims)
   conditions text[] not null default '{}',  -- e.g. {'ibs','gerd','celiac'}; NOT NULL so the
                                              -- `conditions = '{}'` eligibility test can't be
                                              -- defeated by a null (which would hide the row from
@@ -48,7 +48,7 @@ alter table knowledge_base enable row level security;  -- service-key only; not 
 
 -- Top-k cosine retrieval (PostgREST can't do vector ops via the query builder).
 create or replace function match_knowledge(
-  query_embedding vector(1536),
+  query_embedding vector(3072),
   match_count int default 4,
   filter_conditions text[] default null
 ) returns table (id uuid, source text, title text, content text, conditions text[], similarity float)
@@ -64,17 +64,17 @@ language sql stable as $$
   limit match_count;
 $$;
 ```
-Service-key client retrieves via `supabase.rpc("match_knowledge", {...})`. **Binding verified against prod (2026-06-25 spike):** a raw Python `list[float]` of length 1536 binds directly to `vector(1536)` on **both** the insert write-path (`table(...).insert({"emb": vec})`) and the RPC `query_embedding` param — the spike's `match_spike` RPC returned `similarity: 1.0` for an identical query vector. No `::vector` cast or string-literal (`'[...]'`) form is needed; pass plain Python lists everywhere.
+Service-key client retrieves via `supabase.rpc("match_knowledge", {...})`. **Binding verified against prod (2026-06-25 spike):** a raw Python `list[float]` binds directly to a `vector(N)` column on **both** the insert write-path (`table(...).insert({"emb": vec})`) and the RPC `query_embedding` param — the spike's `match_spike` RPC returned `similarity: 1.0` for an identical query vector. The binding is dimension-agnostic (the spike used 1536; v1 uses Gemini's 3072). No `::vector` cast or string-literal (`'[...]'`) form is needed; pass plain Python lists everywhere.
 
 ### 2. Embedding service — `app/services/embeddings.py`
 ```python
 def embed(text: str) -> list[float]:
-    resp = litellm.embedding(model="text-embedding-3-small", input=[text])
+    resp = litellm.embedding(model="gemini/gemini-embedding-001", input=[text])
     return resp.data[0]["embedding"]
 ```
-Same model for ingestion and query (required for valid similarity). Needs `OPENAI_API_KEY` (new deploy-time env var). One thin module.
+Same model for ingestion and query (required for valid similarity). Needs `GEMINI_API_KEY` (new deploy-time env var). One thin module.
 
-> **Deploy note:** Cloud Run's `gcloud run deploy --env-vars-file` **replaces the entire env set** (not additive). `OPENAI_API_KEY` must be added to `.env` *and* to the env-file key list in `docs/DEPLOYMENT.md`'s redeploy procedure, alongside the existing 8 keys — otherwise the next redeploy that omits it silently un-sets it and embedding (and thus all retrieval) starts failing closed to `""` research_context.
+> **Deploy note:** Cloud Run's `gcloud run deploy --env-vars-file` **replaces the entire env set** (not additive). `GEMINI_API_KEY` must be added to `.env` *and* to the env-file key list in `docs/DEPLOYMENT.md`'s redeploy procedure, alongside the existing 8 keys — otherwise the next redeploy that omits it silently un-sets it and embedding (and thus all retrieval) starts failing closed to `""` research_context.
 
 ### 3. Knowledge store + retrieval — `app/services/knowledge.py`
 - `add_entry(title, content, conditions, source="manual", source_id=None) -> dict` — `embed(content)` then insert; returns the row (without the embedding).
@@ -123,10 +123,10 @@ Web — a **"Knowledge base"** panel on `/admin`: list entries (title / source /
 ## Security
 - `knowledge_base`: RLS on, no anon/auth policies (service-key only) — it's server corpus, not user data; `match_knowledge` is `stable` and read-only.
 - All corpus-management endpoints `get_current_admin`. Retrieval uses the service-key client; the query text derives from the requesting user's own signals/message + their own conditions.
-- `OPENAI_API_KEY` is a backend env var (never client-exposed).
+- `GEMINI_API_KEY` is a backend env var (never client-exposed).
 
 ## Cost / performance
-- One embedding per RAG'd AI call (query) + one vector search — `text-embedding-3-small` ≈ $0.02/1M tokens (negligible); adds ~50–150 ms. Ingestion embeds once per entry on add.
+- One embedding per RAG'd AI call (query) + one vector search — Gemini `gemini-embedding-001` is free within Google AI Studio's generous rate limits (effectively $0 at this scale); adds ~50–150 ms. Ingestion embeds once per entry on add.
 - No ANN index in v1 — an exact sequential scan over a tiny corpus is instant and gives perfect recall. Switch to an HNSW index only when the corpus reaches thousands of rows (ivfflat with `lists=100` would hurt recall at v1 sizes).
 
 ## Testing
@@ -139,7 +139,7 @@ Web — a **"Knowledge base"** panel on `/admin`: list entries (title / source /
 
 **Web (Vitest + RTL + MSW):** the Knowledge base panel lists entries from a mocked payload, the add form posts, delete/toggle hit the right endpoints. Existing `/admin` tests stay green.
 
-**Live (deploy-time):** add `OPENAI_API_KEY` to `.env` **and** the `docs/DEPLOYMENT.md` redeploy env-file key list (see the deploy note in §2 — `--env-vars-file` is full-replace); apply the migration (enables `vector`, creates `knowledge_base` + `match_knowledge`); add a couple of seed entries via `/admin`; confirm a trends conversation/summary reflects the research (and still works with an empty corpus). The pgvector binding is already prod-verified (§1 spike), so no further binding check is needed.
+**Live (deploy-time):** add `GEMINI_API_KEY` to `.env` **and** the `docs/DEPLOYMENT.md` redeploy env-file key list (see the deploy note in §2 — `--env-vars-file` is full-replace); apply the migration (enables `vector`, creates `knowledge_base` + `match_knowledge`); add a couple of seed entries via `/admin`; confirm a trends conversation/summary reflects the research (and still works with an empty corpus). The pgvector binding is already prod-verified (§1 spike), so no further binding check is needed.
 
 ## Deferred (future Layer-1 iterations)
 Automated PubMed (NCBI E-utilities) / NHS / NIH ingestion on a schedule, MeSH-term pulls, a human review queue (`reviewed` workflow), source-freshness alerts, and a larger seeded corpus.

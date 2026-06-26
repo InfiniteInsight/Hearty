@@ -4,7 +4,7 @@
 
 **Goal:** Ground Hearty's two AI explanation surfaces (monthly trends conversation + health summary) in a curated, owner-managed health-research corpus via pgvector RAG, with an `/admin` curation panel.
 
-**Architecture:** A `knowledge_base` pgvector table + `match_knowledge` cosine-retrieval RPC. A thin `embeddings.embed()` (litellm → OpenAI `text-embedding-3-small`, 1536-dim) and a best-effort `knowledge` store/retrieval module. The `trends.py` router orchestrates retrieval (`_research_for`) and passes a `research_context` block into `trends_conversation.generate_turn` and `ai_extraction.generate_summary` — mirroring the existing `health_context` pattern. Retrieval is fully best-effort: any embedding/RPC error or empty corpus yields `""`, leaving the AI call byte-identical to today. Owner CRUD via `/api/admin/knowledge` + a "Knowledge base" panel on `/admin`.
+**Architecture:** A `knowledge_base` pgvector table + `match_knowledge` cosine-retrieval RPC. A thin `embeddings.embed()` (litellm → Gemini `gemini-embedding-001`, 3072-dim) and a best-effort `knowledge` store/retrieval module. The `trends.py` router orchestrates retrieval (`_research_for`) and passes a `research_context` block into `trends_conversation.generate_turn` and `ai_extraction.generate_summary` — mirroring the existing `health_context` pattern. Retrieval is fully best-effort: any embedding/RPC error or empty corpus yields `""`, leaving the AI call byte-identical to today. Owner CRUD via `/api/admin/knowledge` + a "Knowledge base" panel on `/admin`.
 
 **Tech Stack:** FastAPI (Python), Supabase Postgres + pgvector, litellm, React 19 + TanStack Query v5 + Vitest/RTL/MSW.
 
@@ -12,7 +12,7 @@
 
 **Worktree:** `~/.config/superpowers/worktrees/knowledge-rag` (branch `knowledge-rag`, off master @ #19). Backend test command: `cd hearty-api && .venv/bin/pytest`. Web test command: `cd hearty-web && npm run test -- --run`.
 
-**Key prod fact (already verified):** A raw Python `list[float]` of length 1536 binds directly to `vector(1536)` on both insert and the RPC `query_embedding` param — pass plain Python lists everywhere, no `::vector` cast or string-literal form.
+**Key prod fact (already verified):** A raw Python `list[float]` binds directly to a `vector(N)` column on both insert and the RPC `query_embedding` param — pass plain Python lists everywhere, no `::vector` cast or string-literal form. (Spike used 1536; v1 uses Gemini's 3072 — binding is dimension-agnostic.)
 
 ---
 
@@ -31,7 +31,7 @@
 | `hearty-web/src/lib/api.ts` | knowledge client methods (modify) | 7 |
 | `hearty-web/src/hooks/useAdmin.ts` | `useKnowledge` + `useKnowledgeActions` (modify) | 8 |
 | `hearty-web/src/pages/Admin.tsx` | `KnowledgeBase` panel (modify) | 9 |
-| `.env`, `.env.example`, `docs/DEPLOYMENT.md` | `OPENAI_API_KEY` + apply migration + redeploy (modify) | 10 |
+| `.env`, `.env.example`, `docs/DEPLOYMENT.md` | `GEMINI_API_KEY` + apply migration + redeploy (modify) | 10 |
 
 ---
 
@@ -62,7 +62,7 @@ create table if not exists knowledge_base (
   source_id text,
   title text,
   content text not null,
-  content_embedding vector(1536),            -- OpenAI text-embedding-3-small
+  content_embedding vector(3072),            -- Gemini gemini-embedding-001 (3072 dims)
   conditions text[] not null default '{}',   -- e.g. {'ibs','gerd','celiac'}; NOT NULL so the
                                              -- conditions = '{}' eligibility test below can't be
                                              -- defeated by a null (which would hide the row from
@@ -80,7 +80,7 @@ alter table knowledge_base enable row level security;
 
 -- Top-k cosine retrieval (PostgREST can't do vector ops via the query builder).
 create or replace function match_knowledge(
-  query_embedding vector(1536),
+  query_embedding vector(3072),
   match_count int default 4,
   filter_conditions text[] default null
 ) returns table (id uuid, source text, title text, content text, conditions text[], similarity float)
@@ -119,7 +119,7 @@ import types
 from app.services import embeddings
 
 
-def test_embed_returns_vector_and_uses_small_model(monkeypatch):
+def test_embed_returns_vector_and_uses_gemini_model(monkeypatch):
     captured = {}
 
     def fake_embedding(model, input):
@@ -132,7 +132,7 @@ def test_embed_returns_vector_and_uses_small_model(monkeypatch):
     monkeypatch.setattr(embeddings.litellm, "embedding", fake_embedding)
     out = embeddings.embed("hello world")
     assert out == [0.1, 0.2, 0.3]
-    assert captured["model"] == "text-embedding-3-small"
+    assert captured["model"] == "gemini/gemini-embedding-001"
     assert captured["input"] == ["hello world"]
 ```
 
@@ -149,12 +149,12 @@ Create `hearty-api/app/services/embeddings.py`:
 """Embedding service for the knowledge-base RAG (Spec 11 Layer 1).
 
 Wraps litellm.embedding so the SAME model is used for both ingestion and query
-(required for valid cosine similarity). Needs OPENAI_API_KEY at deploy time.
+(required for valid cosine similarity). Needs GEMINI_API_KEY at deploy time.
 """
 
 import litellm
 
-EMBEDDING_MODEL = "text-embedding-3-small"  # 1536 dims; matches vector(1536)
+EMBEDDING_MODEL = "gemini/gemini-embedding-001"  # 3072 dims; matches vector(3072)
 
 
 def embed(text: str) -> list[float]:
@@ -172,7 +172,7 @@ Expected: PASS (1 passed).
 
 ```bash
 git add hearty-api/app/services/embeddings.py hearty-api/tests/test_embeddings_unit.py
-git commit -m "feat(rag): embeddings.embed via litellm text-embedding-3-small"
+git commit -m "feat(rag): embeddings.embed via litellm gemini gemini-embedding-001"
 ```
 
 ---
@@ -225,7 +225,7 @@ class _FakeSupabase:
 
 def _setup(monkeypatch, store):
     monkeypatch.setattr(knowledge, "supabase", _FakeSupabase(store))
-    monkeypatch.setattr(knowledge, "embed", lambda t: [0.5] * 1536)
+    monkeypatch.setattr(knowledge, "embed", lambda t: [0.5] * 3072)
 
 
 def test_add_entry_embeds_and_strips_vector(monkeypatch):
@@ -234,7 +234,7 @@ def test_add_entry_embeds_and_strips_vector(monkeypatch):
     assert "content_embedding" not in row          # returned row is lightweight
     table, op, payload, _ = store["calls"][0]
     assert table == "knowledge_base" and op == "insert"
-    assert payload["content_embedding"] == [0.5] * 1536
+    assert payload["content_embedding"] == [0.5] * 3072
     assert payload["conditions"] == ["gerd"]
     assert payload["content"] == "body text"
 
@@ -246,7 +246,7 @@ def test_search_calls_rpc_with_right_args(monkeypatch):
     rows = knowledge.search("acid reflux", k=3, conditions=["gerd"])
     fn, params = store["rpc"]
     assert fn == "match_knowledge"
-    assert params["query_embedding"] == [0.5] * 1536
+    assert params["query_embedding"] == [0.5] * 3072
     assert params["match_count"] == 3
     assert params["filter_conditions"] == ["gerd"]
     assert rows[0]["title"] == "X"
@@ -652,7 +652,7 @@ with:
 
 - [ ] **Step 6: Fix the two existing conversation-endpoint tests (deterministic — do this, don't skip)**
 
-Two existing unit tests POST to `/api/trends/conversation` and monkeypatch `generate_turn` with a lambda that has NO `research_context` param. After Task 5 the endpoint (a) passes `research_context=...` → those lambdas raise `TypeError` → 500, and (b) runs `_research_for`, which calls the REAL `litellm.embedding` — a **billed, flaky network call** the moment `OPENAI_API_KEY` lands in `.env` at Task 10 (with today's empty key it silently returns `""` and the test still "passes", which is the trap). Neither test even stubs the knowledge client, and `test_trends_auto_analysis_unit.py` doesn't stub `trends_module.supabase` either, so `_user_condition_slugs` would hit **prod Supabase**. Fix both deterministically — never rely on the empty-key degradation.
+Two existing unit tests POST to `/api/trends/conversation` and monkeypatch `generate_turn` with a lambda that has NO `research_context` param. After Task 5 the endpoint (a) passes `research_context=...` → those lambdas raise `TypeError` → 500, and (b) runs `_research_for`, which calls the REAL `litellm.embedding` — a **real, flaky network call** the moment `GEMINI_API_KEY` lands in `.env` at Task 10 (with today's empty key it silently returns `""` and the test still "passes", which is the trap). Neither test even stubs the knowledge client, and `test_trends_auto_analysis_unit.py` doesn't stub `trends_module.supabase` either, so `_user_condition_slugs` would hit **prod Supabase**. Fix both deterministically — never rely on the empty-key degradation.
 
 **`tests/test_trends_conversation_endpoint_unit.py`** → in `test_conversation_endpoint_returns_reply`, replace the `generate_turn` monkeypatch and add a `_research_for` stub:
 
@@ -1100,19 +1100,19 @@ git commit -m "feat(rag): Knowledge base admin panel on /admin"
 
 ### Task 10: Deploy + live verification (MANUAL — requires user consent)
 
-> This task performs live, externally-visible actions (adds a secret, applies a prod migration, redeploys Cloud Run). Do NOT run it without explicit user go-ahead. It also needs the user to supply an **OpenAI API key**. The pgvector binding is already prod-verified, so no binding check is needed here.
+> This task performs live, externally-visible actions (adds a secret, applies a prod migration, redeploys Cloud Run). Do NOT run it without explicit user go-ahead. It also needs the user to supply a **Gemini API key** (Google AI Studio — free tier). The pgvector binding is already prod-verified, so no binding check is needed here.
 
-- [ ] **Step 1: Obtain and store the OpenAI key**
+- [ ] **Step 1: Obtain and store the Gemini key**
 
-Ask the user for an `OPENAI_API_KEY`. Add it to `/home/evan/projects/food-journal-assistant/.env` (gitignored) as `OPENAI_API_KEY=sk-...`. Leave `.env.example`'s existing `OPENAI_API_KEY=` line as-is (already present).
+Ask the user for a `GEMINI_API_KEY` (from Google AI Studio, https://aistudio.google.com/apikey — keys start `AIza...`). Add it to `/home/evan/projects/food-journal-assistant/.env` (gitignored) as `GEMINI_API_KEY=AIza...`. Leave `.env.example`'s existing `GEMINI_API_KEY=` line as-is (already present).
 
 - [ ] **Step 2: Add the key to the redeploy procedure**
 
-In `docs/DEPLOYMENT.md`, add `OPENAI_API_KEY` to the env-file key list in the redeploy procedure (the `--env-vars-file` is full-replace, so every key — now 9 including this one — must be present or the redeploy un-sets it). Commit:
+In `docs/DEPLOYMENT.md`, add `GEMINI_API_KEY` to the env-file key list in the redeploy procedure (the `--env-vars-file` is full-replace, so every key — now 9 including this one — must be present or the redeploy un-sets it). Commit:
 
 ```bash
 git add docs/DEPLOYMENT.md
-git commit -m "docs(deploy): add OPENAI_API_KEY to redeploy env-file key list (RAG)"
+git commit -m "docs(deploy): add GEMINI_API_KEY to redeploy env-file key list (RAG)"
 ```
 
 - [ ] **Step 3: Apply the migration to prod**
@@ -1138,7 +1138,7 @@ Expected: `tbl` = `knowledge_base`, `fn` = `1`.
 
 - [ ] **Step 4: Redeploy Cloud Run with the full env set**
 
-Build `/tmp/hearty-env.yaml` from `.env` (all 9 keys including `OPENAI_API_KEY`) and deploy per `docs/DEPLOYMENT.md`:
+Build `/tmp/hearty-env.yaml` from `.env` (all 9 keys including `GEMINI_API_KEY`) and deploy per `docs/DEPLOYMENT.md`:
 
 ```bash
 gcloud run deploy hearty-api --source . --region us-central1 \
@@ -1177,9 +1177,9 @@ Use superpowers:finishing-a-development-branch (push + PR, or merge) per the use
 - §5 Admin CRUD (POST/GET/DELETE/PATCH) → Task 6 ✓; web panel → Tasks 7-9 ✓
 - §6 Health-profile scoping (conditions filter + untagged-always-eligible) → Task 1 (SQL) + Task 5 (`_user_condition_slugs`) ✓
 - Error handling (best-effort retrieval) → Task 3 `search`, Task 5 `_research_for` ✓
-- Security (admin-gated, service-key, OPENAI server-only) → Task 6 (`get_current_admin`), Task 10 ✓
+- Security (admin-gated, service-key, GEMINI_API_KEY server-only) → Task 6 (`get_current_admin`), Task 10 ✓
 - Testing (backend unit + web Vitest + live) → every task's tests + Task 10 ✓
-- Deploy note (OPENAI_API_KEY full-replace) → Task 10 ✓
+- Deploy note (GEMINI_API_KEY full-replace) → Task 10 ✓
 
 **2. Placeholder scan:** No TBD/TODO/"handle errors"-style placeholders; every code step shows complete code. The only deliberately abstract spot is Task 10's migration file path (`.../`), because the worktree path and merge target differ — the step explains both resolutions.
 

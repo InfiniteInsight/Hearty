@@ -1,12 +1,15 @@
 """Embedding service for the knowledge-base RAG (Spec 11 Layer 1).
 
 Wraps litellm.embedding so the SAME model is used for both ingestion and query
-(required for valid cosine similarity). Needs OPENAI_API_KEY at deploy time.
+(required for valid cosine similarity). Needs GEMINI_API_KEY at deploy time
+(Google AI Studio key — litellm reads GEMINI_API_KEY for ``gemini/*`` models).
 """
 
 import litellm
 
-EMBEDDING_MODEL = "text-embedding-3-small"  # 1536 dims; matches vector(1536)
+# Google AI Studio embedding model (litellm `gemini/` provider → uses GEMINI_API_KEY).
+# Native output is 3072-dim; the migration's vector(3072) column matches.
+EMBEDDING_MODEL = "gemini/gemini-embedding-001"
 
 
 def embed(text: str) -> list[float]:

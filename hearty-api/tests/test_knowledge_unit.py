@@ -37,7 +37,7 @@ class _FakeSupabase:
 
 def _setup(monkeypatch, store):
     monkeypatch.setattr(knowledge, "supabase", _FakeSupabase(store))
-    monkeypatch.setattr(knowledge, "embed", lambda t: [0.5] * 1536)
+    monkeypatch.setattr(knowledge, "embed", lambda t: [0.5] * 3072)
 
 
 def test_add_entry_embeds_and_strips_vector(monkeypatch):
@@ -46,7 +46,7 @@ def test_add_entry_embeds_and_strips_vector(monkeypatch):
     assert "content_embedding" not in row          # returned row is lightweight
     table, op, payload, _ = store["calls"][0]
     assert table == "knowledge_base" and op == "insert"
-    assert payload["content_embedding"] == [0.5] * 1536
+    assert payload["content_embedding"] == [0.5] * 3072
     assert payload["conditions"] == ["gerd"]
     assert payload["content"] == "body text"
 
@@ -58,7 +58,7 @@ def test_search_calls_rpc_with_right_args(monkeypatch):
     rows = knowledge.search("acid reflux", k=3, conditions=["gerd"])
     fn, params = store["rpc"]
     assert fn == "match_knowledge"
-    assert params["query_embedding"] == [0.5] * 1536
+    assert params["query_embedding"] == [0.5] * 3072
     assert params["match_count"] == 3
     assert params["filter_conditions"] == ["gerd"]
     assert rows[0]["title"] == "X"

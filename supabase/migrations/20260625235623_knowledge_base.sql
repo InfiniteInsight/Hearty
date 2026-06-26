@@ -8,7 +8,7 @@ create table if not exists knowledge_base (
   source_id text,
   title text,
   content text not null,
-  content_embedding vector(1536),            -- OpenAI text-embedding-3-small
+  content_embedding vector(3072),            -- Gemini gemini-embedding-001 (3072 dims)
   conditions text[] not null default '{}',   -- e.g. {'ibs','gerd','celiac'}; NOT NULL so the
                                              -- conditions = '{}' eligibility test below can't be
                                              -- defeated by a null (which would hide the row from
@@ -19,14 +19,15 @@ create table if not exists knowledge_base (
 );
 alter table knowledge_base enable row level security;
 -- No ANN index in v1: an exact sequential scan over a tiny corpus is instant and gives perfect
--- recall (ivfflat with lists=100 would hurt recall at this size). Add an HNSW index once the
--- corpus reaches thousands of rows:
---   create index knowledge_base_embedding_idx
---     on knowledge_base using hnsw (content_embedding vector_cosine_ops);
+-- recall (ivfflat with lists=100 would hurt recall at this size). Note: at 3072 dims a future
+-- ANN index can't use plain ivfflat/hnsw (2000-dim cap) — use a halfvec cast once the corpus
+-- reaches thousands of rows:
+--   create index knowledge_base_embedding_idx on knowledge_base
+--     using hnsw ((content_embedding::halfvec(3072)) halfvec_cosine_ops);
 
 -- Top-k cosine retrieval (PostgREST can't do vector ops via the query builder).
 create or replace function match_knowledge(
-  query_embedding vector(1536),
+  query_embedding vector(3072),
   match_count int default 4,
   filter_conditions text[] default null
 ) returns table (id uuid, source text, title text, content text, conditions text[], similarity float)
