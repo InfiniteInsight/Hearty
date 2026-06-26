@@ -28,3 +28,12 @@ def test_user_condition_slugs_lowercases_names(monkeypatch):
 
     monkeypatch.setattr(trends.supabase, "table", lambda n: _Q())
     assert trends._user_condition_slugs("u1") == ["gerd", "ibs"]
+
+
+def test_user_condition_slugs_returns_empty_on_error(monkeypatch):
+    """_user_condition_slugs is best-effort: any DB error must yield [] not raise."""
+    def _boom(name):
+        raise RuntimeError("connection refused")
+
+    monkeypatch.setattr(trends.supabase, "table", _boom)
+    assert trends._user_condition_slugs("u1") == []
