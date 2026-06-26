@@ -11,6 +11,7 @@ import type {
   HealthProfileResponse, HealthProfilePutRequest, HealthProfileDefaults,
   LicenseStatus, AdminUsersResponse, GrantLicenseRequest,
   AppSettings, HealthStatus, LlmTestResult,
+  KnowledgeEntry, KnowledgeListResponse, CreateKnowledgeRequest,
 } from "@/types/api";
 
 export class ApiError extends Error {
@@ -110,6 +111,13 @@ export function createApiClient(baseUrl: string) {
       request<AppSettings>(`/api/admin/settings`, { method: "PUT", body: JSON.stringify(body) }),
     getHealth: () => request<HealthStatus>(`/api/admin/health`),
     testLlm: () => request<LlmTestResult>(`/api/admin/health/llm-test`, { method: "POST" }),
+    getKnowledge: () => request<KnowledgeListResponse>(`/api/admin/knowledge`),
+    createKnowledge: (body: CreateKnowledgeRequest) =>
+      request<KnowledgeEntry>(`/api/admin/knowledge`, { method: "POST", body: JSON.stringify(body) }),
+    deleteKnowledge: (id: string) =>
+      request<unknown>(`/api/admin/knowledge/${id}`, { method: "DELETE" }),
+    setKnowledgeActive: (id: string, active: boolean) =>
+      request<KnowledgeEntry>(`/api/admin/knowledge/${id}`, { method: "PATCH", body: JSON.stringify({ active }) }),
   };
 }
 

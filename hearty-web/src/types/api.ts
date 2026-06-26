@@ -188,3 +188,19 @@ export interface LlmHealth {
 }
 export interface HealthStatus { backend: BackendHealth; supabase: SupabaseHealth; llm: LlmHealth }
 export interface LlmTestResult { ok: boolean; model: string; latency_ms?: number; error?: string }
+
+export interface KnowledgeEntry {
+  id: string;
+  title: string | null;
+  source: string;
+  conditions: string[];
+  active: boolean;
+  created_at: string;
+}
+export interface KnowledgeListResponse { entries: KnowledgeEntry[] }
+export interface CreateKnowledgeRequest {
+  title?: string;
+  content: string;
+  conditions: string[];
+  source?: string;
+}

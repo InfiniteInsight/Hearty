@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from supabase import create_client
 
 from app.auth import get_current_admin
+from app.services import knowledge
 
 router = APIRouter()
 supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"])
@@ -71,6 +72,17 @@ class UpdateRequest(BaseModel):
 class SettingsUpdate(BaseModel):
     provisioning_mode: str | None = None
     trial_days: int | None = None
+
+
+class KnowledgeCreate(BaseModel):
+    title: str | None = None
+    content: str
+    conditions: list[str] = []
+    source: str = "manual"
+
+
+class KnowledgeActive(BaseModel):
+    active: bool
 
 
 @router.get("/api/admin/users")
@@ -189,3 +201,33 @@ async def llm_test(admin=Depends(get_current_admin)) -> dict:
         return {"ok": True, "model": model, "latency_ms": round((time.monotonic() - t0) * 1000)}
     except Exception as e:  # the global callback records the failure; report it cleanly
         return {"ok": False, "model": model, "error": str(e)[:300]}
+
+
+@router.post("/api/admin/knowledge")
+async def add_knowledge(body: KnowledgeCreate, admin=Depends(get_current_admin)) -> dict:
+    try:
+        return knowledge.add_entry(
+            title=body.title, content=body.content,
+            conditions=body.conditions, source=body.source)
+    except Exception as e:  # embedding/insert failure — tell the owner cleanly
+        raise HTTPException(status_code=502, detail=f"embedding failed: {str(e)[:200]}")
+
+
+@router.get("/api/admin/knowledge")
+async def list_knowledge(admin=Depends(get_current_admin)) -> dict:
+    return {"entries": knowledge.list_entries()}
+
+
+@router.delete("/api/admin/knowledge/{entry_id}")
+async def delete_knowledge(entry_id: str, admin=Depends(get_current_admin)) -> dict:
+    # Intentionally idempotent (no 404 on a missing id, unlike the license
+    # endpoints): this is an owner-only curation panel, so deleting an
+    # already-gone entry should succeed quietly rather than error.
+    knowledge.delete_entry(entry_id)
+    return {"ok": True}
+
+
+@router.patch("/api/admin/knowledge/{entry_id}")
+async def patch_knowledge(entry_id: str, body: KnowledgeActive,
+                          admin=Depends(get_current_admin)) -> dict:
+    return knowledge.set_active(entry_id, body.active)

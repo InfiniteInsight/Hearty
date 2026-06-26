@@ -22,15 +22,17 @@ Secrets are never stored in this repo. Backend secrets live in the local `.env` 
 Container: `hearty-api/Dockerfile` (uvicorn on port 8080 = Cloud Run default). Built from source by Cloud Build; the upload respects `hearty-api/.gitignore` (so `.venv`/`.env` are excluded).
 
 **Required env vars** (set on the service; pulled from `.env`):
-`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `LLM_MODEL`, `ANTHROPIC_API_KEY` (or the key matching `LLM_MODEL`), `BRAVE_SEARCH_API_KEY`, `ALLOWED_ORIGINS`.
-Optional/defaulted: `PHOTO_BUCKET` (default `food-photos` — matches the prod Storage bucket), `SUPABASE_WEBHOOK_SECRET`, `PHOTO_RETENTION_HOURS`/`CLEANUP_TOKEN` (photo retention — see below).
+`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `LLM_MODEL`, `ANTHROPIC_API_KEY` (or the key matching `LLM_MODEL`), `GEMINI_API_KEY` (knowledge-base RAG embeddings — `gemini/gemini-embedding-001`), `BRAVE_SEARCH_API_KEY`, `ALLOWED_ORIGINS`, `CLEANUP_TOKEN`, `PHOTO_RETENTION_HOURS`.
+Optional/defaulted: `PHOTO_BUCKET` (default `food-photos` — matches the prod Storage bucket), `SUPABASE_WEBHOOK_SECRET`.
+
+> **CRITICAL:** `--env-vars-file` **replaces the entire env set** (not additive). The build loop below must list **every** key the service needs, or a redeploy silently un-sets the omitted ones. The loop skips any key that's empty in `.env`, so listing an unused optional key is harmless.
 
 **Redeploy** (gcloud is installed at `~/google-cloud-sdk`; auth as the project owner first with `gcloud auth login`):
 ```bash
 cd hearty-api    # or wherever master's backend lives
 # build an env-vars file from .env without echoing secrets:
 : > /tmp/hearty-env.yaml
-for k in SUPABASE_URL SUPABASE_SERVICE_KEY LLM_MODEL ANTHROPIC_API_KEY BRAVE_SEARCH_API_KEY; do
+for k in SUPABASE_URL SUPABASE_SERVICE_KEY LLM_MODEL ANTHROPIC_API_KEY GEMINI_API_KEY BRAVE_SEARCH_API_KEY ALLOWED_ORIGINS CLEANUP_TOKEN PHOTO_RETENTION_HOURS PHOTO_BUCKET SUPABASE_WEBHOOK_SECRET; do
   v=$(grep -E "^$k=" ../.env | cut -d= -f2-); [ -n "$v" ] && printf '%s: "%s"\n' "$k" "$v" >> /tmp/hearty-env.yaml
 done
 gcloud run deploy hearty-api \

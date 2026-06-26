@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAdminUsers, useAdminActions, useAppSettings, useUpdateAppSettings, useHealth, useTestLlm } from "../hooks/useAdmin";
+import { useAdminUsers, useAdminActions, useAppSettings, useUpdateAppSettings, useHealth, useTestLlm, useKnowledge, useKnowledgeActions } from "../hooks/useAdmin";
 import type { AdminUser, ProvisioningMode } from "@/types/api";
 
 function formatDate(s: string | null | undefined) {
@@ -181,6 +181,85 @@ function HealthRow({ label, status, detail }: { label: string; status: string; d
   );
 }
 
+function KnowledgeBase() {
+  const entries = useKnowledge();
+  const actions = useKnowledgeActions();
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [conditions, setConditions] = useState("");
+  // setActive/remove are single-instance mutations, so one in-flight call
+  // disables every row's buttons — same global-busy approach as the subscriber
+  // table; prevents double-fire on toggle/delete.
+  const rowBusy = actions.setActive.isPending || actions.remove.isPending;
+
+  function submit() {
+    const conds = conditions.split(",").map((c) => c.trim()).filter(Boolean);
+    actions.create.mutate(
+      { title: title || undefined, content, conditions: conds },
+      { onSuccess: () => { setTitle(""); setContent(""); setConditions(""); } },
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-surface-border bg-surface p-4 flex flex-col gap-3">
+      <h2 className="font-display text-xl">Knowledge base</h2>
+      <p className="text-xs text-text-faint">
+        Curated research the AI grounds its explanations in. Untagged entries apply to everyone;
+        tag with conditions (comma-separated) to scope to those users.
+      </p>
+
+      <div className="flex flex-col gap-2">
+        <input aria-label="Title" placeholder="Title (optional)" value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="rounded border border-surface-border bg-background px-2 py-1 text-text" />
+        <textarea aria-label="Content" placeholder="Research excerpt" value={content} rows={3}
+          onChange={(e) => setContent(e.target.value)}
+          className="rounded border border-surface-border bg-background px-2 py-1 text-text" />
+        <input aria-label="Conditions" placeholder="Conditions, comma-separated (e.g. gerd, ibs)"
+          value={conditions} onChange={(e) => setConditions(e.target.value)}
+          className="rounded border border-surface-border bg-background px-2 py-1 text-text" />
+        <button disabled={!content || actions.create.isPending} onClick={submit}
+          className="self-start rounded px-3 py-1.5 text-sm bg-brand text-black hover:opacity-80 disabled:opacity-40">
+          Add entry
+        </button>
+      </div>
+      {actions.create.isError && (
+        <p className="text-sm text-accent-red">Failed to add entry (embedding may have failed).</p>
+      )}
+
+      {entries.isPending && <p className="text-text-faint text-sm">Loading…</p>}
+      {entries.data && entries.data.entries.length === 0 && (
+        <p className="text-text-faint text-sm">No entries yet.</p>
+      )}
+      {entries.data && entries.data.entries.length > 0 && (
+        <div className="flex flex-col divide-y divide-surface-border">
+          {entries.data.entries.map((e) => (
+            <div key={e.id} className="flex items-center justify-between py-2 gap-3">
+              <div className="flex flex-col">
+                <span className="text-sm text-text">{e.title || "(untitled)"}</span>
+                <span className="text-xs text-text-faint">
+                  {e.source}{e.conditions.length ? ` · ${e.conditions.join(", ")}` : ""}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button disabled={rowBusy}
+                  onClick={() => actions.setActive.mutate({ id: e.id, active: !e.active })}
+                  className="rounded px-2 py-0.5 text-xs border border-surface-border text-text-muted hover:text-text disabled:opacity-40">
+                  {e.active ? "Active" : "Inactive"}
+                </button>
+                <button disabled={rowBusy} onClick={() => actions.remove.mutate(e.id)}
+                  className="rounded px-2 py-0.5 text-xs bg-accent-red text-black hover:opacity-80 disabled:opacity-40">
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Admin() {
   const list = useAdminUsers();
   const a = useAdminActions();
@@ -199,6 +278,7 @@ export default function Admin() {
       <h1 className="font-display text-3xl">Subscribers</h1>
       <SystemHealth />
       <SignupPolicy />
+      <KnowledgeBase />
       {err && <p className="text-sm text-accent-red">{err}</p>}
       {list.isPending && <p className="text-text-faint">Loading…</p>}
       {list.isError && <p className="text-sm text-accent-red">Couldn't load subscribers.</p>}
