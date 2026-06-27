@@ -23,7 +23,7 @@ Container: `hearty-api/Dockerfile` (uvicorn on port 8080 = Cloud Run default). B
 
 **Required env vars** (set on the service; pulled from `.env`):
 `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `LLM_MODEL`, `ANTHROPIC_API_KEY` (or the key matching `LLM_MODEL`), `GEMINI_API_KEY` (knowledge-base RAG embeddings — `gemini/gemini-embedding-001`), `BRAVE_SEARCH_API_KEY`, `ALLOWED_ORIGINS`, `CLEANUP_TOKEN`, `PHOTO_RETENTION_HOURS`.
-Optional/defaulted: `PHOTO_BUCKET` (default `food-photos` — matches the prod Storage bucket), `SUPABASE_WEBHOOK_SECRET`.
+Optional/defaulted: `PHOTO_BUCKET` (default `food-photos` — matches the prod Storage bucket), `SUPABASE_WEBHOOK_SECRET`, `FDC_API_KEY` (optional: USDA generic-food nutrition tier; free key from https://fdc.nal.usda.gov/api-key-signup.html — unset skips the tier silently), `NUTRITIONIX_APP_ID`/`NUTRITIONIX_API_KEY` (optional: restaurant food lookup tier).
 
 > **API keys (migrated 2026-06-26):** the project uses Supabase's **new API keys**, and the **legacy `anon`/`service_role` JWT keys are disabled**. `SUPABASE_SERVICE_KEY` is the **secret** key (`sb_secret_…`, full service-role access incl. GoTrue auth-admin); the web's `VITE_SUPABASE_ANON_KEY` is the **publishable** key (`sb_publishable_…`). Manage/rotate both under **Supabase → Settings → API Keys** (independently rotatable — rotating a new key does NOT touch the JWT secret or user sessions). The legacy JWTs are dead; don't reintroduce them. **Flutter app:** its Supabase client must use the **publishable** key too — rebuild with `SUPABASE_ANON_KEY=sb_publishable_…` before it can auth against prod again (the old build embeds the now-disabled legacy anon JWT).
 
@@ -34,7 +34,7 @@ Optional/defaulted: `PHOTO_BUCKET` (default `food-photos` — matches the prod S
 cd hearty-api    # or wherever master's backend lives
 # build an env-vars file from .env without echoing secrets:
 : > /tmp/hearty-env.yaml
-for k in SUPABASE_URL SUPABASE_SERVICE_KEY LLM_MODEL ANTHROPIC_API_KEY GEMINI_API_KEY BRAVE_SEARCH_API_KEY ALLOWED_ORIGINS CLEANUP_TOKEN PHOTO_RETENTION_HOURS PHOTO_BUCKET SUPABASE_WEBHOOK_SECRET; do
+for k in SUPABASE_URL SUPABASE_SERVICE_KEY LLM_MODEL ANTHROPIC_API_KEY GEMINI_API_KEY BRAVE_SEARCH_API_KEY FDC_API_KEY ALLOWED_ORIGINS CLEANUP_TOKEN PHOTO_RETENTION_HOURS PHOTO_BUCKET SUPABASE_WEBHOOK_SECRET; do
   v=$(grep -E "^$k=" ../.env | cut -d= -f2-); [ -n "$v" ] && printf '%s: "%s"\n' "$k" "$v" >> /tmp/hearty-env.yaml
 done
 gcloud run deploy hearty-api \
