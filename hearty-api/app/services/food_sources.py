@@ -68,6 +68,7 @@ def off_branded_search(query: str) -> dict | None:
 NUTRITIONIX_URL = "https://trackapi.nutritionix.com/v2/natural/nutrients"
 
 
+
 def nutritionix_lookup(query: str) -> dict | None:
     app_id = os.environ.get("NUTRITIONIX_APP_ID")
     api_key = os.environ.get("NUTRITIONIX_API_KEY")
@@ -94,3 +95,48 @@ def nutritionix_lookup(query: str) -> dict | None:
         "sodium_mg": f.get("nf_sodium"),
         "source": "nutritionix", "tier": 2,
     }
+
+
+FDC_SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
+FDC_DATATYPES = ["Foundation", "SR Legacy"]
+# FoodData Central nutrient numbers (stable across FDC).
+_FDC_NUTRIENTS = {
+    "calories": "208", "total_fat_g": "204", "saturated_fat_g": "606",
+    "total_carbs_g": "205", "dietary_fiber_g": "291", "sugars_g": "269",
+    "protein_g": "203", "sodium_mg": "307",
+}
+
+
+def fdc_lookup(query: str) -> dict | None:
+    """USDA FoodData Central — authoritative generic/whole-food nutrition.
+    Returns None when FDC_API_KEY is unset (graceful skip) or no result."""
+    api_key = os.environ.get("FDC_API_KEY")
+    if not api_key:
+        return None
+    params = {"api_key": api_key, "query": query,
+              "dataType": FDC_DATATYPES, "pageSize": 1}
+    with httpx.Client(timeout=HTTP_TIMEOUT) as client:
+        r = client.get(FDC_SEARCH_URL, params=params)
+        r.raise_for_status()
+        foods = (r.json() or {}).get("foods") or []
+    if not foods:
+        return None
+    f = foods[0]
+    by_num: dict = {}
+    for n in (f.get("foodNutrients") or []):
+        num = n.get("nutrientNumber")
+        if num is not None:
+            by_num[str(num)] = n.get("value")
+
+    def g(num):
+        v = by_num.get(num)
+        try:
+            return float(v) if v is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    out = {"item_name": f.get("description") or query, "serving_size": "100 g",
+           "source": "usda_fdc", "tier": 2}
+    for key, num in _FDC_NUTRIENTS.items():
+        out[key] = g(num)
+    return out
