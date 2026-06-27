@@ -68,7 +68,6 @@ def off_branded_search(query: str) -> dict | None:
 NUTRITIONIX_URL = "https://trackapi.nutritionix.com/v2/natural/nutrients"
 
 
-
 def nutritionix_lookup(query: str) -> dict | None:
     app_id = os.environ.get("NUTRITIONIX_APP_ID")
     api_key = os.environ.get("NUTRITIONIX_API_KEY")
