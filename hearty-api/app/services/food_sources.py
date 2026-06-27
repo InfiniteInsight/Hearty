@@ -94,3 +94,68 @@ def nutritionix_lookup(query: str) -> dict | None:
         "sodium_mg": f.get("nf_sodium"),
         "source": "nutritionix", "tier": 2,
     }
+
+
+FDC_SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
+FDC_DETAIL_URL = "https://api.nal.usda.gov/fdc/v1/food/{fdc_id}"
+FDC_DATATYPES = ["Foundation", "SR Legacy"]
+FDC_CANDIDATES = 12
+# Energy nutrient numbers in priority order (SR Legacy uses 208; Foundation uses
+# the Atwater factors 957 / 2048 / 2047).
+_FDC_ENERGY = ["208", "957", "2048", "2047"]
+_FDC_MACROS = {
+    "protein_g": "203", "total_fat_g": "204", "saturated_fat_g": "606",
+    "total_carbs_g": "205", "dietary_fiber_g": "291", "sugars_g": "269", "sodium_mg": "307",
+}
+
+
+def fdc_search(query: str) -> list[dict]:
+    """USDA FDC candidate search (generic datasets). [] when FDC_API_KEY unset / no results."""
+    api_key = os.environ.get("FDC_API_KEY")
+    if not api_key:
+        return []
+    params = {"api_key": api_key, "query": query,
+              "dataType": FDC_DATATYPES, "pageSize": FDC_CANDIDATES}
+    with httpx.Client(timeout=HTTP_TIMEOUT) as client:
+        r = client.get(FDC_SEARCH_URL, params=params)
+        r.raise_for_status()
+        foods = (r.json() or {}).get("foods") or []
+    return [{"fdc_id": f.get("fdcId"), "description": f.get("description") or "",
+             "data_type": f.get("dataType")}
+            for f in foods if f.get("fdcId")]
+
+
+def fdc_detail(fdc_id) -> dict | None:
+    """Full nutrition for one FDC food → normalized dict. None when no key / no food."""
+    api_key = os.environ.get("FDC_API_KEY")
+    if not api_key:
+        return None
+    with httpx.Client(timeout=HTTP_TIMEOUT) as client:
+        r = client.get(FDC_DETAIL_URL.format(fdc_id=fdc_id), params={"api_key": api_key})
+        r.raise_for_status()
+        food = r.json() or {}
+    if not food.get("description"):
+        return None
+    by_num: dict = {}
+    for n in (food.get("foodNutrients") or []):
+        num = (n.get("nutrient") or {}).get("number")
+        if num is not None:
+            by_num[str(num)] = n.get("amount")
+
+    def g(num):
+        v = by_num.get(num)
+        try:
+            return float(v) if v is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    energy = None
+    for num in _FDC_ENERGY:
+        if by_num.get(num) is not None:
+            energy = g(num)
+            break
+    out = {"item_name": food.get("description"), "serving_size": "100 g",
+           "calories": energy, "source": "usda_fdc", "tier": 2}
+    for key, num in _FDC_MACROS.items():
+        out[key] = g(num)
+    return out

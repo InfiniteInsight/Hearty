@@ -31,6 +31,7 @@ def test_barcode_tier1_then_caches(monkeypatch):
 def test_name_falls_through_to_estimate(monkeypatch):
     _patch(monkeypatch,
            get_cached=lambda k: None,
+           fdc_resolve=lambda q: None,
            off_branded_search=lambda q: None,
            nutritionix_lookup=lambda q: None,
            web_nutrition_lookup=lambda d, **k: None,
@@ -56,6 +57,7 @@ def test_free_text_extracts_then_tier2(monkeypatch):
 def test_all_fail_tier5_fallback(monkeypatch):
     _patch(monkeypatch,
            get_cached=lambda k: None,
+           fdc_resolve=lambda q: None,
            off_branded_search=lambda q: None,
            nutritionix_lookup=lambda q: None,
            web_nutrition_lookup=lambda d, **k: None,
@@ -69,12 +71,52 @@ def test_all_fail_tier5_fallback(monkeypatch):
 def test_tier2_source_exception_falls_through(monkeypatch):
     _patch(monkeypatch,
            get_cached=lambda k: None,
+           fdc_resolve=lambda q: None,
            off_branded_search=lambda q: (_ for _ in ()).throw(RuntimeError("off down")),
            nutritionix_lookup=lambda q: {"item_name": "x", "calories": 50, "source": "nutritionix", "tier": 2},
            set_cached=lambda *a: None,
            _user_allergens=lambda uid: [])
     out = fl.lookup_food("name", "x", None, "u1")
     assert out["tier_used"] == 2 and out["source"] == "nutritionix"
+
+
+def test_generic_lookup_usda_first(monkeypatch):
+    called = {"branded": False}
+    _patch(monkeypatch,
+           get_cached=lambda k: None,
+           fdc_resolve=lambda q: {"item_name": "banana", "calories": 89, "source": "usda_fdc", "tier": 2},
+           off_branded_search=lambda q: called.__setitem__("branded", True) or {"item_name": "banana chips", "source": "open_food_facts_branded", "tier": 2},
+           nutritionix_lookup=lambda q: None,
+           set_cached=lambda *a: None,
+           _user_allergens=lambda uid: [])
+    out = fl.lookup_food("name", "banana", None, "u1")
+    assert out["tier_used"] == 2 and out["source"] == "usda_fdc"
+    assert called["branded"] is False  # USDA short-circuits before branded for generic
+
+
+def test_restaurant_branded_then_usda_fallback(monkeypatch):
+    _patch(monkeypatch,
+           get_cached=lambda k: None,
+           extract_lookup_fields=lambda t: {"restaurant": "Chipotle", "item": "chicken bowl", "size": None, "modifiers": None},
+           off_branded_search=lambda q: None,
+           nutritionix_lookup=lambda q: None,
+           fdc_resolve=lambda q: {"item_name": "chicken", "calories": 165, "source": "usda_fdc", "tier": 2},
+           web_nutrition_lookup=lambda d, **k: None,
+           set_cached=lambda *a: None,
+           _user_allergens=lambda uid: [])
+    out = fl.lookup_food("free_text", "chicken bowl from Chipotle", None, "u1")
+    assert out["tier_used"] == 2 and out["source"] == "usda_fdc"
+
+
+def test_usda_cache_hit_no_fetch(monkeypatch):
+    called = {"fdc": False}
+    _patch(monkeypatch,
+           get_cached=lambda k: {"item_name": "banana", "calories": 89, "tier": 2, "source": "usda_fdc"} if k.startswith("usda:") else None,
+           fdc_resolve=lambda q: called.__setitem__("fdc", True) or None,
+           off_branded_search=lambda q: None, nutritionix_lookup=lambda q: None,
+           _user_allergens=lambda uid: [])
+    out = fl.lookup_food("name", "banana", None, "u1")
+    assert out["tier_used"] == 2 and out["source"] == "usda_fdc" and called["fdc"] is False
 
 
 def test_allergen_warnings_attached(monkeypatch):

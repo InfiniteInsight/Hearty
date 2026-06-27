@@ -1,5 +1,5 @@
 """Tiered food-nutrition lookup orchestrator. Cache → Tier 1 (barcode) /
-Tier 2 (branded+Nutritionix) → Tier 3 (web) → Tier 4 (AI estimate) → Tier 5
+Tier 2 (branded+Nutritionix / USDA generic) → Tier 3 (web) → Tier 4 (AI estimate) → Tier 5
 (honest fallback). Never blocks: Tier 5 always returns a usable result."""
 
 import hashlib
@@ -11,6 +11,7 @@ from supabase import create_client
 
 from app.services.food_cache import get_cached, set_cached
 from app.services.food_sources import off_barcode, off_branded_search, nutritionix_lookup
+from app.services.fdc_resolve import resolve as fdc_resolve
 from app.services.web_nutrition import web_nutrition_lookup
 from app.services.food_estimate import ai_estimate, extract_lookup_fields, allergen_warnings
 
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 CACHE_TTL_BARCODE = int(os.environ.get("FOOD_CACHE_TTL_BARCODE", "30"))
 CACHE_TTL_RESTAURANT = int(os.environ.get("FOOD_CACHE_TTL_RESTAURANT", "30"))
 CACHE_TTL_WEB = int(os.environ.get("FOOD_CACHE_TTL_WEB", "7"))
+CACHE_TTL_USDA = int(os.environ.get("FOOD_CACHE_TTL_USDA", "90"))
 
 supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"])
 
@@ -45,6 +47,23 @@ def _result(nutrition, tier, source, user_id, message=None, confidence=None):
     return {"item_name": (nutrition or {}).get("item_name") or (nutrition or {}).get("product_name") or "",
             "nutrition": nutrition, "tier_used": tier, "source": source,
             "confidence": confidence, "allergen_warnings": warnings, "message": message}
+
+
+def _usda_tier(item: str, user_id: str) -> dict | None:
+    """USDA authoritative generic-food tier. Cache → fetch → cache. None on miss."""
+    ukey = "usda:" + _norm(item)
+    cached = get_cached(ukey)
+    if cached:
+        return _result(cached, cached.get("tier", 2), cached.get("source", "usda_fdc"), user_id)
+    try:
+        hit = fdc_resolve(item)
+    except Exception as e:
+        logger.warning("food lookup tier failed (fdc_resolve): %s", e)
+        hit = None
+    if hit:
+        set_cached(ukey, "usda_fdc", hit, CACHE_TTL_USDA)
+        return _result(hit, 2, "usda_fdc", user_id)
+    return None
 
 
 def lookup_food(type: str, value: str, restaurant: str | None, user_id: str) -> dict:
@@ -76,6 +95,12 @@ def lookup_food(type: str, value: str, restaurant: str | None, user_id: str) -> 
 
     combined = f"{rest} {item}".strip() if rest else item
 
+    # USDA authoritative generic tier — tried FIRST when no restaurant/brand is named.
+    if not rest:
+        usda = _usda_tier(item, user_id)
+        if usda:
+            return usda
+
     # Tier 2 — branded + Nutritionix
     rkey = f"restaurant:{_norm(rest or '')}|{_norm(item)}"
     cached = get_cached(rkey)
@@ -90,6 +115,12 @@ def lookup_food(type: str, value: str, restaurant: str | None, user_id: str) -> 
         if hit:
             set_cached(rkey, hit["source"], hit, CACHE_TTL_RESTAURANT)
             return _result(hit, 2, hit["source"], user_id)
+
+    # USDA fallback — when a restaurant/brand was named and branded missed.
+    if rest:
+        usda = _usda_tier(item, user_id)
+        if usda:
+            return usda
 
     # Tier 3 — web search
     query = combined
