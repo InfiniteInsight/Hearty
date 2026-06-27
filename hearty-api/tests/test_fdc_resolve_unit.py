@@ -34,6 +34,14 @@ def test_resolve_no_candidates_skips_llm(monkeypatch):
     assert fr.resolve("apple") is None and called["llm"] is False
 
 
+def test_resolve_handles_malformed_llm_json(monkeypatch):
+    monkeypatch.setattr(fr, "fdc_search", lambda q: [{"fdc_id": 1, "description": "x", "data_type": "Foundation"}])
+    called = {"detail": False}
+    monkeypatch.setattr(fr, "fdc_detail", lambda fid: called.__setitem__("detail", True) or {"x": 1})
+    monkeypatch.setattr(fr.litellm, "completion", lambda **k: _llm('{"index": }'))  # braced but invalid
+    assert fr.resolve("apple") is None and called["detail"] is False
+
+
 def test_resolve_swallows_errors(monkeypatch):
     monkeypatch.setattr(fr, "fdc_search", lambda q: [{"fdc_id": 1, "description": "x", "data_type": "Foundation"}])
     monkeypatch.setattr(fr.litellm, "completion", lambda **k: (_ for _ in ()).throw(RuntimeError("llm down")))

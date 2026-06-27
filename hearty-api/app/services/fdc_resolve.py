@@ -35,7 +35,10 @@ def _select(query: str, candidates: list[dict]) -> int | None:
     m = re.search(r"\{.*\}", content, re.S)
     if not m:
         return None
-    idx = json.loads(m.group(0)).get("index")
+    try:
+        idx = json.loads(m.group(0)).get("index")
+    except (ValueError, AttributeError):  # malformed-but-braced JSON / non-object
+        return None
     if isinstance(idx, int) and 0 <= idx < len(candidates):
         return idx
     return None
