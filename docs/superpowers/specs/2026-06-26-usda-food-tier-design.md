@@ -1,84 +1,60 @@
-# USDA FoodData Central Tier — Design
+# USDA FoodData Central Tier (LLM-assisted match) — Design
 
-**Status:** Approved (brainstorm 2026-06-26)
-**Initiative:** Spec 11 (Knowledge Freshness), **Layer 2 (food-DB freshness), sub-feature 1 of ~3.** (Sub-feature 2 = gap-visibility surface; sub-feature 3 = scheduled bulk sync — both separate future specs, the latter likely YAGNI.)
+**Status:** Approved (brainstorm 2026-06-26; redesigned 2026-06-27 after a live spike)
+**Initiative:** Spec 11 (Knowledge Freshness), **Layer 2 (food-DB freshness), sub-feature 1.** (Gap-visibility + bulk sync are separate future sub-specs.)
 **Builds on:** the existing tiered `food_lookup` pipeline (Spec 06/07).
 
 ## Goal
 
-Add **USDA FoodData Central (FDC)** as an authoritative nutrition source for **generic/whole foods** (e.g. "banana", "chicken breast"), which today fall through the branded tiers to web-search or AI estimates. This raises nutrition-data quality for the most common un-branded log entries, slotting cleanly into the existing on-demand, cached, tiered `food_lookup`. It ships safely before a key exists: with no `FDC_API_KEY`, the tier is silently skipped (exactly like the Nutritionix tier today).
+Add **USDA FoodData Central (FDC)** as an authoritative nutrition source for **generic/whole foods** in the tiered `food_lookup`. Best-effort: with no `FDC_API_KEY` the tier is silently skipped.
+
+## Why LLM-assisted selection (live-spike finding)
+A first design took FDC's top search result. A live spike disproved it: FDC keyword search ranks processed items over canonical foods — "apple"→*Croissants, apple*; "banana"→*banana powder* (346 kcal); "chicken breast"→*lunchmeat* (no macros). No heuristic was safe ("shortest description" picked *Beets* for spinach; head-noun matching picked *Rose-apples* for apple). Returning wrong nutrition is worse than the existing AI-estimate tier, so selection must be smarter. A second spike confirmed an **LLM picks the right entry reliably** (apple→*Apples, fuji, raw*; chicken breast→*Chicken, breast, boneless, skinless, raw*; oatmeal→correctly **none**). A third spike found FDC's **search** payload omits energy for some Foundation foods, so we fetch the full **detail** by `fdcId` and read energy with a `208 → 957 (Atwater)` fallback.
 
 ## Non-goals (deferred)
-- USDA **Branded Foods** dataset — heavy overlap with Open Food Facts/Nutritionix (already better for branded); generic-only here (Foundation + SR Legacy).
-- **Scheduled bulk sync** of USDA data (the original Spec 11 heavy pipeline) — separate future spec, likely YAGNI.
-- The **gap-visibility surface** (which logged foods got weak data) — separate Layer-2 sub-feature.
-- Refreshing/re-fetching already-cached entries (TTL handles staleness).
+USDA **Branded** dataset (OFF covers branded); scheduled **bulk sync**; the **gap-visibility** surface; refreshing cached entries.
 
 ## Architecture
 
-### 1. New source — `fdc_lookup(query)` in `app/services/food_sources.py`
-Mirrors the existing source functions (per-call `httpx.Client(timeout=HTTP_TIMEOUT)`, returns the normalized nutrition dict or `None` on miss):
-- Requires `FDC_API_KEY` (env). If unset → return `None` (graceful, like `nutritionix_lookup`).
-- `GET https://api.nal.usda.gov/fdc/v1/foods/search` with params `api_key`, `query`, `dataType=["Foundation", "SR Legacy"]`, `pageSize=1`. `raise_for_status()`.
-- Top result (`foods[0]`); build a number→value map from `foodNutrients` keyed by `nutrientNumber`, then map to the normalized shape used by the other sources:
-  - `item_name` = `description`; `serving_size` = `"100 g"` (Foundation/SR Legacy values are per-100 g)
-  - `calories` ← 208 · `protein_g` ← 203 · `total_fat_g` ← 204 · `saturated_fat_g` ← 606 · `total_carbs_g` ← 205 · `dietary_fiber_g` ← 291 · `sugars_g` ← 269 · `sodium_mg` ← 307
-  - missing nutrient → `None` (the `_num`-style helper pattern)
-  - `source` = `"usda_fdc"`, `tier` = `2`
-- Return `None` if `foods` is empty.
+### 1. Pure-HTTP FDC sources — `app/services/food_sources.py`
+Two key-gated functions (return `[]`/`None` when `FDC_API_KEY` unset — graceful, like `nutritionix_lookup`):
 
-> Implementation note: FDC's GET search accepts `dataType` as repeated query params (httpx serializes a list that way) or comma-joined; the implementer confirms the exact serialization against the live API during the deploy-time check. Nutrient *numbers* (string keys like `"208"`) are stable across FDC; map by number, not name.
+- `fdc_search(query) -> list[dict]` — `GET https://api.nal.usda.gov/fdc/v1/foods/search` (`dataType=["Foundation","SR Legacy"]`, `pageSize=12`). Returns lean candidates: `[{"fdc_id": f["fdcId"], "description": f["description"], "data_type": f.get("dataType")}]`. `[]` on no key / no results / error-free empty.
+- `fdc_detail(fdc_id) -> dict | None` — `GET .../v1/food/{fdc_id}`. Maps `foodNutrients[].nutrient.number` (string) / `.amount` to the **normalized nutrition dict** used by the other sources:
+  - `item_name` = `description`; `serving_size = "100 g"` (Foundation/SR Legacy are per-100 g)
+  - energy → first present of `["208","957","2048","2047"]` (SR Legacy uses 208; Foundation uses the Atwater 957/204x)
+  - `protein_g`←203 · `total_fat_g`←204 · `saturated_fat_g`←606 · `total_carbs_g`←205 · `dietary_fiber_g`←291 · `sugars_g`←269 · `sodium_mg`←307 (missing → `None`)
+  - `source="usda_fdc"`, `tier=2`
+  - `None` if no key or the detail has no usable food.
 
-### 2. Tier routing in `app/services/food_lookup.py`
-Extract a helper that encapsulates the USDA tier (cache → fetch → cache), returning a finished `_result` dict or `None`:
-```python
-def _usda_tier(item, user_id):
-    ukey = "usda:" + _norm(item)
-    cached = get_cached(ukey)
-    if cached:
-        return _result(cached, cached.get("tier", 2), cached.get("source", "usda_fdc"), user_id)
-    try:
-        hit = fdc_lookup(item)
-    except Exception as e:
-        logger.warning("food lookup tier failed (fdc_lookup): %s", e)
-        hit = None
-    if hit:
-        set_cached(ukey, "usda_fdc", hit, CACHE_TTL_USDA)
-        return _result(hit, 2, "usda_fdc", user_id)
-    return None
-```
-Wire it into `lookup_food` (the name/free-text path, after the barcode branch and the `item`/`rest` extraction):
-- **No restaurant/brand** (`not rest`): call `_usda_tier(item, ...)` **before** the branded tier — authoritative generic data wins for whole foods.
-- **Restaurant/brand named** (`rest`): keep the branded tier first, then call `_usda_tier(item, ...)` as a fallback **before** the web tier.
+### 2. LLM-assisted resolver — `app/services/fdc_resolve.py` (new)
+Isolated so the LLM-selection logic is testable and `food_sources` stays pure-HTTP.
+- `resolve(query) -> dict | None`:
+  1. `cands = fdc_search(query)`; if empty → `None`.
+  2. `idx = _select(query, cands)` — one `litellm.completion` (model `LLM_MODEL`, small `max_tokens`). Prompt: *"A user logged eating '{query}'. Pick the entry that is the SAME food in plain/raw/generic form; avoid processed variants (powder, flour, bread, croissant, lunchmeat, juice unless asked) and different foods. Reply ONLY `{"index": <n>}` or `{"index": null}`."* + the numbered `description` list. Parse the JSON; `null`/out-of-range/parse-failure → `None`.
+  3. If a valid index → `fdc_detail(cands[idx]["fdc_id"])` → return the normalized dict (or `None` if detail is empty).
+- Best-effort: any exception (search, LLM, detail) is caught + logged → `None`. The resolver never raises.
 
-Cache key is the generic `item` (without restaurant) since USDA is generic. USDA reports as **tier 2** (peer to branded — authoritative DB match); web=3 / AI-estimate=4 / honest-fallback=5 are unchanged. Update the module docstring's tier line to mention USDA.
+### 3. Tier routing — `app/services/food_lookup.py` (unchanged shape)
+`_usda_tier(item, user_id)` (cache `usda:{_norm(item)}` → `fdc_resolve(item)` → cache on hit → `_result(..., 2, "usda_fdc")`, else `None`). Routing as before:
+- **No restaurant/brand** → `_usda_tier` **before** the branded Tier 2 (authoritative generic wins).
+- **Restaurant/brand named** → branded first, then `_usda_tier` as a **fallback** before web.
+`food_lookup` imports `fdc_resolve` (so tests patch `fl.fdc_resolve`). Cached under `usda:` 90 days (`CACHE_TTL_USDA`); the LLM + 2 GETs run only on a cache miss.
 
-### 3. Caching
-Reuse the shared `food_cache` (service-key only). New TTL `CACHE_TTL_USDA = int(os.environ.get("FOOD_CACHE_TTL_USDA", "90"))` — USDA generic data is very stable, so a 90-day TTL is appropriate (longer than barcode/restaurant 30, web 7).
-
-### 4. Config
-- New env var `FDC_API_KEY` (free key from https://fdc.nal.usda.gov/api-key-signup.html, an api.data.gov key). Add to `.env`, `hearty-api/.env.example`, and the `docs/DEPLOYMENT.md` redeploy env-file key list.
-- Best-effort: unset ⇒ `fdc_lookup` returns `None` ⇒ tier skipped, so the feature can deploy before the key is provisioned.
-
-## Data flow (logging "grilled chicken breast", no restaurant)
-1. `lookup_food(type="free_text", value="grilled chicken breast", restaurant=None, user_id)`.
-2. `extract_lookup_fields` → `item="chicken breast"` (or similar), `rest=None`.
-3. `not rest` → `_usda_tier("chicken breast", ...)`: cache miss → `fdc_lookup` → USDA returns the authoritative generic entry → cached (90d) → `_result(..., tier=2, source="usda_fdc")`.
-4. If USDA misses/no key → falls through to branded → web → AI → fallback (unchanged behavior).
+## Data flow ("apple", no restaurant)
+`lookup_food` → `not rest` → `_usda_tier("apple")` → cache miss → `fdc_resolve("apple")`: `fdc_search` → 12 candidates → LLM picks *Apples, fuji, raw* → `fdc_detail(fdcId)` → normalized macros → cached 90d → `_result(..., tier=2, source="usda_fdc")`. LLM "none" / no key / error → `None` → falls through to branded→web→AI (unchanged).
 
 ## Error handling
-- USDA tier fully best-effort: `fdc_lookup` exceptions are caught + logged, the tier returns `None`, and lookup continues to the next tier. An FDC outage or a missing key never blocks logging.
-- `raise_for_status` failures (4xx/5xx) are caught by the tier's `try/except`.
+Fully best-effort end-to-end: `fdc_search`/`fdc_detail`/`_select` swallow errors (→ `[]`/`None`), `resolve` returns `None` on any failure, `_usda_tier` wraps `resolve` in try/except. An FDC outage, a bad LLM response, or a missing key never blocks logging — it just falls through.
 
-## Security
-- `FDC_API_KEY` is a backend-only env var (never client-exposed). The FDC API returns public nutrition data. `food_cache` stays service-key-only (RLS on, no policies). No user data involved.
+## Security / cost
+`FDC_API_KEY` backend-only; FDC data is public; `food_cache` service-key only. Cost: one cheap LLM call + two light FDC GETs **per uncached generic lookup**, then cached 90 days — the pipeline already makes an LLM call at Tier 4 (AI estimate), so this fits the pattern.
 
 ## Testing
-**Backend (pytest):**
-- `food_sources.fdc_lookup`: patch `httpx.Client` to return a recorded FDC search payload → asserts the normalized dict (calories/protein/fat/carbs/fiber/sugars/sodium mapped from nutrient numbers, `serving_size="100 g"`, `source="usda_fdc"`, `tier=2`); returns `None` when `FDC_API_KEY` unset; returns `None` on empty `foods`.
-- `food_lookup`: a generic (no-restaurant) lookup calls USDA **before** branded (monkeypatch the source functions; assert the result is tier 2 / `usda_fdc` when USDA hits, and that branded was not consulted); a restaurant lookup tries branded first, then USDA; the USDA cache-hit path returns without an HTTP call. Existing food_lookup tests stay green (USDA returns `None` when its source is unpatched/no key → current behavior preserved).
+**`food_sources` (pytest, mocked httpx):** `fdc_search` parses candidates (fdc_id/description/data_type) + sends the right params; `[]` on no key / empty. `fdc_detail` maps the detail shape (`nutrient.number`/`amount`), energy `208→957` fallback (a payload with only 957 yields calories), other macros, `serving_size`/`source`/`tier`; `None` on no key.
+**`fdc_resolve` (pytest):** monkeypatch `fdc_search`/`fdc_detail`/`litellm.completion`: a valid LLM index → detail fetched + returned; LLM `null` → `None` (detail NOT fetched); no candidates → `None` (LLM not called); an LLM/detail exception → `None` (best-effort).
+**`food_lookup`:** routing tests patch `fdc_resolve` (generic-first, branded-fallback, cache-hit-no-resolve); the existing no-restaurant tests get `fdc_resolve=lambda q: None` (deterministic).
+**Live (deploy-time):** `FDC_API_KEY` set; log "apple"/"chicken breast"/"banana" and confirm `source=usda_fdc` with the correct raw-food macros; "oatmeal"/an obscure phrase falls through (resolver returns None); branded/barcode still uses OFF; logging still works with the key unset.
 
-**Live (deploy-time):** set `FDC_API_KEY`; redeploy; log a generic whole food (e.g. "raw spinach") and confirm the result's `source` is `usda_fdc` with sensible per-100g macros; confirm a branded/barcoded item still uses OFF; confirm logging still works with the key unset (tier skipped).
-
-## Deferred (future Layer-2 sub-features)
-Gap-visibility surface (flag Tier 3/4/unknown logged foods); USDA Branded dataset; scheduled bulk sync; a "refresh stale entry" action.
+## Deferred
+Gap-visibility surface; USDA Branded dataset; bulk sync; tuning the candidate count / selection prompt; a cheaper dedicated selection model.
