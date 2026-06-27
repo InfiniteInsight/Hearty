@@ -10,7 +10,8 @@ import re
 from supabase import create_client
 
 from app.services.food_cache import get_cached, set_cached
-from app.services.food_sources import off_barcode, off_branded_search, nutritionix_lookup, fdc_lookup
+from app.services.food_sources import off_barcode, off_branded_search, nutritionix_lookup
+from app.services.fdc_resolve import resolve as fdc_resolve
 from app.services.web_nutrition import web_nutrition_lookup
 from app.services.food_estimate import ai_estimate, extract_lookup_fields, allergen_warnings
 
@@ -55,9 +56,9 @@ def _usda_tier(item: str, user_id: str) -> dict | None:
     if cached:
         return _result(cached, cached.get("tier", 2), cached.get("source", "usda_fdc"), user_id)
     try:
-        hit = fdc_lookup(item)
+        hit = fdc_resolve(item)
     except Exception as e:
-        logger.warning("food lookup tier failed (fdc_lookup): %s", e)
+        logger.warning("food lookup tier failed (fdc_resolve): %s", e)
         hit = None
     if hit:
         set_cached(ukey, "usda_fdc", hit, CACHE_TTL_USDA)
