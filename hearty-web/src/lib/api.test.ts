@@ -31,6 +31,24 @@ test("throws ApiError on 401", async () => {
   await expect(createApiClient("http://api.test").getTrends()).rejects.toBeInstanceOf(ApiError);
 });
 
+test("ApiError carries the server-provided detail (L2)", async () => {
+  server.use(http.get("http://api.test/api/trends", () =>
+    HttpResponse.json({ detail: "invalid provisioning_mode" }, { status: 400 })));
+  const { createApiClient } = await import("./api");
+  await expect(createApiClient("http://api.test").getTrends())
+    .rejects.toMatchObject({ status: 400, detail: "invalid provisioning_mode" });
+});
+
+test("ApiError detail is undefined when the error body has no JSON detail", async () => {
+  expect.assertions(2);
+  server.use(http.get("http://api.test/api/trends", () => new HttpResponse(null, { status: 500 })));
+  const { createApiClient } = await import("./api");
+  await createApiClient("http://api.test").getTrends().catch((e) => {
+    expect(e.status).toBe(500);
+    expect(e.detail).toBeUndefined();
+  });
+});
+
 test("patchMeal sends PATCH with JSON body", async () => {
   let method = "";
   let body: unknown = null;

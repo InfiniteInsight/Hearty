@@ -1,0 +1,12 @@
+-- Security audit 2026-06-26, finding I2 (defense-in-depth).
+--
+-- match_knowledge() is LANGUAGE sql STABLE (default SECURITY INVOKER) and the
+-- knowledge_base table has RLS enabled with no anon/authenticated policy, so the
+-- function already returns zero rows to any non-service caller. By Postgres default,
+-- however, the function is PUBLIC-executable, so an authenticated user *could* still
+-- invoke it via PostgREST (it just returns nothing).
+--
+-- Remove the default PUBLIC/anon/authenticated EXECUTE grant so the corpus retrieval
+-- is service-key-only by ACL as well as by RLS. service_role keeps its grant (the
+-- backend calls this with the secret key).
+revoke execute on function match_knowledge(vector, integer, text[]) from public, anon, authenticated;
