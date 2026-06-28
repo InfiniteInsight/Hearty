@@ -10,6 +10,8 @@ import '../../../core/api/models/meal_log.dart';
 import '../../../core/api/models/symptom_log.dart';
 import '../../../core/util/meal_label.dart';
 import '../../../core/api/hearty_api_client.dart';
+import '../../../app/theme/aurora_colors.dart';
+import '../widgets/radial_clock.dart';
 import '../../../core/offline/local_meal_dao.dart';
 import '../../../core/offline/local_symptom_dao.dart';
 import '../../../core/offline/offline_database.dart';
@@ -326,6 +328,16 @@ class _TimelineBody extends StatelessWidget {
 
     return CustomScrollView(
       slivers: [
+        // Radial-clock header (Aurora). Phase 1: face only (rings, ticks,
+        // numbers, hands, digital time). Orbit entry dots wire to today's
+        // entries in a later phase.
+        SliverToBoxAdapter(
+          child: Container(
+            decoration: const BoxDecoration(gradient: Aurora.background),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: const Center(child: RadialClock()),
+          ),
+        ),
         if (entries.isEmpty)
           const SliverFillRemaining(
             hasScrollBody: false,
