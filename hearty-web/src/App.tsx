@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import Login from "./pages/Login";
 import AuthCallback from "./pages/AuthCallback";
 import ProtectedRoute from "./router/ProtectedRoute";
+import RequireAdmin from "./router/RequireAdmin";
 import AppShell from "./components/layout/AppShell";
 import Dashboard from "./pages/Dashboard";
 import Journal from "./pages/Journal";
@@ -28,7 +29,9 @@ export default function App() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route element={<RequireAdmin />}>
+            <Route path="/admin" element={<Admin />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
