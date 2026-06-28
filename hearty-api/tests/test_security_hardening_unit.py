@@ -100,3 +100,22 @@ def test_parse_origins_whitespace_is_empty():
 def test_parse_origins_splits_and_strips():
     assert _parse_origins("https://a.com, https://b.com ") == [
         "https://a.com", "https://b.com"]
+
+
+def test_empty_allowlist_denies_cross_origin():
+    """An empty allow-list must yield NO access-control-allow-origin header
+    (deny all cross-origin), proving the fail-closed default at the middleware."""
+    from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
+
+    sub = FastAPI()
+    sub.add_middleware(CORSMiddleware, allow_origins=_parse_origins(""),
+                       allow_methods=["*"], allow_headers=["*"])
+
+    @sub.get("/x")
+    def _x():
+        return {"ok": True}
+
+    r = TestClient(sub).get("/x", headers={"Origin": "https://evil.example"})
+    assert r.status_code == 200
+    assert "access-control-allow-origin" not in {k.lower() for k in r.headers}
