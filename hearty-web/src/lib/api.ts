@@ -17,7 +17,26 @@ import type {
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) { super(message); this.name = "ApiError"; this.status = status; }
+  /** Server-provided error detail (FastAPI `detail`). Surface only on owner-facing
+   *  (admin) screens — keep generic messages on user surfaces. */
+  detail?: string;
+  constructor(status: number, message: string, detail?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+// Best-effort parse of a FastAPI error body's `detail` (string) without throwing.
+async function parseErrorDetail(res: Response): Promise<string | undefined> {
+  try {
+    const body = await res.clone().json();
+    const d = (body as { detail?: unknown })?.detail;
+    return typeof d === "string" && d.trim() ? d : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function authHeader(): Promise<Record<string, string>> {
@@ -40,7 +59,7 @@ export function createApiClient(baseUrl: string) {
     if (init.method && init.method !== "GET") headers["Content-Type"] = "application/json";
     Object.assign(headers, (init.headers as Record<string, string> | undefined) ?? {});
     const res = await fetch(`${baseUrl}${path}`, { ...init, headers });
-    if (!res.ok) throw new ApiError(res.status, `${res.status} ${res.statusText}`);
+    if (!res.ok) throw new ApiError(res.status, `${res.status} ${res.statusText}`, await parseErrorDetail(res));
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
   }
@@ -48,7 +67,7 @@ export function createApiClient(baseUrl: string) {
     const headers: Record<string, string> = { ...(await authHeader()) };
     if (init.method && init.method !== "GET") headers["Content-Type"] = "application/json";
     const res = await fetch(`${baseUrl}${path}`, { ...init, headers });
-    if (!res.ok) throw new ApiError(res.status, `${res.status} ${res.statusText}`);
+    if (!res.ok) throw new ApiError(res.status, `${res.status} ${res.statusText}`, await parseErrorDetail(res));
     const blob = await res.blob();
     const cd = res.headers.get("Content-Disposition") ?? "";
     const match = /filename="?([^";]+)"?/.exec(cd);

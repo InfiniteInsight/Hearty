@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAdminUsers, useAdminActions, useAppSettings, useUpdateAppSettings, useHealth, useTestLlm, useKnowledge, useKnowledgeActions, usePromptOverlays, usePromptOverlayVersions, usePromptOverlayActions } from "../hooks/useAdmin";
+import { ApiError } from "../lib/api";
 import type { AdminUser, ProvisioningMode } from "@/types/api";
 
 function formatDate(s: string | null | undefined) {
@@ -336,7 +337,10 @@ export default function Admin() {
 
   function run(p: Promise<unknown>) {
     setErr(null);
-    p.catch(() => setErr("Something went wrong. Try again."));
+    // Admin is owner-only — surface the server's error detail when present (e.g.
+    // "invalid provisioning_mode"); fall back to a generic message otherwise.
+    p.catch((e) => setErr(
+      e instanceof ApiError && e.detail ? e.detail : "Something went wrong. Try again."));
   }
 
   return (
