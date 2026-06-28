@@ -1,17 +1,26 @@
-from fastapi import APIRouter, HTTPException, Request
+import hmac
+import logging
 import os
+
+from fastapi import APIRouter, HTTPException, Request
 from supabase import create_client
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"])
-WEBHOOK_SECRET = os.environ.get("SUPABASE_WEBHOOK_SECRET", "")
+
 
 @router.post("/auth/on-login")
 async def on_login(request: Request):
-    # Verify webhook secret
+    # Verify the request is from Supabase. Fail-closed: a missing/empty
+    # SUPABASE_WEBHOOK_SECRET rejects every request (never silently open),
+    # and the comparison is constant-time (mirrors internal.py).
+    secret = os.environ.get("SUPABASE_WEBHOOK_SECRET", "")
+    if not secret:
+        logger.warning("/auth/on-login rejected: SUPABASE_WEBHOOK_SECRET is not set")
     auth_header = request.headers.get("Authorization", "")
-    if WEBHOOK_SECRET and auth_header != f"Bearer {WEBHOOK_SECRET}":
+    if not secret or not hmac.compare_digest(auth_header, f"Bearer {secret}"):
         raise HTTPException(status_code=401, detail="Invalid webhook secret")
 
     payload = await request.json()

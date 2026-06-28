@@ -1,3 +1,4 @@
+import logging
 import os
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,8 +8,17 @@ from app.health_profile.router import router as health_profile_router
 from app.licensing import require_active_license
 from app.routers import auth_hooks, chat, meals, symptoms, trends, export, photos, preferences, transcribe, checkin, experiments, food, account, license, admin, internal
 
-_origins_env = os.getenv("ALLOWED_ORIGINS", "")
-_allowed_origins = [o.strip() for o in _origins_env.split(",") if o.strip()] or ["*"]
+logger = logging.getLogger(__name__)
+
+# Fail-closed CORS: an unset/blank ALLOWED_ORIGINS denies all cross-origin
+# requests rather than silently opening to "*" on misconfiguration.
+def _parse_origins(env: str) -> list[str]:
+    return [o.strip() for o in env.split(",") if o.strip()]
+
+
+_allowed_origins = _parse_origins(os.getenv("ALLOWED_ORIGINS", ""))
+if not _allowed_origins:
+    logger.warning("ALLOWED_ORIGINS is not set — all cross-origin requests will be denied")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
