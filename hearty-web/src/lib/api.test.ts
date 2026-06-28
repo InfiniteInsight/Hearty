@@ -40,6 +40,7 @@ test("ApiError carries the server-provided detail (L2)", async () => {
 });
 
 test("ApiError detail is undefined when the error body has no JSON detail", async () => {
+  expect.assertions(2);
   server.use(http.get("http://api.test/api/trends", () => new HttpResponse(null, { status: 500 })));
   const { createApiClient } = await import("./api");
   await createApiClient("http://api.test").getTrends().catch((e) => {
