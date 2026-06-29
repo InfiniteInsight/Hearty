@@ -81,6 +81,13 @@ Colloquial aliases:
 
 Extract multiple symptoms if the description mentions more than one.
 Do not diagnose. Extract only what is stated.
+
+If the description does NOT report any actual symptom, discomfort, or negative
+physical/mental feeling — e.g. a positive or neutral statement like "feeling
+good", "I'm great", "fine", "no issues", "all good", or unrelated text — return
+an empty "symptoms" array. Do NOT invent symptoms and do NOT treat positive or
+neutral feelings as symptoms.
+
 Return only the JSON object.
 
 Description:
