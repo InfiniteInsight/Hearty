@@ -39,15 +39,19 @@ class Aurora {
 
   // Orbit entry dots (arc-labels companion spec §2). AM dots sit in the violet
   // inner zone; PM dots in the emerald outer zone. Fill = soft tint, border = stronger.
-  static const Color amMealFill = Color(0x248B5CF6); // violet 0.14
-  static const Color amMealBorder = Color(0x618B5CF6); // violet 0.38
-  static const Color amSymptomFill = Color(0x1FF87171); // red 0.12
-  static const Color amSymptomBorder = Color(0x59F87171); // red 0.35
+  static const Color amMealFill = Color(0x338B5CF6); // violet 0.20
+  static const Color amMealBorder = Color(0xE68B5CF6); // violet 0.90
+  static const Color amSymptomFill = Color(0x33F87171); // red 0.20
+  static const Color amSymptomBorder = Color(0xE6F87171); // red 0.90
 
-  static const Color pmMealFill = Color(0x1434D399); // emerald 0.08
-  static const Color pmMealBorder = Color(0x4D34D399); // emerald 0.30
-  static const Color pmSymptomFill = Color(0x14F87171); // red 0.08
-  static const Color pmSymptomBorder = Color(0x4DF87171); // red 0.30
-  static const Color pmMoodFill = Color(0x14A78BFA); // violet 0.08
-  static const Color pmMoodBorder = Color(0x4DA78BFA); // violet 0.30
+  // Higher-contrast bubbles than the original spec tints — on the dark,
+  // emerald-accented clock face the 8%/30% tints were nearly invisible (esp.
+  // emerald meals blending into the emerald rings/numbers). Solid-ish borders +
+  // a stronger fill read clearly as entry "bubbles".
+  static const Color pmMealFill = Color(0x3334D399); // emerald 0.20
+  static const Color pmMealBorder = Color(0xF234D399); // emerald 0.95
+  static const Color pmSymptomFill = Color(0x33F87171); // red 0.20
+  static const Color pmSymptomBorder = Color(0xE6F87171); // red 0.90
+  static const Color pmMoodFill = Color(0x33A78BFA); // violet 0.20
+  static const Color pmMoodBorder = Color(0xE6A78BFA); // violet 0.90
 }
