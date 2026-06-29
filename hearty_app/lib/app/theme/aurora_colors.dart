@@ -36,4 +36,18 @@ class Aurora {
   static const Color ringMid = Color(0x1234D399); // 0.07 emerald — reference
   static const Color ringInner = Color(0x598B5CF6); // 0.35 violet — AM/inner
   static const Color ringInnerFill = Color(0x1A8B5CF6); // 0.1 violet
+
+  // Orbit entry dots (arc-labels companion spec §2). AM dots sit in the violet
+  // inner zone; PM dots in the emerald outer zone. Fill = soft tint, border = stronger.
+  static const Color amMealFill = Color(0x248B5CF6); // violet 0.14
+  static const Color amMealBorder = Color(0x618B5CF6); // violet 0.38
+  static const Color amSymptomFill = Color(0x1FF87171); // red 0.12
+  static const Color amSymptomBorder = Color(0x59F87171); // red 0.35
+
+  static const Color pmMealFill = Color(0x1434D399); // emerald 0.08
+  static const Color pmMealBorder = Color(0x4D34D399); // emerald 0.30
+  static const Color pmSymptomFill = Color(0x14F87171); // red 0.08
+  static const Color pmSymptomBorder = Color(0x4DF87171); // red 0.30
+  static const Color pmMoodFill = Color(0x14A78BFA); // violet 0.08
+  static const Color pmMoodBorder = Color(0x4DA78BFA); // violet 0.30
 }

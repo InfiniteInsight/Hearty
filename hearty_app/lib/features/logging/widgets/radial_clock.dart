@@ -3,33 +3,118 @@ import 'package:flutter/material.dart';
 
 import '../../../app/theme/aurora_colors.dart';
 
+/// Type of an entry orbiting the clock — drives the dot's color.
+enum ClockEntryType { meal, symptom, mood }
+
+/// One entry placed around the dial by its time of day.
+class ClockEntry {
+  final DateTime time;
+  final ClockEntryType type;
+
+  const ClockEntry({required this.time, required this.type});
+
+  /// Clock angle in degrees (0° = 12 o'clock, clockwise).
+  double get angleDeg => (time.hour % 12 + time.minute / 60) * 30;
+
+  /// AM entries orbit the inner ring; PM entries the outer ring.
+  bool get isAm => time.hour < 12;
+}
+
 /// Radial-clock face (Hearty UI Design Guide §"Radial Clock — Geometry", Aurora
-/// palette). Phase 1: rings, tick marks, clock numbers, hour/minute hands, and a
-/// center digital-time readout. Orbit entry dots, arc labels and tap interaction
-/// come in later phases.
+/// palette). Phases 1–2: rings, tick marks, clock numbers, hour/minute hands, a
+/// center digital-time readout, and orbit entry dots placed by time (AM inner /
+/// PM outer). Tap interaction and arc labels come in later phases.
 ///
 /// Geometry uses the design guide's logical-pixel radii on a square canvas of
-/// side [DESIGN_SIZE] (278). The painter scales those radii to whatever box it
-/// is given, so it stays centered and uncropped on narrow phones.
+/// side [designSize] (278). Everything scales to whatever box it is given, so it
+/// stays centered and uncropped on narrow phones.
 class RadialClock extends StatelessWidget {
   /// The time to display. Defaults to [DateTime.now] when null (tests pass a
   /// fixed value for deterministic goldens).
   final DateTime? time;
 
+  /// Entries to orbit the dial (today's meals/symptoms).
+  final List<ClockEntry> entries;
+
   /// Side length of the (square) clock zone in logical pixels.
   final double size;
 
-  const RadialClock({super.key, this.time, this.size = 278});
+  const RadialClock({
+    super.key,
+    this.time,
+    this.entries = const [],
+    this.size = 278,
+  });
 
   static const double designSize = 278;
+  static const double _rAmOrbit = 60;
+  static const double _rPmOrbit = 118;
 
   @override
   Widget build(BuildContext context) {
+    final DateTime t = time ?? DateTime.now();
+    final double s = size / designSize;
     return SizedBox(
       width: size,
       height: size,
-      child: CustomPaint(
-        painter: _RadialClockPainter(time: time ?? DateTime.now()),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: CustomPaint(painter: _RadialClockPainter(time: t)),
+          ),
+          for (final e in entries) _positionDot(e, s),
+        ],
+      ),
+    );
+  }
+
+  Widget _positionDot(ClockEntry e, double s) {
+    final double r = (e.isAm ? _rAmOrbit : _rPmOrbit) * s;
+    final double dotSize = (e.isAm ? 26.0 : 34.0) * s;
+    final double rad = e.angleDeg * math.pi / 180;
+    final double cx = size / 2 + r * math.sin(rad);
+    final double cy = size / 2 - r * math.cos(rad);
+    return Positioned(
+      left: cx - dotSize / 2,
+      top: cy - dotSize / 2,
+      child: _OrbitDot(type: e.type, isAm: e.isAm, size: dotSize),
+    );
+  }
+}
+
+/// A single orbit marker — a bordered, softly-filled circle colored by entry
+/// type and AM/PM zone.
+class _OrbitDot extends StatelessWidget {
+  final ClockEntryType type;
+  final bool isAm;
+  final double size;
+
+  const _OrbitDot({required this.type, required this.isAm, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    final (Color fill, Color border) = switch ((type, isAm)) {
+      (ClockEntryType.meal, true) => (Aurora.amMealFill, Aurora.amMealBorder),
+      (ClockEntryType.symptom, true) => (
+        Aurora.amSymptomFill,
+        Aurora.amSymptomBorder,
+      ),
+      (ClockEntryType.mood, true) => (Aurora.amMealFill, Aurora.amMealBorder),
+      (ClockEntryType.meal, false) => (Aurora.pmMealFill, Aurora.pmMealBorder),
+      (ClockEntryType.symptom, false) => (
+        Aurora.pmSymptomFill,
+        Aurora.pmSymptomBorder,
+      ),
+      (ClockEntryType.mood, false) => (Aurora.pmMoodFill, Aurora.pmMoodBorder),
+    };
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: fill,
+        border: Border.all(color: border, width: isAm ? 1.5 : 1.5),
       ),
     );
   }

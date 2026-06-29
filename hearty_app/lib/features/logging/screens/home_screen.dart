@@ -326,16 +326,23 @@ class _TimelineBody extends StatelessWidget {
     // Sort descending (newest first).
     entries.sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
 
+    // Orbit dots for today's meals + symptoms, placed on the dial by local time.
+    final List<ClockEntry> clockEntries = [
+      for (final m in todayMeals)
+        ClockEntry(time: m.loggedAt.toLocal(), type: ClockEntryType.meal),
+      for (final s in todaySymptoms)
+        ClockEntry(time: s.loggedAt.toLocal(), type: ClockEntryType.symptom),
+    ];
+
     return CustomScrollView(
       slivers: [
-        // Radial-clock header (Aurora). Phase 1: face only (rings, ticks,
-        // numbers, hands, digital time). Orbit entry dots wire to today's
-        // entries in a later phase.
+        // Radial-clock header (Aurora). Phases 1–2: face + orbit entry dots for
+        // today's entries. Tap interaction + arc labels land in later phases.
         SliverToBoxAdapter(
           child: Container(
             decoration: const BoxDecoration(gradient: Aurora.background),
             padding: const EdgeInsets.symmetric(vertical: 16),
-            child: const Center(child: RadialClock()),
+            child: Center(child: RadialClock(entries: clockEntries)),
           ),
         ),
         if (entries.isEmpty)
