@@ -4,6 +4,8 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../models/photo_type.dart';
 
 /// The result returned by [CameraScreen] when the user captures a photo.
@@ -112,30 +114,37 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          _buildCameraPreview(),
-          SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Back button overlaid top-left.
-                Align(
-                  alignment: Alignment.topLeft,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.of(context).pop(),
+    return Theme(
+      data: AppTheme.aurora,
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Live preview stays full-bleed — not wrapped in the gradient.
+            _buildCameraPreview(),
+            SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Back button overlaid top-left.
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Aurora.textPrimary,
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
                   ),
-                ),
-                const Spacer(),
-                _buildBottomToolbar(),
-              ],
+                  const Spacer(),
+                  _buildBottomToolbar(),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -143,7 +152,9 @@ class _CameraScreenState extends State<CameraScreen> {
   Widget _buildCameraPreview() {
     if (_permissionDenied) return _buildPermissionDeniedUI();
     if (!_isInitialized || _controller == null) {
-      return const Center(child: CircularProgressIndicator(color: Colors.white));
+      return const Center(
+        child: CircularProgressIndicator(color: Aurora.accentGreen),
+      );
     }
     return MobileScanner(onDetect: _onBarcodeDetected);
   }
@@ -155,16 +166,20 @@ class _CameraScreenState extends State<CameraScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.camera_alt, color: Colors.white54, size: 64),
+            const Icon(Icons.camera_alt, color: Aurora.textMuted, size: 64),
             const SizedBox(height: 16),
             const Text(
               'Camera access is required to capture photos.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: Aurora.textPrimary, fontSize: 16),
             ),
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _initCamera,
+              style: FilledButton.styleFrom(
+                backgroundColor: Aurora.accentGreen,
+                foregroundColor: const Color(0xFF052E20),
+              ),
               child: const Text('Grant Permission'),
             ),
           ],
@@ -176,11 +191,16 @@ class _CameraScreenState extends State<CameraScreen> {
   Widget _buildBottomToolbar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      color: Colors.black.withValues(alpha: 0.6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.6),
+        border: const Border(
+          top: BorderSide(color: Aurora.glassBorder),
+        ),
+      ),
       child: const Text(
         'Point camera at a barcode',
         textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.white, fontSize: 16),
+        style: TextStyle(color: Aurora.textPrimary, fontSize: 16),
       ),
     );
   }

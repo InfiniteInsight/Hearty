@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../../../core/api/hearty_api_client.dart';
 import '../../../core/offline/local_meal_dao.dart';
 import '../../../core/offline/local_symptom_dao.dart';
@@ -134,31 +136,59 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
 
   // ─── Build ──────────────────────────────────────────────────────────────────
 
+  /// Wraps [child] in the Aurora theme + background gradient. All three states
+  /// (loading / not-found / detail) route through this so they share the dark
+  /// look.
+  Widget _auroraScaffold({required PreferredSizeWidget appBar, required Widget body}) {
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: appBar,
+          body: body,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     if (_isLoading) {
-      return Scaffold(
+      return _auroraScaffold(
         appBar: AppBar(title: const Text('Log Entry')),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_notFound || _entry == null) {
-      return Scaffold(
+      return _auroraScaffold(
         appBar: AppBar(title: const Text('Log Entry')),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline, size: 48, color: colorScheme.error),
+              const Icon(Icons.error_outline,
+                  size: 48, color: Aurora.accentRed),
               const SizedBox(height: 16),
-              Text('Entry not found', style: theme.textTheme.titleMedium),
+              const Text(
+                'Entry not found',
+                style: TextStyle(
+                  color: Aurora.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () => context.pop(),
+                style: TextButton.styleFrom(
+                  foregroundColor: Aurora.accentGreen,
+                ),
                 child: const Text('Go back'),
               ),
             ],
@@ -180,7 +210,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
       _ => _entry,
     };
 
-    return Scaffold(
+    return _auroraScaffold(
       appBar: AppBar(
         title: const Text('Log Entry'),
         actions: [
@@ -219,8 +249,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
             _ => const SizedBox.shrink(),
           },
           IconButton(
-            icon: Icon(Icons.delete_outline,
-                color: Theme.of(context).colorScheme.error),
+            icon: const Icon(Icons.delete_outline, color: Aurora.accentRed),
             tooltip: 'Delete',
             onPressed: () => switch (liveEntry) {
               MealLog m => confirmDelete(context, popAfter: true, onDelete: () async {
@@ -254,61 +283,125 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Icon + type label
-        Center(
+        // Header glass card: icon + type label + description + timestamp.
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Aurora.glassFill,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Aurora.glassBorder),
+          ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                _mealTypeIcon(meal.mealType),
-                size: 64,
-                color: colorScheme.primary,
+              Center(
+                child: Column(
+                  children: [
+                    Icon(
+                      _mealTypeIcon(meal.mealType),
+                      size: 64,
+                      color: Aurora.accentGreen,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _mealTypeLabel(meal.mealType),
+                      style: const TextStyle(color: Aurora.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Description
+              Text(
+                meal.description,
+                style: const TextStyle(
+                  color: Aurora.textPrimary,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
+
+              // Timestamp
               Text(
-                _mealTypeLabel(meal.mealType),
-                style: theme.textTheme.bodyLarge,
+                _formatFull(meal.loggedAt),
+                style: const TextStyle(color: Aurora.textMuted, fontSize: 14),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
-
-        // Description
-        Text(
-          meal.description,
-          style: theme.textTheme.headlineSmall
-              ?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-
-        // Timestamp
-        Text(
-          _formatFull(meal.loggedAt),
-          style: theme.textTheme.bodyMedium
-              ?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-        ),
 
         // Foods
         if (meal.foods.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          Text('Foods identified', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: meal.foods.map((f) => Chip(label: Text(f))).toList(),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Aurora.glassFill,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Aurora.glassBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Foods identified',
+                  style: TextStyle(
+                    color: Aurora.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: meal.foods
+                      .map((f) => Chip(
+                            label: Text(f),
+                            labelStyle:
+                                const TextStyle(color: Aurora.textPrimary),
+                            backgroundColor: Aurora.glassFill,
+                            side: const BorderSide(color: Aurora.glassBorder),
+                          ))
+                      .toList(),
+                ),
+              ],
+            ),
           ),
         ],
 
         // Claude note
         if (meal.claudeNote != null) ...[
-          const SizedBox(height: 24),
-          Text("Hearty's note", style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(meal.claudeNote!),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Aurora.glassFill,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Aurora.glassBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Hearty's note",
+                  style: TextStyle(
+                    color: Aurora.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  meal.claudeNote!,
+                  style: const TextStyle(color: Aurora.textSecondary),
+                ),
+              ],
             ),
           ),
         ],
@@ -335,60 +428,84 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Leading icon + title
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              Icons.warning_amber_rounded,
-              size: 40,
-              color: severityColor,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                symptom.description,
-                style: theme.textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // Severity
-        Row(
-          children: [
-            Text('Severity: ${symptom.severity}/10',
-                style: theme.textTheme.bodyLarge),
-            const SizedBox(width: 12),
-            Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                color: severityColor,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-
-        // Timestamp
-        Text(
-          _formatFull(symptom.loggedAt),
-          style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withValues(alpha: 0.6)),
-        ),
-
-        // Linked meal
-        if (linkedMealLabel != null) ...[
-          const SizedBox(height: 16),
-          Text(
-            'Logged after meal: $linkedMealLabel',
-            style: theme.textTheme.bodyMedium,
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Aurora.glassFill,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Aurora.glassBorder),
           ),
-        ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Leading icon + title
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    size: 40,
+                    color: severityColor,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      symptom.description,
+                      style: const TextStyle(
+                        color: Aurora.textPrimary,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Severity
+              Row(
+                children: [
+                  Text(
+                    'Severity: ${symptom.severity}/10',
+                    style: const TextStyle(
+                      color: Aurora.textSecondary,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: severityColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Timestamp
+              Text(
+                _formatFull(symptom.loggedAt),
+                style: const TextStyle(
+                  color: Aurora.textMuted,
+                  fontSize: 14,
+                ),
+              ),
+
+              // Linked meal
+              if (linkedMealLabel != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Logged after meal: $linkedMealLabel',
+                  style: const TextStyle(color: Aurora.textSecondary),
+                ),
+              ],
+            ],
+          ),
+        ),
       ],
     );
   }

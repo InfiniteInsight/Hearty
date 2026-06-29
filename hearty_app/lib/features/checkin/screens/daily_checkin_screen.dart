@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../providers/checkin_controller.dart';
 import '../widgets/checkin_cycle_view.dart';
 import '../widgets/checkin_preview_view.dart';
@@ -37,18 +39,25 @@ class _DailyCheckinScreenState extends ConsumerState<DailyCheckinScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(checkinControllerProvider(widget.date));
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Daily check-in')),
-      body: switch (state.phase) {
-        CheckinPhase.loading => const Center(
-            key: Key('checkin-loading'),
-            child: CircularProgressIndicator(),
-          ),
-        CheckinPhase.preview => CheckinPreviewView(date: widget.date),
-        CheckinPhase.cycling => CheckinCycleView(date: widget.date),
-        CheckinPhase.done => _EndCard(state: state),
-        CheckinPhase.error => _ErrorCard(date: widget.date),
-      },
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(title: const Text('Daily check-in')),
+          body: switch (state.phase) {
+            CheckinPhase.loading => const Center(
+                key: Key('checkin-loading'),
+                child: CircularProgressIndicator(),
+              ),
+            CheckinPhase.preview => CheckinPreviewView(date: widget.date),
+            CheckinPhase.cycling => CheckinCycleView(date: widget.date),
+            CheckinPhase.done => _EndCard(state: state),
+            CheckinPhase.error => _ErrorCard(date: widget.date),
+          },
+        ),
+      ),
     );
   }
 }
@@ -75,28 +84,43 @@ class _EndCard extends StatelessWidget {
       key: const Key('checkin-done'),
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              key: const Key('checkin-close'),
-              onPressed: () {
-                // Pop back if we can; otherwise fall home (e.g. deep-linked in).
-                if (context.canPop()) {
-                  context.pop();
-                } else {
-                  context.go('/home');
-                }
-              },
-              child: const Text('Close'),
-            ),
-          ],
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Aurora.glassFill,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Aurora.glassBorder),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(color: Aurora.textPrimary),
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                key: const Key('checkin-close'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Aurora.accentGreen,
+                  foregroundColor: const Color(0xFF052E20),
+                ),
+                onPressed: () {
+                  // Pop back if we can; otherwise fall home (e.g. deep-linked in).
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/home');
+                  }
+                },
+                child: const Text('Close'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -115,22 +139,37 @@ class _ErrorCard extends ConsumerWidget {
       key: const Key('checkin-error'),
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "Couldn't load your check-in.",
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              key: const Key('checkin-retry'),
-              onPressed: () =>
-                  ref.read(checkinControllerProvider(date).notifier).load(),
-              child: const Text('Retry'),
-            ),
-          ],
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Aurora.glassFill,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Aurora.glassBorder),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Couldn't load your check-in.",
+                textAlign: TextAlign.center,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(color: Aurora.textPrimary),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                key: const Key('checkin-retry'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Aurora.accentGreen,
+                  foregroundColor: const Color(0xFF052E20),
+                ),
+                onPressed: () =>
+                    ref.read(checkinControllerProvider(date).notifier).load(),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
         ),
       ),
     );

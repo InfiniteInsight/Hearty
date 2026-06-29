@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'tts_engine.dart';
 
 class SystemTtsEngine implements TtsEngine {
@@ -13,14 +12,8 @@ class SystemTtsEngine implements TtsEngine {
     await _tts.setLanguage('en-US');
     await _tts.setSpeechRate(0.7);
     await _tts.setPitch(1.0);
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final saved = voiceName ?? prefs.getString('tts_voice_name');
-      if (saved != null) {
-        await _tts.setVoice({'name': saved, 'locale': 'en-US'});
-      }
-    } catch (_) {
-      // SharedPreferences unavailable (e.g. test env) — skip saved-voice load.
+    if (voiceName != null) {
+      await _tts.setVoice({'name': voiceName, 'locale': 'en-US'});
     }
     return true;
   }

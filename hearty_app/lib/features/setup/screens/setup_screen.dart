@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../../../core/api/providers/preferences_provider.dart';
 import '../../wake_word/widgets/app_setup_sheet.dart';
 
@@ -94,7 +96,13 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Solid black while setup runs — matches wizard background so no flash.
-    return const Scaffold(backgroundColor: Colors.black87);
+    // Aurora gradient while setup runs; the wizard modal scrims over it.
+    return Theme(
+      data: AppTheme.aurora,
+      child: const DecoratedBox(
+        decoration: BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(backgroundColor: Colors.transparent),
+      ),
+    );
   }
 }

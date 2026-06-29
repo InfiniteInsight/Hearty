@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../../../core/api/providers/preferences_provider.dart';
 
 class ConversationStyleScreen extends ConsumerStatefulWidget {
@@ -49,19 +51,24 @@ class _ConversationStyleScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Conversation Style')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(
-            'Choose how Hearty talks to you during logging and check-ins.',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 20),
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(title: const Text('Conversation Style')),
+          body: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Text(
+                'Choose how Hearty talks to you during logging and check-ins.',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: Aurora.textSecondary),
+              ),
+              const SizedBox(height: 20),
           _StyleCard(
             value: 'warm',
             selected: _selected,
@@ -91,16 +98,23 @@ class _ConversationStyleScreenState
           ),
           const SizedBox(height: 24),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Aurora.accentGreen,
+              foregroundColor: const Color(0xFF052E20),
+            ),
             onPressed: _saving ? null : _save,
             child: _saving
                 ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Color(0xFF052E20)),
                   )
                 : const Text('Save'),
           ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -128,25 +142,24 @@ class _StyleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSelected = value == selected;
-    final colorScheme = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(15),
           border: Border.all(
-            color: isSelected ? colorScheme.primary : colorScheme.outlineVariant,
-            width: 2,
+            color: isSelected ? Aurora.accentGreen : Aurora.glassBorder,
+            width: isSelected ? 2 : 1,
           ),
           color: isSelected
-              ? colorScheme.primary.withValues(alpha: 0.05)
-              : colorScheme.surface,
+              ? Aurora.accentGreen.withValues(alpha: 0.10)
+              : Aurora.glassFill,
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: colorScheme.primary.withValues(alpha: 0.12),
-                    blurRadius: 8,
+                    color: Aurora.accentGreen.withValues(alpha: 0.18),
+                    blurRadius: 12,
                     offset: const Offset(0, 2),
                   )
                 ]
@@ -162,14 +175,14 @@ class _StyleCard extends StatelessWidget {
                   child: Text(
                     '$icon $title',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: colorScheme.onSurface,
+                          color: Aurora.textPrimary,
                           fontWeight: FontWeight.w600,
                         ),
                   ),
                 ),
                 Icon(
                   isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
-                  color: isSelected ? colorScheme.primary : colorScheme.outline,
+                  color: isSelected ? Aurora.accentGreen : Aurora.textMuted,
                 ),
               ],
             ),
@@ -177,16 +190,17 @@ class _StyleCard extends StatelessWidget {
             Text(
               subtitle,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+                    color: Aurora.textSecondary,
                   ),
             ),
             const SizedBox(height: 12),
             Container(
               decoration: BoxDecoration(
                 color: isSelected
-                    ? colorScheme.primaryContainer.withValues(alpha: 0.4)
-                    : colorScheme.surfaceContainerHighest,
+                    ? Aurora.accentGreen.withValues(alpha: 0.06)
+                    : Colors.black.withValues(alpha: 0.20),
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Aurora.glassBorder),
               ),
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -195,7 +209,7 @@ class _StyleCard extends StatelessWidget {
                   Text(
                     'EXAMPLE',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
+                          color: Aurora.textMuted,
                           letterSpacing: 0.5,
                         ),
                   ),
@@ -208,7 +222,7 @@ class _StyleCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: colorScheme.primary,
+                          color: Aurora.accentGreen,
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(12),
                             topRight: Radius.circular(12),
@@ -217,8 +231,8 @@ class _StyleCard extends StatelessWidget {
                         ),
                         child: Text(
                           userMsg,
-                          style: TextStyle(
-                              color: colorScheme.onPrimary, fontSize: 12),
+                          style: const TextStyle(
+                              color: Color(0xFF052E20), fontSize: 12),
                         ),
                       ),
                     ),
@@ -227,8 +241,8 @@ class _StyleCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: colorScheme.surface,
-                        border: Border.all(color: colorScheme.outlineVariant),
+                        color: Aurora.glassFill,
+                        border: Border.all(color: Aurora.glassBorder),
                         borderRadius: const BorderRadius.only(
                           topRight: Radius.circular(12),
                           bottomLeft: Radius.circular(12),
@@ -237,8 +251,8 @@ class _StyleCard extends StatelessWidget {
                       ),
                       child: Text(
                         heartyMsg,
-                        style: TextStyle(
-                            color: colorScheme.onSurface, fontSize: 12),
+                        style: const TextStyle(
+                            color: Aurora.textPrimary, fontSize: 12),
                       ),
                     ),
                   ],

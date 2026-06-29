@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../models/photo_type.dart';
 
 /// Full-screen loading screen shown while a photo is being uploaded and
@@ -15,22 +17,36 @@ class PhotoProcessingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 24),
-            Text(photoType.processingLabel),
-            const SizedBox(height: 8),
-            Text(
-              'This usually takes 5–10 seconds.',
-              style: textTheme.bodySmall,
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(
+                  color: Aurora.accentGreen,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  photoType.processingLabel,
+                  style: const TextStyle(
+                    color: Aurora.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'This usually takes 5–10 seconds.',
+                  style: TextStyle(color: Aurora.textSecondary),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

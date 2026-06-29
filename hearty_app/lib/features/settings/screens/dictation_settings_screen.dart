@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../../../core/api/models/user_preferences.dart';
 import '../../../core/api/providers/preferences_provider.dart';
 import '../../../core/stt/on_device_model.dart';
@@ -35,50 +37,92 @@ class _DictationSettingsScreenState
   @override
   Widget build(BuildContext context) {
     final prefsAsync = ref.watch(preferencesProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Dictation')),
-      body: prefsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Failed to load preferences: $e')),
-        data: (prefs) => ListView(
-          children: [
-            _sectionHeader(context, 'Transcription model'),
-            _modelPicker(prefs),
-            if (_switchingTo != null) _downloadRow(),
-            const Divider(),
-            _sectionHeader(context, 'Auto-submit'),
-            SwitchListTile(
-              secondary: const Icon(Icons.send_outlined),
-              title: const Text('Auto-submit after a pause'),
-              subtitle: const Text(
-                  'Send automatically once you stop talking, instead of '
-                  'tapping submit.'),
-              value: prefs.autoSubmit,
-              onChanged: (v) => _save(prefs.copyWith(autoSubmit: v)),
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(title: const Text('Dictation')),
+          body: prefsAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) =>
+                Center(child: Text('Failed to load preferences: $e')),
+            data: (prefs) => ListView(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+              children: [
+                _sectionHeader(context, 'Transcription model'),
+                _card(
+                  child: Column(
+                    children: [
+                      _modelPicker(prefs),
+                      if (_switchingTo != null) _downloadRow(),
+                    ],
+                  ),
+                ),
+                _sectionHeader(context, 'Auto-submit'),
+                _card(
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        activeThumbColor: Aurora.accentGreen,
+                        secondary: const Icon(Icons.send_outlined,
+                            color: Aurora.textSecondary),
+                        title: const Text('Auto-submit after a pause',
+                            style: TextStyle(color: Aurora.textPrimary)),
+                        subtitle: const Text(
+                            'Send automatically once you stop talking, instead '
+                            'of tapping submit.',
+                            style: TextStyle(color: Aurora.textSecondary)),
+                        value: prefs.autoSubmit,
+                        onChanged: (v) => _save(prefs.copyWith(autoSubmit: v)),
+                      ),
+                      _silenceSlider(prefs),
+                    ],
+                  ),
+                ),
+                _sectionHeader(context, 'Advanced'),
+                _card(
+                  child: SwitchListTile(
+                    activeThumbColor: Aurora.accentGreen,
+                    secondary: const Icon(Icons.cloud_outlined,
+                        color: Aurora.textSecondary),
+                    title: const Text('Use cloud when online',
+                        style: TextStyle(color: Aurora.textPrimary)),
+                    subtitle: const Text(
+                        'Transcribe with the cloud service while connected. Off '
+                        'by default — Hearty transcribes on your device.',
+                        style: TextStyle(color: Aurora.textSecondary)),
+                    value: prefs.useCloudWhenOnline,
+                    onChanged: (v) =>
+                        _save(prefs.copyWith(useCloudWhenOnline: v)),
+                  ),
+                ),
+              ],
             ),
-            _silenceSlider(prefs),
-            const Divider(),
-            _sectionHeader(context, 'Advanced'),
-            SwitchListTile(
-              secondary: const Icon(Icons.cloud_outlined),
-              title: const Text('Use cloud when online'),
-              subtitle: const Text(
-                  'Transcribe with the cloud service while connected. Off by '
-                  'default — Hearty transcribes on your device.'),
-              value: prefs.useCloudWhenOnline,
-              onChanged: (v) => _save(prefs.copyWith(useCloudWhenOnline: v)),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
+  /// Aurora glass card grouping a section's controls.
+  Widget _card({required Widget child}) => Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        decoration: BoxDecoration(
+          color: Aurora.glassFill,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Aurora.glassBorder),
+        ),
+        child: child,
+      );
+
   Widget _sectionHeader(BuildContext context, String text) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+        padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
         child: Text(text,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: Theme.of(context).colorScheme.primary)),
+                color: Aurora.accentGreen, fontWeight: FontWeight.w600)),
       );
 
   Widget _modelPicker(UserPreferences prefs) {
@@ -94,11 +138,22 @@ class _DictationSettingsScreenState
       child: Column(
         children: [
           for (final model in OnDeviceModel.values)
-            RadioListTile<OnDeviceModel>(
-              title: Text(model.label),
-              subtitle: Text(model.blurb),
-              value: model,
-              enabled: _switchingTo == null,
+            Container(
+              decoration: BoxDecoration(
+                color: model == selected
+                    ? Aurora.accentGreen.withValues(alpha: 0.10)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: RadioListTile<OnDeviceModel>(
+                activeColor: Aurora.accentGreen,
+                title: Text(model.label,
+                    style: const TextStyle(color: Aurora.textPrimary)),
+                subtitle: Text(model.blurb,
+                    style: const TextStyle(color: Aurora.textSecondary)),
+                value: model,
+                enabled: _switchingTo == null,
+              ),
             ),
         ],
       ),
@@ -106,18 +161,21 @@ class _DictationSettingsScreenState
   }
 
   Widget _downloadRow() => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Preparing ${_switchingTo!.label}… dictation is limited until '
               'it’s ready.',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: const TextStyle(fontSize: 12, color: Aurora.textMuted),
             ),
             const SizedBox(height: 6),
             LinearProgressIndicator(
-                value: _progress > 0 && _progress < 1 ? _progress : null),
+              value: _progress > 0 && _progress < 1 ? _progress : null,
+              color: Aurora.accentGreen,
+              backgroundColor: Aurora.glassBorder,
+            ),
           ],
         ),
       );
@@ -126,12 +184,18 @@ class _DictationSettingsScreenState
     final seconds = prefs.autoSubmitSilenceSeconds;
     return ListTile(
       enabled: prefs.autoSubmit,
-      title: const Text('Pause before auto-submit'),
+      title: Text('Pause before auto-submit',
+          style: TextStyle(
+              color: prefs.autoSubmit
+                  ? Aurora.textPrimary
+                  : Aurora.textMuted)),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${seconds.toStringAsFixed(1)} s'),
+          Text('${seconds.toStringAsFixed(1)} s',
+              style: const TextStyle(color: Aurora.textSecondary)),
           Slider(
+            activeColor: Aurora.accentGreen,
             min: 2.0,
             max: 5.0,
             divisions: 6, // 0.5 s steps

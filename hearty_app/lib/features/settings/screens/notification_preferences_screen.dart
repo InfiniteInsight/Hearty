@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../../../core/api/models/user_preferences.dart';
 import '../../../core/api/providers/preferences_provider.dart';
 import '../../../core/widgets/post_meal_nudge_section.dart';
@@ -12,12 +14,20 @@ class NotificationPreferencesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final prefsAsync = ref.watch(preferencesProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
-      body: prefsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Failed to load preferences: $e')),
-        data: (prefs) => _PreferencesForm(prefs: prefs),
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(title: const Text('Notifications')),
+          body: prefsAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) =>
+                Center(child: Text('Failed to load preferences: $e')),
+            data: (prefs) => _PreferencesForm(prefs: prefs),
+          ),
+        ),
       ),
     );
   }
@@ -66,41 +76,68 @@ class _PreferencesFormState extends ConsumerState<_PreferencesForm> {
     setState(() => _saving = false);
   }
 
+  /// Aurora glass card wrapping a group of settings rows.
+  Widget _glassCard({required Widget child}) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Aurora.glassFill,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Aurora.glassBorder),
+      ),
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
       children: [
         // ── Post-meal nudge ───────────────────────────────────────────────
-        PostMealNudgeSection(
-          enabled: _postMealEnabled,
-          delayMinutes: _nudgeDelay,
-          onToggle: (v) => setState(() => _postMealEnabled = v),
-          onDelayChanged: (v) => setState(() => _nudgeDelay = v),
+        _glassCard(
+          child: PostMealNudgeSection(
+            enabled: _postMealEnabled,
+            delayMinutes: _nudgeDelay,
+            onToggle: (v) => setState(() => _postMealEnabled = v),
+            onDelayChanged: (v) => setState(() => _nudgeDelay = v),
+          ),
         ),
-        const Divider(),
 
         // ── Weekly digest ─────────────────────────────────────────────────
-        SwitchListTile(
-          title: const Text('Weekly digest'),
-          subtitle: const Text('Sunday summary of your week'),
-          value: _weeklyDigestEnabled,
-          onChanged: (v) => setState(() => _weeklyDigestEnabled = v),
+        _glassCard(
+          child: SwitchListTile(
+            title: const Text('Weekly digest',
+                style: TextStyle(color: Aurora.textPrimary)),
+            subtitle: const Text('Sunday summary of your week',
+                style: TextStyle(color: Aurora.textSecondary)),
+            activeThumbColor: Aurora.accentGreen,
+            value: _weeklyDigestEnabled,
+            onChanged: (v) => setState(() => _weeklyDigestEnabled = v),
+          ),
         ),
-        const Divider(),
 
         // ── Sync error alerts ─────────────────────────────────────────────
-        SwitchListTile(
-          title: const Text('Sync error alerts'),
-          subtitle: const Text('Notify if logs fail to upload'),
-          value: _syncAlertsEnabled,
-          onChanged: (v) => setState(() => _syncAlertsEnabled = v),
+        _glassCard(
+          child: SwitchListTile(
+            title: const Text('Sync error alerts',
+                style: TextStyle(color: Aurora.textPrimary)),
+            subtitle: const Text('Notify if logs fail to upload',
+                style: TextStyle(color: Aurora.textSecondary)),
+            activeThumbColor: Aurora.accentGreen,
+            value: _syncAlertsEnabled,
+            onChanged: (v) => setState(() => _syncAlertsEnabled = v),
+          ),
         ),
-        const Divider(),
 
         // ── Save button ───────────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.all(16),
           child: FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Aurora.accentGreen,
+              foregroundColor: const Color(0xFF052E20),
+            ),
             onPressed: _saving ? null : _save,
             child: _saving
                 ? const SizedBox(

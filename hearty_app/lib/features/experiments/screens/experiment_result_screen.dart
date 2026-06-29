@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../../../core/api/hearty_api_client.dart';
 import '../../../core/api/models/experiment.dart';
 
@@ -54,34 +56,45 @@ class _ExperimentResultScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Experiment result')),
-      body: FutureBuilder<Experiment>(
-        future: _eval,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(
-              child: CircularProgressIndicator(
-                key: Key('experiment-result-loading'),
-              ),
-            );
-          }
-          if (snap.hasError || snap.data == null) {
-            return const Center(
-              child: Text(
-                "We couldn't load this result. Please try again later.",
-                key: Key('experiment-result-error'),
-                textAlign: TextAlign.center,
-              ),
-            );
-          }
-          return _ResultBody(
-            exp: snap.data!,
-            confirmed: _confirmed,
-            confirming: _confirming,
-            onConfirm: () => _confirm(snap.data!),
-          );
-        },
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(title: const Text('Experiment result')),
+          body: FutureBuilder<Experiment>(
+            future: _eval,
+            builder: (context, snap) {
+              if (snap.connectionState != ConnectionState.done) {
+                return const Center(
+                  child: CircularProgressIndicator(
+                    key: Key('experiment-result-loading'),
+                  ),
+                );
+              }
+              if (snap.hasError || snap.data == null) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      "We couldn't load this result. Please try again later.",
+                      key: Key('experiment-result-error'),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Aurora.textSecondary),
+                    ),
+                  ),
+                );
+              }
+              return _ResultBody(
+                exp: snap.data!,
+                confirmed: _confirmed,
+                confirming: _confirming,
+                onConfirm: () => _confirm(snap.data!),
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -116,26 +129,51 @@ class _ResultBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            message,
-            key: const Key('experiment-result-message'),
-            style: Theme.of(context).textTheme.titleMedium,
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Aurora.glassFill,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Aurora.glassBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message,
+                  key: const Key('experiment-result-message'),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(color: Aurora.textPrimary),
+                ),
+                if (showConfirm) ...[
+                  const SizedBox(height: 24),
+                  if (confirmed)
+                    const Text(
+                      'Saved to your trends.',
+                      key: Key('experiment-confirm-done'),
+                      style: TextStyle(color: Aurora.accentGreen),
+                    )
+                  else
+                    ActionChip(
+                      key: const Key('experiment-confirm-chip'),
+                      backgroundColor: Aurora.glassFill,
+                      side: const BorderSide(color: Aurora.glassBorder),
+                      labelStyle: const TextStyle(color: Aurora.textPrimary),
+                      avatar: const Icon(
+                        Icons.check,
+                        size: 18,
+                        color: Aurora.accentGreen,
+                      ),
+                      label: const Text('Confirm this for my trends'),
+                      onPressed: confirming ? null : onConfirm,
+                    ),
+                ],
+              ],
+            ),
           ),
-          if (showConfirm) ...[
-            const SizedBox(height: 24),
-            if (confirmed)
-              const Text(
-                'Saved to your trends.',
-                key: Key('experiment-confirm-done'),
-              )
-            else
-              ActionChip(
-                key: const Key('experiment-confirm-chip'),
-                avatar: const Icon(Icons.check, size: 18),
-                label: const Text('Confirm this for my trends'),
-                onPressed: confirming ? null : onConfirm,
-              ),
-          ],
         ],
       ),
     );

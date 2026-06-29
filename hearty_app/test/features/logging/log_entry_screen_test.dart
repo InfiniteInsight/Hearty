@@ -1,7 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hearty_app/core/api/hearty_api_client.dart';
 import 'package:hearty_app/core/api/models/meal_log.dart';
 import 'package:hearty_app/core/api/models/symptom_log.dart';
 import 'package:hearty_app/core/api/models/user_preferences.dart';
@@ -75,6 +77,14 @@ class _StubPrefs extends PreferencesNotifier {
   Future<UserPreferences> build() async => const UserPreferences();
 }
 
+/// Classifies every feeling note as a symptom so the Save path logs (the
+/// sentiment gate is unit-tested separately in feeling_followup_sheet_test).
+class _StubApiClient extends HeartyApiClient {
+  _StubApiClient() : super(Dio());
+  @override
+  Future<bool> classifyFeeling(String text) async => true;
+}
+
 Future<({_RecordingSymptomsNotifier symptoms, _RecordingMealsNotifier meals})>
     _pumpLogEntry(
   WidgetTester tester, {
@@ -113,6 +123,7 @@ Future<({_RecordingSymptomsNotifier symptoms, _RecordingMealsNotifier meals})>
         mealsProvider.overrideWith(() => meals),
         voiceProvider.overrideWith((_) => _StubVoiceNotifier()),
         preferencesProvider.overrideWith(() => _StubPrefs()),
+        heartyApiClientProvider.overrideWithValue(_StubApiClient()),
       ],
       child: MaterialApp.router(routerConfig: router),
     ),
@@ -155,15 +166,15 @@ void main() {
 
     await tester.enterText(
       find.byKey(const Key('feeling-note-field')),
-      'felt fine',
+      'felt bloated',
     );
     await tester.tap(find.byKey(const Key('feeling-save')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    // Symptom recorded.
+    // Symptom recorded (note classified as a symptom by the stub client).
     expect(fakes.symptoms.calls, hasLength(1));
-    expect(fakes.symptoms.calls.single.description, 'felt fine');
+    expect(fakes.symptoms.calls.single.description, 'felt bloated');
 
     // Sheet closed and the screen popped back to the log root.
     expect(find.byKey(const Key('feeling-save')), findsNothing);

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -30,9 +31,19 @@ class MealsNotifier extends StreamNotifier<List<MealLog>> {
     );
     ref.read(syncTriggerProvider).schedule();
 
+    // Best-effort: scheduling the post-meal reminder must never break the log
+    // flow. If it throws (e.g. exact-alarm/permission/platform edge cases), the
+    // meal is already saved and the caller still shows the feeling follow-up —
+    // a throw here previously propagated out of logMeal and skipped that sheet.
     final prefs = ref.read(preferencesProvider).valueOrNull;
     if (prefs != null && prefs.postMealNudgeEnabled) {
-      await NotificationService.scheduleFollowUpNotification(prefs.nudgeDelayMinutes);
+      try {
+        await NotificationService.scheduleFollowUpNotification(
+          prefs.nudgeDelayMinutes,
+        );
+      } catch (e) {
+        debugPrint('Failed to schedule follow-up notification: $e');
+      }
     }
   }
 }

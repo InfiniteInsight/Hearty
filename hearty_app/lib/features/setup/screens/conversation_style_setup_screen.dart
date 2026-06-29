@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
+
 class ConversationStyleSetupScreen extends StatefulWidget {
   const ConversationStyleSetupScreen({super.key});
 
@@ -35,74 +38,90 @@ class _ConversationStyleSetupScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text('💬', style: TextStyle(fontSize: 48)),
-              const SizedBox(height: 16),
-              Text(
-                'How should Hearty talk to you?',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('💬', style: TextStyle(fontSize: 48)),
+                  const SizedBox(height: 16),
+                  Text(
+                    'How should Hearty talk to you?',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: Aurora.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'You can change this anytime in Settings.',
+                    style: TextStyle(
+                        color: Aurora.textSecondary, fontSize: 14, height: 1.5),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  _StyleCard(
+                    value: 'warm',
+                    selected: _selected,
+                    icon: '❤️',
+                    title: 'Warm & Empathetic',
+                    subtitle: 'Supportive responses with context and warmth.',
+                    exampleReply:
+                        'Comfort food evening! 🍝 Was that homemade or from a restaurant?',
+                    onTap: () => setState(() => _selected = 'warm'),
+                  ),
+                  const SizedBox(height: 12),
+                  _StyleCard(
+                    value: 'concise',
+                    selected: _selected,
+                    icon: '⚡',
+                    title: 'Concise & Quick',
+                    subtitle: 'Just the essentials — log it and move on.',
+                    exampleReply: 'Logged. Homemade or restaurant?',
+                    onTap: () => setState(() => _selected = 'concise'),
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _saving ? null : _save,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Aurora.accentGreen,
+                        foregroundColor: const Color(0xFF052E20),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Color(0xFF052E20)),
+                            )
+                          : const Text('Looks good →'),
                     ),
-                textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: _saving ? null : _skip,
+                    child: const Text(
+                      'Skip for now',
+                      style:
+                          TextStyle(color: Aurora.textSecondary, fontSize: 13),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'You can change this anytime in Settings.',
-                style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              _StyleCard(
-                value: 'warm',
-                selected: _selected,
-                icon: '❤️',
-                title: 'Warm & Empathetic',
-                subtitle: 'Supportive responses with context and warmth.',
-                exampleReply: 'Comfort food evening! 🍝 Was that homemade or from a restaurant?',
-                onTap: () => setState(() => _selected = 'warm'),
-              ),
-              const SizedBox(height: 12),
-              _StyleCard(
-                value: 'concise',
-                selected: _selected,
-                icon: '⚡',
-                title: 'Concise & Quick',
-                subtitle: 'Just the essentials — log it and move on.',
-                exampleReply: 'Logged. Homemade or restaurant?',
-                onTap: () => setState(() => _selected = 'concise'),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('Looks good →'),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: _saving ? null : _skip,
-                child: const Text(
-                  'Skip for now',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -137,16 +156,14 @@ class _StyleCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? Theme.of(context).colorScheme.primary
-                : Colors.white24,
+            color: isSelected ? Aurora.accentGreen : Aurora.glassBorder,
             width: 2,
           ),
           color: isSelected
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.18)
-              : Colors.white.withValues(alpha: 0.05),
+              ? Aurora.accentGreen.withValues(alpha: 0.18)
+              : Aurora.glassFill,
         ),
         padding: const EdgeInsets.all(14),
         child: Row(
@@ -159,7 +176,7 @@ class _StyleCard extends StatelessWidget {
                   Text(
                     '$icon $title',
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: Aurora.textPrimary,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),
@@ -167,7 +184,8 @@ class _StyleCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                    style:
+                        const TextStyle(color: Aurora.textMuted, fontSize: 12),
                   ),
                   const SizedBox(height: 10),
                   // Example: user bubble
@@ -177,7 +195,7 @@ class _StyleCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
+                        color: Aurora.accentGreen,
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(12),
                           topRight: Radius.circular(12),
@@ -186,7 +204,7 @@ class _StyleCard extends StatelessWidget {
                       ),
                       child: const Text(
                         'Had pasta for dinner',
-                        style: TextStyle(color: Colors.white, fontSize: 11),
+                        style: TextStyle(color: Color(0xFF052E20), fontSize: 11),
                       ),
                     ),
                   ),
@@ -196,7 +214,7 @@ class _StyleCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: Aurora.glassFill,
                       borderRadius: const BorderRadius.only(
                         topRight: Radius.circular(12),
                         bottomLeft: Radius.circular(12),
@@ -206,7 +224,7 @@ class _StyleCard extends StatelessWidget {
                     child: Text(
                       exampleReply,
                       style: const TextStyle(
-                          color: Colors.white70, fontSize: 11),
+                          color: Aurora.textSecondary, fontSize: 11),
                     ),
                   ),
                 ],
@@ -215,9 +233,7 @@ class _StyleCard extends StatelessWidget {
             const SizedBox(width: 12),
             Icon(
               isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
-              color: isSelected
-                  ? Theme.of(context).colorScheme.primary
-                  : Colors.white30,
+              color: isSelected ? Aurora.accentGreen : Aurora.textMuted,
             ),
           ],
         ),

@@ -9,6 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'theme.dart';
+import 'theme/aurora_colors.dart';
 import '../core/auth/onboarding_provider.dart';
 import '../features/auth/screens/sign_in_screen.dart';
 import '../features/licensing/license_provider.dart';
@@ -27,7 +29,6 @@ import '../features/logging/screens/log_detail_screen.dart';
 import '../features/logging/screens/onboarding_screen.dart';
 import '../features/photos/screens/camera_screen.dart';
 import '../features/settings/screens/notification_preferences_screen.dart';
-import '../features/settings/screens/voice_settings_screen.dart';
 import '../features/settings/screens/dictation_settings_screen.dart';
 import '../features/settings/screens/wake_word_settings_screen.dart';
 import '../features/settings/screens/conversation_style_screen.dart';
@@ -62,7 +63,6 @@ class Routes {
   static const String signIn = 'sign-in';
   static const String camera = 'camera';
   static const String notificationPreferences = 'notification-preferences';
-  static const String voiceSettings = 'voice-settings';
   static const String dictationSettings = 'dictation-settings';
   static const String wakeWordSettings = 'wake-word-settings';
   static const String editMeal = 'edit-meal';
@@ -234,11 +234,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/settings/notifications',
         name: Routes.notificationPreferences,
         builder: (context, state) => const NotificationPreferencesScreen(),
-      ),
-      GoRoute(
-        path: '/settings/voice',
-        name: Routes.voiceSettings,
-        builder: (context, state) => const VoiceSettingsScreen(),
       ),
       GoRoute(
         path: '/settings/dictation',
@@ -472,7 +467,34 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
 
     return Scaffold(
       body: widget.navigationShell,
-      bottomNavigationBar: NavigationBar(
+      // Theme only the nav bar (not the screen bodies) so it's Aurora-dark
+      // across the app while individual screens migrate.
+      bottomNavigationBar: Theme(
+        data: AppTheme.aurora.copyWith(
+          navigationBarTheme: NavigationBarThemeData(
+            backgroundColor: Aurora.bgTop,
+            indicatorColor: Aurora.accentGreen.withValues(alpha: 0.18),
+            surfaceTintColor: Colors.transparent,
+            iconTheme: WidgetStateProperty.resolveWith(
+              (s) => IconThemeData(
+                color: s.contains(WidgetState.selected)
+                    ? Aurora.accentGreen
+                    : Aurora.textMuted,
+              ),
+            ),
+            labelTextStyle: WidgetStateProperty.resolveWith(
+              (s) => TextStyle(
+                fontSize: 12,
+                fontFamily: 'Plus Jakarta Sans',
+                fontWeight: FontWeight.w600,
+                color: s.contains(WidgetState.selected)
+                    ? Aurora.accentGreen
+                    : Aurora.textMuted,
+              ),
+            ),
+          ),
+        ),
+        child: NavigationBar(
         selectedIndex: widget.navigationShell.currentIndex,
         onDestinationSelected: (index) => widget.navigationShell.goBranch(
           index,
@@ -496,6 +518,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
             label: 'Settings',
           ),
         ],
+        ),
       ),
     );
   }

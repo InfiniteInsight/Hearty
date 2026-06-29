@@ -10,6 +10,9 @@ import '../../../core/api/models/meal_log.dart';
 import '../../../core/api/models/symptom_log.dart';
 import '../../../core/util/meal_label.dart';
 import '../../../core/api/hearty_api_client.dart';
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
+import '../widgets/radial_clock.dart';
 import '../../../core/offline/local_meal_dao.dart';
 import '../../../core/offline/local_symptom_dao.dart';
 import '../../../core/offline/offline_database.dart';
@@ -78,6 +81,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Only surface the adherence nudge once per Home visit — the provider is
   // autoDispose, so a fresh visit re-fetches and may re-prompt.
   bool _nudgeShown = false;
+  // Radial-clock selection: id of the tapped orbit dot / highlighted list row.
+  Set<String> _selectedEntryIds = const {};
 
   @override
   void initState() {
@@ -113,9 +118,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final symptomsAsync = ref.watch(symptomsProvider);
     final voiceQueueAsync = ref.watch(voiceQueueProvider);
 
-    return Scaffold(
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
       appBar: AppBar(
-        title: const Text('Hearty'),
+        title: const _HeartyLogo(),
         actions: [
           StreamBuilder<List<ConnectivityResult>>(
             stream: _connectivityStream,
@@ -174,9 +183,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/log'),
-        child: const Icon(Icons.add),
+      floatingActionButton: Container(
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: Aurora.fab,
+          boxShadow: [
+            BoxShadow(color: Color(0x6634D399), blurRadius: 16, offset: Offset(0, 4)),
+          ],
+        ),
+        child: FloatingActionButton(
+          onPressed: () => context.push('/log'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: const Color(0xFF052E20),
+          child: const Icon(Icons.add),
+        ),
+      ),
+        ),
       ),
     );
   }
@@ -215,6 +238,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       meals: meals,
       symptoms: symptoms,
       voiceQueue: voiceQueue,
+      selectedEntryIds: _selectedEntryIds,
+      onSelectEntry: (ids) => setState(() => _selectedEntryIds = ids),
     );
   }
 
@@ -280,11 +305,15 @@ class _TimelineBody extends StatelessWidget {
   final List<MealLog> meals;
   final List<SymptomLog> symptoms;
   final List<LocalVoiceQueueData> voiceQueue;
+  final Set<String> selectedEntryIds;
+  final ValueChanged<Set<String>> onSelectEntry;
 
   const _TimelineBody({
     required this.meals,
     required this.symptoms,
     required this.voiceQueue,
+    required this.selectedEntryIds,
+    required this.onSelectEntry,
   });
 
   /// Returns true if [dt] falls on today's date (date parts only).
@@ -324,8 +353,42 @@ class _TimelineBody extends StatelessWidget {
     // Sort descending (newest first).
     entries.sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
 
+    // Orbit dots map 1:1 to timeline rows: meals + unlinked symptoms, placed on
+    // the dial by local time. Ids match the list rows so a tapped dot highlights
+    // its row and vice-versa.
+    final List<ClockEntry> clockEntries = [
+      for (final m in todayMeals)
+        ClockEntry(
+          id: m.id,
+          time: m.loggedAt.toLocal(),
+          type: ClockEntryType.meal,
+          label: mealTimelineTitle(m.foods, m.description),
+        ),
+      for (final s in unlinkedSymptoms)
+        ClockEntry(
+          id: s.id,
+          time: s.loggedAt.toLocal(),
+          type: ClockEntryType.symptom,
+          label: s.description,
+        ),
+    ];
+
     return CustomScrollView(
       slivers: [
+        // Radial-clock header (Aurora). Phases 1–3: face + orbit entry dots +
+        // tap interaction (dot glow, popup, list-row highlight). Arc labels next.
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: RadialClock(
+                entries: clockEntries,
+                selectedIds: selectedEntryIds,
+                onSelect: onSelectEntry,
+              ),
+            ),
+          ),
+        ),
         if (entries.isEmpty)
           const SliverFillRemaining(
             hasScrollBody: false,
@@ -349,11 +412,67 @@ class _TimelineBody extends StatelessWidget {
 
   Widget _buildEntry(BuildContext context, _TimelineEntry entry) {
     return switch (entry) {
-      _MealEntry(:final meal, :final linkedSymptoms) =>
-        _MealCard(meal: meal, linkedSymptoms: linkedSymptoms),
-      _SymptomEntry(:final symptom) => _SymptomRow(symptom: symptom),
+      _MealEntry(:final meal, :final linkedSymptoms) => _MealCard(
+        meal: meal,
+        linkedSymptoms: linkedSymptoms,
+        selected: selectedEntryIds.contains(meal.id),
+      ),
+      _SymptomEntry(:final symptom) =>
+        _SymptomRow(symptom: symptom, selected: selectedEntryIds.contains(symptom.id)),
       _VoiceQueueEntry(:final item) => _VoiceQueueCard(item: item),
     };
+  }
+}
+
+/// Wraps a selected timeline row with the Aurora highlight (left accent +
+/// background tint) without shifting layout for unselected rows.
+/// The split "Hearty" wordmark — white "Heart" + emerald "y" (Aurora logo).
+class _HeartyLogo extends StatelessWidget {
+  const _HeartyLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Text.rich(
+      TextSpan(
+        style: TextStyle(
+          fontFamily: 'Plus Jakarta Sans',
+          fontSize: 22,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.5,
+          height: 1.0,
+        ),
+        children: [
+          TextSpan(text: 'Heart', style: TextStyle(color: Aurora.textPrimary)),
+          TextSpan(text: 'y', style: TextStyle(color: Aurora.accentGreen)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Aurora "glass" card wrapping a timeline row. When [selected] it gains an
+/// emerald border + tint (the radial-clock co-selection highlight).
+class _GlassCard extends StatelessWidget {
+  final bool selected;
+  final Widget child;
+
+  const _GlassCard({this.selected = false, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: selected ? const Color(0x1A34D399) : Aurora.glassFill,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: selected ? Aurora.accentGreen : Aurora.glassBorder,
+          width: selected ? 1.5 : 1,
+        ),
+      ),
+      child: child,
+    );
   }
 }
 
@@ -364,8 +483,13 @@ class _TimelineBody extends StatelessWidget {
 class _MealCard extends ConsumerWidget {
   final MealLog meal;
   final List<SymptomLog> linkedSymptoms;
+  final bool selected;
 
-  const _MealCard({required this.meal, required this.linkedSymptoms});
+  const _MealCard({
+    required this.meal,
+    required this.linkedSymptoms,
+    this.selected = false,
+  });
 
   static IconData _mealTypeIcon(String mealType) {
     return switch (mealType.toLowerCase()) {
@@ -382,26 +506,29 @@ class _MealCard extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ListTile(
-          leading: Icon(_mealTypeIcon(meal.mealType)),
-          title: Text(mealTimelineTitle(meal.foods, meal.description)),
-          subtitle: Text(_formatTime(meal.loggedAt)),
-          trailing: meal.claudeNote != null
-              ? const Icon(Icons.info_outline, size: 20)
-              : null,
-          onTap: () => context.push('/log/${meal.id}'),
-          onLongPress: () => _showEntryActions(
-            context, ref,
-            editRoute: '/meals/edit',
-            editExtra: {
-              'id': meal.id,
-              'description': meal.description,
-              'foods': meal.foods,
-            },
-            onDelete: () async {
-              await ref.read(heartyApiClientProvider).deleteMeal(meal.id);
-              await ref.read(localMealDaoProvider).deleteByServerId(meal.id);
-            },
+        _GlassCard(
+          selected: selected,
+          child: ListTile(
+            leading: Icon(_mealTypeIcon(meal.mealType)),
+            title: Text(mealTimelineTitle(meal.foods, meal.description)),
+            subtitle: Text(_formatTime(meal.loggedAt)),
+            trailing: meal.claudeNote != null
+                ? const Icon(Icons.info_outline, size: 20)
+                : null,
+            onTap: () => context.push('/log/${meal.id}'),
+            onLongPress: () => _showEntryActions(
+              context, ref,
+              editRoute: '/meals/edit',
+              editExtra: {
+                'id': meal.id,
+                'description': meal.description,
+                'foods': meal.foods,
+              },
+              onDelete: () async {
+                await ref.read(heartyApiClientProvider).deleteMeal(meal.id);
+                await ref.read(localMealDaoProvider).deleteByServerId(meal.id);
+              },
+            ),
           ),
         ),
         // Linked symptoms indented under this meal.
@@ -421,8 +548,9 @@ class _MealCard extends ConsumerWidget {
 
 class _SymptomRow extends ConsumerWidget {
   final SymptomLog symptom;
+  final bool selected;
 
-  const _SymptomRow({required this.symptom});
+  const _SymptomRow({required this.symptom, this.selected = false});
 
   static Color _severityColor(int severity) {
     if (severity <= 3) return Colors.amber;
@@ -432,7 +560,9 @@ class _SymptomRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ListTile(
+    return _GlassCard(
+      selected: selected,
+      child: ListTile(
       leading: Icon(
         Icons.warning_amber_rounded,
         color: _severityColor(symptom.severity),
@@ -463,6 +593,7 @@ class _SymptomRow extends ConsumerWidget {
           await ref.read(localSymptomDaoProvider).deleteByServerId(symptom.id);
         },
       ),
+    ),
     );
   }
 }

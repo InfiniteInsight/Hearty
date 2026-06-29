@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../models/photo_type.dart';
 import '../providers/photo_provider.dart';
 import 'photo_processing_screen.dart';
@@ -66,32 +68,54 @@ class _PhotoUploadFlowScreenState extends ConsumerState<PhotoUploadFlowScreen> {
             : null);
 
     if (failureMessage != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Analysis Failed')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline, size: 48),
-                const SizedBox(height: 16),
-                Text(failureMessage, textAlign: TextAlign.center),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () =>
-                      ref.read(photoProvider.notifier).retry(),
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Try again'),
+      return Theme(
+        data: AppTheme.aurora,
+        child: DecoratedBox(
+          decoration: const BoxDecoration(gradient: Aurora.background),
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(title: const Text('Analysis Failed')),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: Aurora.accentRed,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      failureMessage,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Aurora.accentRed),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () =>
+                          ref.read(photoProvider.notifier).retry(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Aurora.accentGreen,
+                        foregroundColor: const Color(0xFF052E20),
+                      ),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Try again'),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      // Manual-entry fallback: return to the logging screen so
+                      // the user can type the meal instead.
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Aurora.accentGreen,
+                      ),
+                      child: const Text('Enter manually'),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                TextButton(
-                  // Manual-entry fallback: return to the logging screen so the
-                  // user can type the meal instead.
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Enter manually'),
-                ),
-              ],
+              ),
             ),
           ),
         ),

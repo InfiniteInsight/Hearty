@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../../../core/api/offline_exception.dart';
 import '../../../core/api/providers/meals_provider.dart';
 import '../../../core/api/providers/preferences_provider.dart';
@@ -242,9 +244,14 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
 
     final reviewText = _reviewText;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Log Entry')),
-      body: SingleChildScrollView(
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(title: const Text('Log Entry')),
+          body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -273,15 +280,28 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
                 Expanded(
                   child: TextField(
                     controller: _textController,
+                    style: const TextStyle(color: Aurora.textPrimary),
                     decoration: InputDecoration(
                       hintText: widget.isFollowUp
                           ? 'How are you feeling? Rate any discomfort 1–10...'
                           : 'Or type what you ate or how you feel...',
+                      hintStyle: const TextStyle(color: Aurora.textMuted),
+                      filled: true,
+                      fillColor: Aurora.glassFill,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Aurora.glassBorder),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Aurora.glassBorder),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Aurora.accentGreen),
                       ),
                       suffixIcon: IconButton(
-                        icon: const Icon(Icons.send),
+                        icon: const Icon(Icons.send, color: Aurora.accentGreen),
                         onPressed: () => _submitText(_textController.text),
                       ),
                     ),
@@ -290,7 +310,7 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(Icons.camera_alt),
+                  icon: const Icon(Icons.camera_alt, color: Aurora.textSecondary),
                   tooltip: 'Log with camera',
                   onPressed: _openCameraFlow,
                 ),
@@ -315,6 +335,8 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen>
               ),
           ],
         ),
+          ),
+        ),
       ),
     );
   }
@@ -332,19 +354,25 @@ class _VoiceButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
     return Container(
       width: 120,
       height: 120,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isListening ? primary.withValues(alpha: 0.85) : primary,
+        gradient: Aurora.fab,
         border: isListening
             ? Border.all(
-                color: primary.withValues(alpha: 0.4),
+                color: Aurora.accentGreen.withValues(alpha: 0.4),
                 width: 6,
               )
             : null,
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x6634D399),
+            blurRadius: 24,
+            offset: Offset(0, 6),
+          ),
+        ],
       ),
       child: const Icon(Icons.mic, color: Colors.white, size: 56),
     );
@@ -403,73 +431,97 @@ class _ReviewCardState extends State<_ReviewCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Editable description
-            TextFormField(
-              controller: _descController,
-              decoration: const InputDecoration(
-                labelText: 'What you had',
-                border: OutlineInputBorder(),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Aurora.glassFill,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Aurora.glassBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Editable description
+          TextFormField(
+            controller: _descController,
+            style: const TextStyle(color: Aurora.textPrimary),
+            decoration: InputDecoration(
+              labelText: 'What you had',
+              labelStyle: const TextStyle(color: Aurora.textSecondary),
+              filled: true,
+              fillColor: Aurora.glassFill,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Aurora.glassBorder),
               ),
-              maxLines: null,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Aurora.glassBorder),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Aurora.accentGreen),
+              ),
             ),
+            maxLines: null,
+          ),
 
-            const SizedBox(height: 12),
+          const SizedBox(height: 12),
 
-            // Inferred meal type label
-            Text(
-              widget.mealType,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
+          // Inferred meal type label
+          Text(
+            widget.mealType,
+            style: const TextStyle(
+              color: Aurora.accentGreen,
+              fontWeight: FontWeight.w600,
             ),
+          ),
 
-            const SizedBox(height: 8),
+          const SizedBox(height: 8),
 
-            // Suggested follow-up time
-            Row(
-              children: [
-                Icon(
-                  Icons.notifications_none,
-                  size: 18,
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  widget.followUpTime,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
+          // Suggested follow-up time
+          Row(
+            children: [
+              const Icon(
+                Icons.notifications_none,
+                size: 18,
+                color: Aurora.textMuted,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                widget.followUpTime,
+                style: const TextStyle(color: Aurora.textMuted, fontSize: 12),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          // Log it button (shows spinner while saving)
+          ElevatedButton(
+            onPressed: _saving ? null : _handleLog,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Aurora.accentGreen,
+              foregroundColor: const Color(0xFF052E20),
             ),
+            child: _saving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFF052E20),
+                    ),
+                  )
+                : const Text('Log it'),
+          ),
 
-            const SizedBox(height: 20),
-
-            // Log it button (shows spinner while saving)
-            ElevatedButton(
-              onPressed: _saving ? null : _handleLog,
-              child: _saving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Log it'),
-            ),
-
-            TextButton(
-              onPressed: _saving ? null : () => widget.onEdit(_descController.text),
-              child: const Text('Edit'),
-            ),
-          ],
-        ),
+          TextButton(
+            onPressed: _saving ? null : () => widget.onEdit(_descController.text),
+            style: TextButton.styleFrom(foregroundColor: Aurora.accentGreen),
+            child: const Text('Edit'),
+          ),
+        ],
       ),
     );
   }

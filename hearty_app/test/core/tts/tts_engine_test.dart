@@ -81,30 +81,16 @@ void main() {
       );
       expect((engine as _StubEngine).tag, 'neural');
     });
-
-    test('uses system engine directly when a system voice override is set', () async {
-      String? initedWith;
-      final engine = await createTtsEngine(
-        systemVoiceOverride: 'en-us-x-iol-local',
-        neuralBuilder: () => _StubEngine(initResult: true, tag: 'neural'),
-        systemBuilder: () => _StubEngine(
-            initResult: true, tag: 'system', onInit: (v) => initedWith = v),
-      );
-      expect((engine as _StubEngine).tag, 'system');
-      expect(initedWith, 'en-us-x-iol-local');
-    });
   });
 }
 
 class _StubEngine implements TtsEngine {
-  _StubEngine({required this.initResult, required this.tag, this.onInit});
+  _StubEngine({required this.initResult, required this.tag});
   final bool initResult;
   final String tag;
-  final void Function(String? voiceName)? onInit;
 
   @override
   Future<bool> init({String? voiceName}) async {
-    onInit?.call(voiceName);
     return initResult;
   }
 

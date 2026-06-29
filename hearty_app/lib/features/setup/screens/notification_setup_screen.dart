@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
+
 /// Pre-login notification preferences screen.
 ///
 /// Shown once after the permission wizard. Saves toggle state to
@@ -48,68 +51,83 @@ class _NotificationSetupScreenState extends State<NotificationSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text('🔔', style: TextStyle(fontSize: 48)),
-              const SizedBox(height: 16),
-              Text(
-                'Your reminders',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('🔔', style: TextStyle(fontSize: 48)),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Your reminders',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: Aurora.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Hearty will check in after meals and at set times each day. '
+                    'You can adjust these anytime in Settings.',
+                    style: TextStyle(
+                        color: Aurora.textSecondary, fontSize: 14, height: 1.5),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  _ToggleRow(
+                    label: 'Post-meal reminders',
+                    subtitle: '30 min after logging a meal',
+                    value: _postMealEnabled,
+                    onChanged: (v) => setState(() => _postMealEnabled = v),
+                  ),
+                  const SizedBox(height: 4),
+                  _ToggleRow(
+                    label: 'Daily check-ins',
+                    subtitle: 'Morning, midday, and evening',
+                    value: _checkinEnabled,
+                    onChanged: (v) => setState(() => _checkinEnabled = v),
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _saving ? null : _save,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Aurora.accentGreen,
+                        foregroundColor: const Color(0xFF052E20),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Color(0xFF052E20)),
+                            )
+                          : const Text('Looks good →'),
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: _saving ? null : _skip,
+                    child: const Text(
+                      'Skip for now',
+                      style:
+                          TextStyle(color: Aurora.textSecondary, fontSize: 13),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Hearty will check in after meals and at set times each day. '
-                'You can adjust these anytime in Settings.',
-                style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              _ToggleRow(
-                label: 'Post-meal reminders',
-                subtitle: '30 min after logging a meal',
-                value: _postMealEnabled,
-                onChanged: (v) => setState(() => _postMealEnabled = v),
-              ),
-              const SizedBox(height: 4),
-              _ToggleRow(
-                label: 'Daily check-ins',
-                subtitle: 'Morning, midday, and evening',
-                value: _checkinEnabled,
-                onChanged: (v) => setState(() => _checkinEnabled = v),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('Looks good →'),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: _saving ? null : _skip,
-                child: const Text(
-                  'Skip for now',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -132,13 +150,22 @@ class _ToggleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SwitchListTile(
-      title: Text(label, style: const TextStyle(color: Colors.white)),
-      subtitle: Text(subtitle, style: const TextStyle(color: Colors.white54)),
-      value: value,
-      onChanged: onChanged,
-      contentPadding: EdgeInsets.zero,
-      activeThumbColor: Theme.of(context).colorScheme.primary,
+    return Container(
+      decoration: BoxDecoration(
+        color: Aurora.glassFill,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Aurora.glassBorder),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: SwitchListTile(
+        title: Text(label, style: const TextStyle(color: Aurora.textPrimary)),
+        subtitle:
+            Text(subtitle, style: const TextStyle(color: Aurora.textMuted)),
+        value: value,
+        onChanged: onChanged,
+        contentPadding: EdgeInsets.zero,
+        activeThumbColor: Aurora.accentGreen,
+      ),
     );
   }
 }
