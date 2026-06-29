@@ -79,7 +79,7 @@ void main() {
               child: RadialClock(
                 time: DateTime(2026, 6, 28, 14, 34),
                 entries: sampleEntries,
-                selectedId: 'lunch',
+                selectedIds: const {'lunch'},
               ),
             ),
           ),
@@ -93,7 +93,7 @@ void main() {
   });
 
   testWidgets('tapping a dot reports selection', (tester) async {
-    String? selected;
+    Set<String>? selected;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -101,7 +101,7 @@ void main() {
             child: RadialClock(
               time: DateTime(2026, 6, 28, 14, 34),
               entries: sampleEntries,
-              onSelect: (id) => selected = id,
+              onSelect: (ids) => selected = ids,
             ),
           ),
         ),
@@ -111,7 +111,7 @@ void main() {
     final center = tester.getCenter(find.byType(RadialClock));
     await tester.tapAt(center + const Offset(31, -114));
     await tester.pump();
-    expect(selected, 'lunch');
+    expect(selected, {'lunch'});
   });
 
   // Co-timed meal + symptom merge into one split bubble.
@@ -142,9 +142,8 @@ void main() {
     );
   });
 
-  testWidgets('split bubble: left half selects meal, right half selects symptom',
-      (tester) async {
-    String? selected;
+  testWidgets('tapping a split bubble selects all its entries', (tester) async {
+    Set<String>? selected;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -152,8 +151,7 @@ void main() {
             child: RadialClock(
               time: DateTime(2026, 6, 28, 14, 34),
               entries: coTimed,
-              selectedId: selected,
-              onSelect: (id) => selected = id,
+              onSelect: (ids) => selected = ids,
             ),
           ),
         ),
@@ -161,14 +159,28 @@ void main() {
     );
     // Bubble center for 1:04 PM (angle ≈ 32°, R=118): offset ≈ (+62, -100).
     final center = tester.getCenter(find.byType(RadialClock));
-    const bubble = Offset(62, -100);
-    // Left half → meal (sorted first → wedge 0 = left).
-    await tester.tapAt(center + bubble + const Offset(-8, 0));
+    // Tap anywhere on the merged bubble → both entries selected.
+    await tester.tapAt(center + const Offset(62, -100));
     await tester.pump();
-    expect(selected, 'liquidiv');
-    // Right half → symptom.
-    await tester.tapAt(center + bubble + const Offset(8, 0));
-    await tester.pump();
-    expect(selected, 'reflux');
+    expect(selected, {'liquidiv', 'reflux'});
+  });
+
+  testWidgets('split bubble popup stacks both entries', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: RadialClock(
+              time: DateTime(2026, 6, 28, 14, 34),
+              entries: coTimed,
+              selectedIds: const {'liquidiv', 'reflux'},
+            ),
+          ),
+        ),
+      ),
+    );
+    // Both entry labels appear in the stacked popup.
+    expect(find.text('Liquid IV'), findsOneWidget);
+    expect(find.text('acid reflux'), findsOneWidget);
   });
 }

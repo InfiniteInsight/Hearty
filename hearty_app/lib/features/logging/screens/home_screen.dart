@@ -81,7 +81,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // autoDispose, so a fresh visit re-fetches and may re-prompt.
   bool _nudgeShown = false;
   // Radial-clock selection: id of the tapped orbit dot / highlighted list row.
-  String? _selectedEntryId;
+  Set<String> _selectedEntryIds = const {};
 
   @override
   void initState() {
@@ -219,8 +219,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       meals: meals,
       symptoms: symptoms,
       voiceQueue: voiceQueue,
-      selectedEntryId: _selectedEntryId,
-      onSelectEntry: (id) => setState(() => _selectedEntryId = id),
+      selectedEntryIds: _selectedEntryIds,
+      onSelectEntry: (ids) => setState(() => _selectedEntryIds = ids),
     );
   }
 
@@ -286,14 +286,14 @@ class _TimelineBody extends StatelessWidget {
   final List<MealLog> meals;
   final List<SymptomLog> symptoms;
   final List<LocalVoiceQueueData> voiceQueue;
-  final String? selectedEntryId;
-  final ValueChanged<String?> onSelectEntry;
+  final Set<String> selectedEntryIds;
+  final ValueChanged<Set<String>> onSelectEntry;
 
   const _TimelineBody({
     required this.meals,
     required this.symptoms,
     required this.voiceQueue,
-    required this.selectedEntryId,
+    required this.selectedEntryIds,
     required this.onSelectEntry,
   });
 
@@ -365,7 +365,7 @@ class _TimelineBody extends StatelessWidget {
             child: Center(
               child: RadialClock(
                 entries: clockEntries,
-                selectedId: selectedEntryId,
+                selectedIds: selectedEntryIds,
                 onSelect: onSelectEntry,
               ),
             ),
@@ -397,10 +397,10 @@ class _TimelineBody extends StatelessWidget {
       _MealEntry(:final meal, :final linkedSymptoms) => _MealCard(
         meal: meal,
         linkedSymptoms: linkedSymptoms,
-        selected: meal.id == selectedEntryId,
+        selected: selectedEntryIds.contains(meal.id),
       ),
       _SymptomEntry(:final symptom) =>
-        _SymptomRow(symptom: symptom, selected: symptom.id == selectedEntryId),
+        _SymptomRow(symptom: symptom, selected: selectedEntryIds.contains(symptom.id)),
       _VoiceQueueEntry(:final item) => _VoiceQueueCard(item: item),
     };
   }

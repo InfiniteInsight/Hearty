@@ -53,11 +53,13 @@ class RadialClock extends StatelessWidget {
   /// Entries to orbit the dial (today's meals/symptoms).
   final List<ClockEntry> entries;
 
-  /// Currently-selected entry id (controlled). Its dot glows and shows a popup.
-  final String? selectedId;
+  /// Currently-selected entry ids (controlled). All entries of the tapped
+  /// bubble are selected together; their dots glow and the popup lists them.
+  final Set<String> selectedIds;
 
-  /// Called when a dot is tapped (with its id) or the popup is dismissed (null).
-  final ValueChanged<String?>? onSelect;
+  /// Called when a bubble is tapped (with all its entry ids) or the popup is
+  /// dismissed (empty set).
+  final ValueChanged<Set<String>>? onSelect;
 
   /// Side length of the (square) clock zone in logical pixels.
   final double size;
@@ -66,7 +68,7 @@ class RadialClock extends StatelessWidget {
     super.key,
     this.time,
     this.entries = const [],
-    this.selectedId,
+    this.selectedIds = const {},
     this.onSelect,
     this.size = 278,
   });
@@ -84,7 +86,7 @@ class RadialClock extends StatelessWidget {
     final clusters = _clusterEntries(entries);
     _Cluster? selectedCluster;
     for (final c in clusters) {
-      if (c.contains(selectedId)) selectedCluster = c;
+      if (c.entries.any((e) => selectedIds.contains(e.id))) selectedCluster = c;
     }
     return SizedBox(
       width: size,
@@ -103,7 +105,7 @@ class RadialClock extends StatelessWidget {
               child: CustomPaint(
                 painter: _ArcLabelsPainter(
                   clusters: clusters,
-                  selectedId: selectedId,
+                  selectedIds: selectedIds,
                 ),
               ),
             ),
@@ -126,6 +128,7 @@ class RadialClock extends StatelessWidget {
   Widget _positionBubble(_Cluster c, double s) {
     final double dotSize = (c.isAm ? 26.0 : 34.0) * s;
     final Offset center = _clusterCenter(c, s);
+    final bool isSel = c.entries.any((e) => selectedIds.contains(e.id));
     return Positioned(
       left: center.dx - dotSize / 2,
       top: center.dy - dotSize / 2,
@@ -133,9 +136,11 @@ class RadialClock extends StatelessWidget {
         entries: c.entries,
         isAm: c.isAm,
         size: dotSize,
-        selectedId: selectedId,
-        // Tapping the already-selected entry deselects.
-        onSelect: (id) => onSelect?.call(id == selectedId ? null : id),
+        selected: isSel,
+        // Tap anywhere on the bubble → select all its entries (or deselect).
+        onTap: () => onSelect?.call(
+          isSel ? <String>{} : {for (final e in c.entries) e.id},
+        ),
       ),
     );
   }
@@ -143,7 +148,6 @@ class RadialClock extends StatelessWidget {
   Widget _positionPopup(_Cluster c, double s) {
     final double dotSize = (c.isAm ? 26.0 : 34.0) * s;
     final Offset center = _clusterCenter(c, s);
-    final selected = c.entries.firstWhere((e) => e.id == selectedId);
     // Sit just below the bubble, centered horizontally over it.
     return Positioned(
       left: center.dx,
@@ -151,9 +155,9 @@ class RadialClock extends StatelessWidget {
       child: FractionalTranslation(
         translation: const Offset(-0.5, 0),
         child: _TapPopup(
-          entry: selected,
+          entries: c.entries,
           scale: s,
-          onDismiss: () => onSelect?.call(null),
+          onDismiss: () => onSelect?.call(<String>{}),
         ),
       ),
     );
@@ -219,15 +223,15 @@ class _OrbitBubble extends StatelessWidget {
   final List<ClockEntry> entries; // sorted by type
   final bool isAm;
   final double size;
-  final String? selectedId;
-  final ValueChanged<String?> onSelect;
+  final bool selected;
+  final VoidCallback onTap;
 
   const _OrbitBubble({
     required this.entries,
     required this.isAm,
     required this.size,
-    required this.selectedId,
-    required this.onSelect,
+    required this.selected,
+    required this.onTap,
   });
 
   static (Color, Color) colorsFor(ClockEntryType type, bool isAm) =>
@@ -254,43 +258,28 @@ class _OrbitBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapUp: (d) => onSelect(entries[_wedgeAt(d.localPosition)].id),
+      onTap: onTap,
       child: CustomPaint(
         size: Size.square(size),
         painter: _BubblePainter(
           entries: entries,
           isAm: isAm,
-          selectedId: selectedId,
+          selected: selected,
         ),
       ),
     );
-  }
-
-  int _wedgeAt(Offset local) {
-    final int n = entries.length;
-    if (n == 1) return 0;
-    final double c = size / 2;
-    double theta = math.atan2(local.dy - c, local.dx - c);
-    if (theta < 0) theta += 2 * math.pi;
-    final double sweep = 2 * math.pi / n;
-    for (var i = 0; i < n; i++) {
-      double rel = (theta - (wedgeStart(i, n) % (2 * math.pi))) % (2 * math.pi);
-      if (rel < 0) rel += 2 * math.pi;
-      if (rel < sweep) return i;
-    }
-    return 0;
   }
 }
 
 class _BubblePainter extends CustomPainter {
   final List<ClockEntry> entries;
   final bool isAm;
-  final String? selectedId;
+  final bool selected;
 
   _BubblePainter({
     required this.entries,
     required this.isAm,
-    required this.selectedId,
+    required this.selected,
   });
 
   @override
@@ -298,10 +287,9 @@ class _BubblePainter extends CustomPainter {
     final Offset c = Offset(size.width / 2, size.height / 2);
     final double r = size.width / 2;
     final int n = entries.length;
-    final bool anySelected = entries.any((e) => e.id == selectedId);
 
     // Aurora selected glow (arc-labels spec §4).
-    if (anySelected) {
+    if (selected) {
       canvas.drawCircle(c, r + 5, Paint()..color = const Color(0x2E34D399));
       canvas.drawCircle(
         c,
@@ -321,7 +309,7 @@ class _BubblePainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5
-          ..color = entries.first.id == selectedId
+          ..color = selected
               ? Aurora.accentGreen.withValues(alpha: 0.7)
               : border,
       );
@@ -349,9 +337,7 @@ class _BubblePainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5
-          ..color = entries[i].id == selectedId
-              ? Aurora.accentGreen.withValues(alpha: 0.9)
-              : border,
+          ..color = border,
       );
       // Emoji at the wedge's mid-angle.
       final double mid = start + sweep / 2;
@@ -388,26 +374,26 @@ class _BubblePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_BubblePainter old) =>
-      old.entries != entries || old.selectedId != selectedId;
+      old.entries != entries || old.selected != selected;
 }
 
-/// Floating card shown above the entry list... actually below the selected dot,
-/// with the entry's name + time and a dismiss affordance (arc-labels spec §4).
+/// Floating card shown below a tapped bubble, listing its entries (a meal +
+/// symptom logged together show stacked) with a dismiss affordance.
 class _TapPopup extends StatelessWidget {
-  final ClockEntry entry;
+  final List<ClockEntry> entries;
   final double scale;
   final VoidCallback onDismiss;
 
   const _TapPopup({
-    required this.entry,
+    required this.entries,
     required this.scale,
     required this.onDismiss,
   });
 
-  String get _timeLabel {
-    final int h = entry.time.hour % 12 == 0 ? 12 : entry.time.hour % 12;
-    final String m = entry.time.minute.toString().padLeft(2, '0');
-    final String ap = entry.time.hour < 12 ? 'AM' : 'PM';
+  static String _timeLabel(ClockEntry e) {
+    final int h = e.time.hour % 12 == 0 ? 12 : e.time.hour % 12;
+    final String m = e.time.minute.toString().padLeft(2, '0');
+    final String ap = e.time.hour < 12 ? 'AM' : 'PM';
     return '$h:$m $ap';
   }
 
@@ -417,7 +403,7 @@ class _TapPopup extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Upward arrow pointing at the dot.
+        // Upward arrow pointing at the bubble.
         CustomPaint(size: Size(14 * s, 8 * s), painter: _ArrowPainter()),
         Container(
           padding: EdgeInsets.fromLTRB(10 * s, 9 * s, 13 * s, 9 * s),
@@ -434,36 +420,16 @@ class _TapPopup extends StatelessWidget {
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                clockEntryEmoji(entry.type),
-                style: TextStyle(fontSize: 18 * s, height: 1.0),
-              ),
-              SizedBox(width: 8 * s),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    entry.label,
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 12 * s,
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
-                      color: Aurora.textPrimary,
-                    ),
-                  ),
-                  SizedBox(height: 2 * s),
-                  Text(
-                    _timeLabel,
-                    style: TextStyle(
-                      fontFamily: 'JetBrains Mono',
-                      fontSize: 9 * s,
-                      color: Aurora.accentGreen.withValues(alpha: 0.7),
-                    ),
-                  ),
+                  for (var i = 0; i < entries.length; i++) ...[
+                    if (i > 0) SizedBox(height: 7 * s),
+                    _entryRow(entries[i], s),
+                  ],
                 ],
               ),
               SizedBox(width: 8 * s),
@@ -471,14 +437,47 @@ class _TapPopup extends StatelessWidget {
                 onTap: onDismiss,
                 child: Text(
                   '×',
-                  style: TextStyle(
-                    fontSize: 14 * s,
-                    color: Aurora.textMuted,
-                  ),
+                  style: TextStyle(fontSize: 14 * s, color: Aurora.textMuted),
                 ),
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _entryRow(ClockEntry e, double s) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(clockEntryEmoji(e.type), style: TextStyle(fontSize: 18 * s, height: 1.0)),
+        SizedBox(width: 8 * s),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              e.label,
+              style: TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontSize: 12 * s,
+                fontWeight: FontWeight.w700,
+                height: 1.2,
+                color: Aurora.textPrimary,
+              ),
+            ),
+            SizedBox(height: 2 * s),
+            Text(
+              _timeLabel(e),
+              style: TextStyle(
+                fontFamily: 'JetBrains Mono',
+                fontSize: 9 * s,
+                color: Aurora.accentGreen.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -698,9 +697,9 @@ class _RadialClockPainter extends CustomPainter {
 /// out and rotated along a per-dot arc by hand.
 class _ArcLabelsPainter extends CustomPainter {
   final List<_Cluster> clusters;
-  final String? selectedId;
+  final Set<String> selectedIds;
 
-  _ArcLabelsPainter({required this.clusters, this.selectedId});
+  _ArcLabelsPainter({required this.clusters, this.selectedIds = const {}});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -756,7 +755,7 @@ class _ArcLabelsPainter extends CustomPainter {
       return Aurora.textPrimary.withValues(alpha: 0.6);
     }
     final e = c.entries.first;
-    final bool selected = e.id == selectedId;
+    final bool selected = selectedIds.contains(e.id);
     if (e.isAm) {
       return e.type == ClockEntryType.symptom
           ? Aurora.accentRed.withValues(alpha: 0.8)
@@ -816,5 +815,5 @@ class _ArcLabelsPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ArcLabelsPainter old) =>
-      old.clusters != clusters || old.selectedId != selectedId;
+      old.clusters != clusters || old.selectedIds != selectedIds;
 }
