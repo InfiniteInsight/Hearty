@@ -16,6 +16,35 @@ router = APIRouter()
 supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"])
 
 
+class ClassifyRequest(BaseModel):
+    text: str
+
+
+class ClassifyResponse(BaseModel):
+    is_symptom: bool
+
+
+@router.post("/api/symptoms/classify")
+async def classify_symptom(
+    body: ClassifyRequest,
+    user=Depends(get_current_user),
+) -> ClassifyResponse:
+    """Decide whether a free-text feeling note describes an actual symptom.
+
+    Used by the post-log "how are you feeling?" sheet so positive/neutral notes
+    (e.g. "feeling good") are NOT logged as symptoms. Classify-only — never
+    writes. Best-effort: empty text or any extraction error → not a symptom (we
+    prefer dropping an ambiguous note over recording a false symptom)."""
+    text = (body.text or "").strip()
+    if not text:
+        return ClassifyResponse(is_symptom=False)
+    try:
+        symptoms = ai_extraction.extract_symptoms(text)
+    except Exception:
+        return ClassifyResponse(is_symptom=False)
+    return ClassifyResponse(is_symptom=bool(symptoms))
+
+
 @router.post("/api/symptoms", status_code=201)
 async def log_symptoms(
     body: SymptomRequest,
