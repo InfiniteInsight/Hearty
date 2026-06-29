@@ -9,6 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'theme.dart';
+import 'theme/aurora_colors.dart';
 import '../core/auth/onboarding_provider.dart';
 import '../features/auth/screens/sign_in_screen.dart';
 import '../features/licensing/license_provider.dart';
@@ -472,7 +474,34 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
 
     return Scaffold(
       body: widget.navigationShell,
-      bottomNavigationBar: NavigationBar(
+      // Theme only the nav bar (not the screen bodies) so it's Aurora-dark
+      // across the app while individual screens migrate.
+      bottomNavigationBar: Theme(
+        data: AppTheme.aurora.copyWith(
+          navigationBarTheme: NavigationBarThemeData(
+            backgroundColor: Aurora.bgTop,
+            indicatorColor: Aurora.accentGreen.withValues(alpha: 0.18),
+            surfaceTintColor: Colors.transparent,
+            iconTheme: WidgetStateProperty.resolveWith(
+              (s) => IconThemeData(
+                color: s.contains(WidgetState.selected)
+                    ? Aurora.accentGreen
+                    : Aurora.textMuted,
+              ),
+            ),
+            labelTextStyle: WidgetStateProperty.resolveWith(
+              (s) => TextStyle(
+                fontSize: 12,
+                fontFamily: 'Plus Jakarta Sans',
+                fontWeight: FontWeight.w600,
+                color: s.contains(WidgetState.selected)
+                    ? Aurora.accentGreen
+                    : Aurora.textMuted,
+              ),
+            ),
+          ),
+        ),
+        child: NavigationBar(
         selectedIndex: widget.navigationShell.currentIndex,
         onDestinationSelected: (index) => widget.navigationShell.goBranch(
           index,
@@ -496,6 +525,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<_ScaffoldWithNavBar> {
             label: 'Settings',
           ),
         ],
+        ),
       ),
     );
   }
