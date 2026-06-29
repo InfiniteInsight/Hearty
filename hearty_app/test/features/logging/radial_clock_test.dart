@@ -113,4 +113,62 @@ void main() {
     await tester.pump();
     expect(selected, 'lunch');
   });
+
+  // Co-timed meal + symptom merge into one split bubble.
+  final coTimed = [
+    ClockEntry(id: 'liquidiv', label: 'Liquid IV', time: DateTime(2026, 6, 28, 13, 4), type: ClockEntryType.meal),
+    ClockEntry(id: 'reflux', label: 'acid reflux', time: DateTime(2026, 6, 28, 13, 4), type: ClockEntryType.symptom),
+  ];
+
+  testWidgets('co-timed entries render a split bubble golden', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DecoratedBox(
+            decoration: const BoxDecoration(gradient: Aurora.background),
+            child: Center(
+              child: RadialClock(
+                time: DateTime(2026, 6, 28, 14, 34),
+                entries: coTimed,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await expectLater(
+      find.byType(RadialClock),
+      matchesGoldenFile('goldens/radial_clock_split.png'),
+    );
+  });
+
+  testWidgets('split bubble: left half selects meal, right half selects symptom',
+      (tester) async {
+    String? selected;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: RadialClock(
+              time: DateTime(2026, 6, 28, 14, 34),
+              entries: coTimed,
+              selectedId: selected,
+              onSelect: (id) => selected = id,
+            ),
+          ),
+        ),
+      ),
+    );
+    // Bubble center for 1:04 PM (angle ≈ 32°, R=118): offset ≈ (+62, -100).
+    final center = tester.getCenter(find.byType(RadialClock));
+    const bubble = Offset(62, -100);
+    // Left half → meal (sorted first → wedge 0 = left).
+    await tester.tapAt(center + bubble + const Offset(-8, 0));
+    await tester.pump();
+    expect(selected, 'liquidiv');
+    // Right half → symptom.
+    await tester.tapAt(center + bubble + const Offset(8, 0));
+    await tester.pump();
+    expect(selected, 'reflux');
+  });
 }

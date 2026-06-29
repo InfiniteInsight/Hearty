@@ -79,9 +79,12 @@ class RadialClock extends StatelessWidget {
   Widget build(BuildContext context) {
     final DateTime t = time ?? DateTime.now();
     final double s = size / designSize;
-    ClockEntry? selected;
-    for (final e in entries) {
-      if (e.id == selectedId) selected = e;
+    // Entries logged close in time (same ring, overlapping dots) merge into one
+    // split bubble so a meal + its symptom don't stack on top of each other.
+    final clusters = _clusterEntries(entries);
+    _Cluster? selectedCluster;
+    for (final c in clusters) {
+      if (c.contains(selectedId)) selectedCluster = c;
     }
     return SizedBox(
       width: size,
@@ -92,65 +95,63 @@ class RadialClock extends StatelessWidget {
           Positioned.fill(
             child: CustomPaint(painter: _RadialClockPainter(time: t)),
           ),
-          for (final e in entries) _positionDot(e, s, e.id == selectedId),
-          // Curved arc name/time tags above the dots (spec §3). Drawn above the
-          // dots, below the popup. pointer-events: none (spec) so dot taps pass
-          // through.
+          for (final c in clusters) _positionBubble(c, s),
+          // Curved arc name/time tags above the dots (spec §3). pointer-events:
+          // none (spec) so bubble taps pass through.
           Positioned.fill(
             child: IgnorePointer(
               child: CustomPaint(
                 painter: _ArcLabelsPainter(
-                  entries: entries,
+                  clusters: clusters,
                   selectedId: selectedId,
                 ),
               ),
             ),
           ),
-          if (selected != null) _positionPopup(selected, s),
+          if (selectedCluster != null) _positionPopup(selectedCluster, s),
         ],
       ),
     );
   }
 
-  Offset _dotCenter(ClockEntry e, double s) {
-    final double r = (e.isAm ? _rAmOrbit : _rPmOrbit) * s;
-    final double rad = e.angleDeg * math.pi / 180;
+  Offset _clusterCenter(_Cluster c, double s) {
+    final double r = (c.isAm ? _rAmOrbit : _rPmOrbit) * s;
+    final double rad = c.angleDeg * math.pi / 180;
     return Offset(
       size / 2 + r * math.sin(rad),
       size / 2 - r * math.cos(rad),
     );
   }
 
-  Widget _positionDot(ClockEntry e, double s, bool selected) {
-    final double dotSize = (e.isAm ? 26.0 : 34.0) * s;
-    final Offset c = _dotCenter(e, s);
+  Widget _positionBubble(_Cluster c, double s) {
+    final double dotSize = (c.isAm ? 26.0 : 34.0) * s;
+    final Offset center = _clusterCenter(c, s);
     return Positioned(
-      left: c.dx - dotSize / 2,
-      top: c.dy - dotSize / 2,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => onSelect?.call(selected ? null : e.id),
-        child: _OrbitDot(
-          type: e.type,
-          isAm: e.isAm,
-          size: dotSize,
-          selected: selected,
-        ),
+      left: center.dx - dotSize / 2,
+      top: center.dy - dotSize / 2,
+      child: _OrbitBubble(
+        entries: c.entries,
+        isAm: c.isAm,
+        size: dotSize,
+        selectedId: selectedId,
+        // Tapping the already-selected entry deselects.
+        onSelect: (id) => onSelect?.call(id == selectedId ? null : id),
       ),
     );
   }
 
-  Widget _positionPopup(ClockEntry e, double s) {
-    final double dotSize = (e.isAm ? 26.0 : 34.0) * s;
-    final Offset c = _dotCenter(e, s);
-    // Sit just below the dot, centered horizontally over it.
+  Widget _positionPopup(_Cluster c, double s) {
+    final double dotSize = (c.isAm ? 26.0 : 34.0) * s;
+    final Offset center = _clusterCenter(c, s);
+    final selected = c.entries.firstWhere((e) => e.id == selectedId);
+    // Sit just below the bubble, centered horizontally over it.
     return Positioned(
-      left: c.dx,
-      top: c.dy + dotSize / 2 + 8 * s,
+      left: center.dx,
+      top: center.dy + dotSize / 2 + 8 * s,
       child: FractionalTranslation(
         translation: const Offset(-0.5, 0),
         child: _TapPopup(
-          entry: e,
+          entry: selected,
           scale: s,
           onDismiss: () => onSelect?.call(null),
         ),
@@ -159,64 +160,235 @@ class RadialClock extends StatelessWidget {
   }
 }
 
-/// A single orbit marker — a bordered, softly-filled circle colored by entry
-/// type and AM/PM zone. When [selected], it gains an emerald glow ring.
-class _OrbitDot extends StatelessWidget {
-  final ClockEntryType type;
+/// Type ordering so a cluster's wedges lay out consistently (meal first).
+const Map<ClockEntryType, int> _typeOrder = {
+  ClockEntryType.meal: 0,
+  ClockEntryType.symptom: 1,
+  ClockEntryType.mood: 2,
+};
+
+/// One or more entries sharing a spot on the dial. A single entry renders as a
+/// normal dot; multiple render as a split (pie) bubble.
+class _Cluster {
+  final List<ClockEntry> entries; // sorted by type
+  final bool isAm;
+  final double angleDeg; // mean angle of the group
+
+  const _Cluster(this.entries, this.isAm, this.angleDeg);
+
+  bool contains(String? id) => entries.any((e) => e.id == id);
+}
+
+/// Groups entries that would visually overlap (same ring, angular gap smaller
+/// than a dot's angular width) into clusters, so they can share a split bubble.
+List<_Cluster> _clusterEntries(List<ClockEntry> entries) {
+  List<_Cluster> ring(Iterable<ClockEntry> raw, double orbitR, double dotSize) {
+    final es = raw.toList()..sort((a, b) => a.angleDeg.compareTo(b.angleDeg));
+    if (es.isEmpty) return const [];
+    final double thresholdDeg = (dotSize / orbitR) * 180 / math.pi;
+    final groups = <List<ClockEntry>>[
+      [es.first]
+    ];
+    for (var i = 1; i < es.length; i++) {
+      if (es[i].angleDeg - groups.last.last.angleDeg <= thresholdDeg) {
+        groups.last.add(es[i]);
+      } else {
+        groups.add([es[i]]);
+      }
+    }
+    return [
+      for (final g in groups)
+        _Cluster(
+          [...g]..sort((a, b) => _typeOrder[a.type]!.compareTo(_typeOrder[b.type]!)),
+          g.first.isAm,
+          g.map((e) => e.angleDeg).reduce((a, b) => a + b) / g.length,
+        ),
+    ];
+  }
+
+  return [
+    ...ring(entries.where((e) => e.isAm), 60, 26),
+    ...ring(entries.where((e) => !e.isAm), 118, 34),
+  ];
+}
+
+/// An orbit bubble for one cluster. A single entry renders as a colored disc; a
+/// cluster of N renders as a circle split into N colored wedges. Each wedge is
+/// independently tappable — tapping it selects that entry.
+class _OrbitBubble extends StatelessWidget {
+  final List<ClockEntry> entries; // sorted by type
   final bool isAm;
   final double size;
-  final bool selected;
+  final String? selectedId;
+  final ValueChanged<String?> onSelect;
 
-  const _OrbitDot({
-    required this.type,
+  const _OrbitBubble({
+    required this.entries,
     required this.isAm,
     required this.size,
-    this.selected = false,
+    required this.selectedId,
+    required this.onSelect,
   });
+
+  static (Color, Color) colorsFor(ClockEntryType type, bool isAm) =>
+      switch ((type, isAm)) {
+        (ClockEntryType.meal, true) => (Aurora.amMealFill, Aurora.amMealBorder),
+        (ClockEntryType.symptom, true) => (
+          Aurora.amSymptomFill,
+          Aurora.amSymptomBorder,
+        ),
+        (ClockEntryType.mood, true) => (Aurora.amMealFill, Aurora.amMealBorder),
+        (ClockEntryType.meal, false) => (Aurora.pmMealFill, Aurora.pmMealBorder),
+        (ClockEntryType.symptom, false) => (
+          Aurora.pmSymptomFill,
+          Aurora.pmSymptomBorder,
+        ),
+        (ClockEntryType.mood, false) => (Aurora.pmMoodFill, Aurora.pmMoodBorder),
+      };
+
+  /// Wedge i spans [π/2 + i·sweep, +sweep] (canvas angles: 0 = 3 o'clock,
+  /// positive = clockwise). With this base, for N=2 wedge 0 is the left half.
+  static double wedgeStart(int i, int n) => math.pi / 2 + i * (2 * math.pi / n);
 
   @override
   Widget build(BuildContext context) {
-    final (Color fill, Color border) = switch ((type, isAm)) {
-      (ClockEntryType.meal, true) => (Aurora.amMealFill, Aurora.amMealBorder),
-      (ClockEntryType.symptom, true) => (
-        Aurora.amSymptomFill,
-        Aurora.amSymptomBorder,
-      ),
-      (ClockEntryType.mood, true) => (Aurora.amMealFill, Aurora.amMealBorder),
-      (ClockEntryType.meal, false) => (Aurora.pmMealFill, Aurora.pmMealBorder),
-      (ClockEntryType.symptom, false) => (
-        Aurora.pmSymptomFill,
-        Aurora.pmSymptomBorder,
-      ),
-      (ClockEntryType.mood, false) => (Aurora.pmMoodFill, Aurora.pmMoodBorder),
-    };
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: fill,
-        border: Border.all(
-          color: selected ? Aurora.accentGreen.withValues(alpha: 0.7) : border,
-          width: 1.5,
-        ),
-        // Aurora selected glow (arc-labels spec §4).
-        boxShadow: selected
-            ? const [
-                BoxShadow(color: Color(0x2E34D399), blurRadius: 0, spreadRadius: 5),
-                BoxShadow(color: Color(0x1234D399), blurRadius: 0, spreadRadius: 9),
-                BoxShadow(color: Color(0x4D34D399), blurRadius: 18),
-              ]
-            : null,
-      ),
-      child: Center(
-        child: Text(
-          clockEntryEmoji(type),
-          style: TextStyle(fontSize: size * 0.5, height: 1.0),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapUp: (d) => onSelect(entries[_wedgeAt(d.localPosition)].id),
+      child: CustomPaint(
+        size: Size.square(size),
+        painter: _BubblePainter(
+          entries: entries,
+          isAm: isAm,
+          selectedId: selectedId,
         ),
       ),
     );
   }
+
+  int _wedgeAt(Offset local) {
+    final int n = entries.length;
+    if (n == 1) return 0;
+    final double c = size / 2;
+    double theta = math.atan2(local.dy - c, local.dx - c);
+    if (theta < 0) theta += 2 * math.pi;
+    final double sweep = 2 * math.pi / n;
+    for (var i = 0; i < n; i++) {
+      double rel = (theta - (wedgeStart(i, n) % (2 * math.pi))) % (2 * math.pi);
+      if (rel < 0) rel += 2 * math.pi;
+      if (rel < sweep) return i;
+    }
+    return 0;
+  }
+}
+
+class _BubblePainter extends CustomPainter {
+  final List<ClockEntry> entries;
+  final bool isAm;
+  final String? selectedId;
+
+  _BubblePainter({
+    required this.entries,
+    required this.isAm,
+    required this.selectedId,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Offset c = Offset(size.width / 2, size.height / 2);
+    final double r = size.width / 2;
+    final int n = entries.length;
+    final bool anySelected = entries.any((e) => e.id == selectedId);
+
+    // Aurora selected glow (arc-labels spec §4).
+    if (anySelected) {
+      canvas.drawCircle(c, r + 5, Paint()..color = const Color(0x2E34D399));
+      canvas.drawCircle(
+        c,
+        r + 2,
+        Paint()
+          ..color = const Color(0x4D34D399)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+      );
+    }
+
+    if (n == 1) {
+      final (fill, border) = _OrbitBubble.colorsFor(entries.first.type, isAm);
+      canvas.drawCircle(c, r, Paint()..color = fill);
+      canvas.drawCircle(
+        c,
+        r,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..color = entries.first.id == selectedId
+              ? Aurora.accentGreen.withValues(alpha: 0.7)
+              : border,
+      );
+      _emoji(canvas, entries.first.type, c, size.width * 0.5);
+      return;
+    }
+
+    final double sweep = 2 * math.pi / n;
+    final rect = Rect.fromCircle(center: c, radius: r);
+    for (var i = 0; i < n; i++) {
+      final (fill, border) = _OrbitBubble.colorsFor(entries[i].type, isAm);
+      final double start = _OrbitBubble.wedgeStart(i, n);
+      // Filled wedge.
+      final path = Path()
+        ..moveTo(c.dx, c.dy)
+        ..arcTo(rect, start, sweep, false)
+        ..close();
+      canvas.drawPath(path, Paint()..color = fill);
+      // Colored rim arc for the wedge (emerald-bright if this entry is selected).
+      canvas.drawArc(
+        rect.deflate(0.75),
+        start,
+        sweep,
+        false,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..color = entries[i].id == selectedId
+              ? Aurora.accentGreen.withValues(alpha: 0.9)
+              : border,
+      );
+      // Emoji at the wedge's mid-angle.
+      final double mid = start + sweep / 2;
+      _emoji(
+        canvas,
+        entries[i].type,
+        c + Offset(math.cos(mid), math.sin(mid)) * (r * 0.5),
+        size.width * 0.30,
+      );
+    }
+    // Subtle dividers between wedges.
+    for (var i = 0; i < n; i++) {
+      final double a = _OrbitBubble.wedgeStart(i, n);
+      canvas.drawLine(
+        c,
+        c + Offset(math.cos(a), math.sin(a)) * r,
+        Paint()
+          ..strokeWidth = 1.0
+          ..color = const Color(0x33FFFFFF),
+      );
+    }
+  }
+
+  void _emoji(Canvas canvas, ClockEntryType type, Offset center, double fontSize) {
+    final tp = TextPainter(
+      text: TextSpan(
+        text: clockEntryEmoji(type),
+        style: TextStyle(fontSize: fontSize, height: 1.0),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
+  }
+
+  @override
+  bool shouldRepaint(_BubblePainter old) =>
+      old.entries != entries || old.selectedId != selectedId;
 }
 
 /// Floating card shown above the entry list... actually below the selected dot,
@@ -525,19 +697,19 @@ class _RadialClockPainter extends CustomPainter {
 /// arc-labels companion §3). Flutter has no SVG `textPath`, so each glyph is laid
 /// out and rotated along a per-dot arc by hand.
 class _ArcLabelsPainter extends CustomPainter {
-  final List<ClockEntry> entries;
+  final List<_Cluster> clusters;
   final String? selectedId;
 
-  _ArcLabelsPainter({required this.entries, this.selectedId});
+  _ArcLabelsPainter({required this.clusters, this.selectedId});
 
   @override
   void paint(Canvas canvas, Size size) {
     final double s = size.shortestSide / RadialClock.designSize;
     final Offset center = Offset(size.width / 2, size.height / 2);
-    for (final e in entries) {
-      final bool isAm = e.isAm;
+    for (final c in clusters) {
+      final bool isAm = c.isAm;
       final double orbit = (isAm ? 60.0 : 118.0) * s;
-      final double rad = e.angleDeg * math.pi / 180;
+      final double rad = c.angleDeg * math.pi / 180;
       final Offset dot = Offset(
         center.dx + orbit * math.sin(rad),
         center.dy - orbit * math.cos(rad),
@@ -545,15 +717,15 @@ class _ArcLabelsPainter extends CustomPainter {
       // Text arc just outside the dot (AM r≈18, PM r≈21 — dot radius + margin).
       final double arcR = (isAm ? 18.0 : 21.0) * s;
       // Dots near the top use a bottom arc so the label doesn't exit the zone.
-      final bool topArc = !_nearTop(e.angleDeg);
+      final bool topArc = !_nearTop(c.angleDeg);
       final style = TextStyle(
         fontFamily: 'Plus Jakarta Sans',
         fontSize: (isAm ? 7.5 : 8.0) * s,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.3 * s,
-        color: _labelColor(e, e.id == selectedId),
+        color: _labelColor(c),
       );
-      _paintArcText(canvas, dot, arcR, _labelFor(e), style, topArc: topArc);
+      _paintArcText(canvas, dot, arcR, _labelFor(c), style, topArc: topArc);
     }
   }
 
@@ -563,17 +735,28 @@ class _ArcLabelsPainter extends CustomPainter {
     return a <= 45 || a >= 315;
   }
 
-  String _labelFor(ClockEntry e) {
+  String _labelFor(_Cluster c) {
+    final e = c.entries.first;
     final int h = e.time.hour % 12 == 0 ? 12 : e.time.hour % 12;
     final String time = '$h:${e.time.minute.toString().padLeft(2, '0')}';
-    // PM meals show a short food name when it fits; everything else shows time.
-    if (!e.isAm && e.type == ClockEntryType.meal && e.label.length <= 7) {
+    // A merged bubble shows just the shared time. A single PM meal shows a short
+    // food name when it fits; everything else shows time.
+    if (c.entries.length == 1 &&
+        !e.isAm &&
+        e.type == ClockEntryType.meal &&
+        e.label.length <= 7) {
       return e.label;
     }
     return time;
   }
 
-  Color _labelColor(ClockEntry e, bool selected) {
+  Color _labelColor(_Cluster c) {
+    // Merged bubble → neutral; single entry → its type color.
+    if (c.entries.length > 1) {
+      return Aurora.textPrimary.withValues(alpha: 0.6);
+    }
+    final e = c.entries.first;
+    final bool selected = e.id == selectedId;
     if (e.isAm) {
       return e.type == ClockEntryType.symptom
           ? Aurora.accentRed.withValues(alpha: 0.8)
@@ -633,5 +816,5 @@ class _ArcLabelsPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ArcLabelsPainter old) =>
-      old.entries != entries || old.selectedId != selectedId;
+      old.clusters != clusters || old.selectedId != selectedId;
 }
