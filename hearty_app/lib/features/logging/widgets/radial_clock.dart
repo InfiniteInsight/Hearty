@@ -86,6 +86,19 @@ class RadialClock extends StatelessWidget {
             child: CustomPaint(painter: _RadialClockPainter(time: t)),
           ),
           for (final e in entries) _positionDot(e, s, e.id == selectedId),
+          // Curved arc name/time tags above the dots (spec §3). Drawn above the
+          // dots, below the popup. pointer-events: none (spec) so dot taps pass
+          // through.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: _ArcLabelsPainter(
+                  entries: entries,
+                  selectedId: selectedId,
+                ),
+              ),
+            ),
+          ),
           if (selected != null) _positionPopup(selected, s),
         ],
       ),
@@ -488,4 +501,119 @@ class _RadialClockPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_RadialClockPainter old) => old.time != time;
+}
+
+/// Paints curved name/time tags hugging each orbit dot (Hearty UI Design Guide
+/// arc-labels companion §3). Flutter has no SVG `textPath`, so each glyph is laid
+/// out and rotated along a per-dot arc by hand.
+class _ArcLabelsPainter extends CustomPainter {
+  final List<ClockEntry> entries;
+  final String? selectedId;
+
+  _ArcLabelsPainter({required this.entries, this.selectedId});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double s = size.shortestSide / RadialClock.designSize;
+    final Offset center = Offset(size.width / 2, size.height / 2);
+    for (final e in entries) {
+      final bool isAm = e.isAm;
+      final double orbit = (isAm ? 60.0 : 118.0) * s;
+      final double rad = e.angleDeg * math.pi / 180;
+      final Offset dot = Offset(
+        center.dx + orbit * math.sin(rad),
+        center.dy - orbit * math.cos(rad),
+      );
+      // Text arc just outside the dot (AM r≈18, PM r≈21 — dot radius + margin).
+      final double arcR = (isAm ? 18.0 : 21.0) * s;
+      // Dots near the top use a bottom arc so the label doesn't exit the zone.
+      final bool topArc = !_nearTop(e.angleDeg);
+      final style = TextStyle(
+        fontFamily: 'Plus Jakarta Sans',
+        fontSize: (isAm ? 7.5 : 8.0) * s,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.3 * s,
+        color: _labelColor(e, e.id == selectedId),
+      );
+      _paintArcText(canvas, dot, arcR, _labelFor(e), style, topArc: topArc);
+    }
+  }
+
+  /// True when the dot sits within ±45° of 12 o'clock.
+  bool _nearTop(double deg) {
+    final double a = deg % 360;
+    return a <= 45 || a >= 315;
+  }
+
+  String _labelFor(ClockEntry e) {
+    final int h = e.time.hour % 12 == 0 ? 12 : e.time.hour % 12;
+    final String time = '$h:${e.time.minute.toString().padLeft(2, '0')}';
+    // PM meals show a short food name when it fits; everything else shows time.
+    if (!e.isAm && e.type == ClockEntryType.meal && e.label.length <= 7) {
+      return e.label;
+    }
+    return time;
+  }
+
+  Color _labelColor(ClockEntry e, bool selected) {
+    if (e.isAm) {
+      return e.type == ClockEntryType.symptom
+          ? Aurora.accentRed.withValues(alpha: 0.8)
+          : Aurora.accentViolet.withValues(alpha: 0.85);
+    }
+    return switch (e.type) {
+      ClockEntryType.symptom => Aurora.accentRed.withValues(alpha: 0.7),
+      ClockEntryType.mood => Aurora.accentVioletLight.withValues(alpha: 0.65),
+      ClockEntryType.meal => Aurora.accentGreen.withValues(
+        alpha: selected ? 0.9 : 0.65,
+      ),
+    };
+  }
+
+  void _paintArcText(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    String text,
+    TextStyle style, {
+    required bool topArc,
+  }) {
+    final painters = [
+      for (final ch in text.characters)
+        TextPainter(
+          text: TextSpan(text: ch, style: style),
+          textDirection: TextDirection.ltr,
+        )..layout(),
+    ];
+    final double totalW = painters.fold(0.0, (a, p) => a + p.width);
+    if (totalW == 0) return;
+    final double totalAngle = totalW / radius;
+    double a = -totalAngle / 2; // signed angle from the apex, left → right
+    for (final tp in painters) {
+      final double ga = tp.width / radius;
+      final double mid = a + ga / 2;
+      canvas.save();
+      if (topArc) {
+        canvas.translate(
+          center.dx + radius * math.sin(mid),
+          center.dy - radius * math.cos(mid),
+        );
+        canvas.rotate(mid);
+        tp.paint(canvas, Offset(-tp.width / 2, -tp.height));
+      } else {
+        canvas.translate(
+          center.dx + radius * math.sin(mid),
+          center.dy + radius * math.cos(mid),
+        );
+        canvas.rotate(-mid);
+        tp.paint(canvas, Offset(-tp.width / 2, 0));
+      }
+      canvas.restore();
+      a += ga;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ArcLabelsPainter old) =>
+      old.entries != entries || old.selectedId != selectedId;
 }
