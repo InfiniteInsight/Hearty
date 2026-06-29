@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/api/hearty_api_client.dart';
 import '../../../core/api/providers/symptoms_provider.dart';
 
 /// Shows the [FeelingFollowUpSheet] as a modal bottom sheet.
@@ -34,6 +35,9 @@ class _FeelingFollowUpSheetState extends ConsumerState<FeelingFollowUpSheet> {
   /// Null until the user picks a severity.
   int? _severity;
 
+  /// True while the sentiment classification call is in flight.
+  bool _busy = false;
+
   @override
   void dispose() {
     _noteController.dispose();
@@ -44,7 +48,27 @@ class _FeelingFollowUpSheetState extends ConsumerState<FeelingFollowUpSheet> {
     final note = _noteController.text.trim();
     final severity = _severity;
 
-    if (note.isNotEmpty || severity != null) {
+    // Decide whether this is an actual symptom worth logging. An explicit
+    // discomfort rating always counts. A free-text note alone is logged only if
+    // the backend classifies it as a negative symptom — so "feeling good" is
+    // not recorded. On any failure (offline/error) we don't log, preferring to
+    // drop an ambiguous note over creating a false symptom.
+    bool shouldLog;
+    if (severity != null) {
+      shouldLog = true;
+    } else if (note.isEmpty) {
+      shouldLog = false;
+    } else {
+      setState(() => _busy = true);
+      try {
+        shouldLog = await ref.read(heartyApiClientProvider).classifyFeeling(note);
+      } catch (_) {
+        shouldLog = false;
+      }
+      if (!mounted) return;
+    }
+
+    if (shouldLog) {
       await ref
           .read(symptomsProvider.notifier)
           .logSymptom(note, severity: severity);
@@ -109,7 +133,7 @@ class _FeelingFollowUpSheetState extends ConsumerState<FeelingFollowUpSheet> {
                 Expanded(
                   child: TextButton(
                     key: const Key('feeling-skip'),
-                    onPressed: _skip,
+                    onPressed: _busy ? null : _skip,
                     child: const Text('Skip'),
                   ),
                 ),
@@ -117,8 +141,14 @@ class _FeelingFollowUpSheetState extends ConsumerState<FeelingFollowUpSheet> {
                 Expanded(
                   child: FilledButton(
                     key: const Key('feeling-save'),
-                    onPressed: _save,
-                    child: const Text('Save'),
+                    onPressed: _busy ? null : _save,
+                    child: _busy
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Save'),
                   ),
                 ),
               ],

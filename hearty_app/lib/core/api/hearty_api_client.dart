@@ -174,6 +174,17 @@ class HeartyApiClient {
     return SymptomLog.fromJson(list.first as Map<String, dynamic>);
   }
 
+  /// Asks the backend whether a free-text feeling note describes an actual
+  /// symptom (negative). Used by the post-log "how are you feeling?" sheet so
+  /// positive/neutral notes aren't logged. Returns false on any failure.
+  Future<bool> classifyFeeling(String text) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/symptoms/classify',
+      data: <String, dynamic>{'text': text},
+    );
+    return (response.data?['is_symptom'] as bool?) ?? false;
+  }
+
   Future<List<SymptomLog>> fetchSymptoms({
     DateTime? start,
     DateTime? end,
