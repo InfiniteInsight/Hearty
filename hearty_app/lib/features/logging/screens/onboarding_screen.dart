@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../app/router.dart';
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../../../core/api/providers/preferences_provider.dart';
 import '../../../core/api/models/user_preferences.dart';
 import '../../../core/widgets/health_profile/allergens_section.dart';
@@ -92,72 +94,131 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
-              Text('Tell us about your health',
-                  style: textTheme.headlineMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(
-                "We'll use this to personalize your experience.",
-                style: textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.6),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text('Known allergens', style: textTheme.labelLarge),
-              const SizedBox(height: 8),
-              AllergensSection(
-                selected: _allergens,
-                onChanged: (v) => setState(() => _allergens = v),
-              ),
-              const SizedBox(height: 24),
-              Text('Known conditions', style: textTheme.labelLarge),
-              const SizedBox(height: 8),
-              ConditionsSection(
-                selected: _conditions,
-                onChanged: (v) => setState(() => _conditions = v),
-              ),
-              const SizedBox(height: 24),
-              Text('Dietary protocols', style: textTheme.labelLarge),
-              const SizedBox(height: 8),
-              DietaryProtocolsSection(
-                selected: _protocols,
-                onChanged: (v) => setState(() => _protocols = v),
-              ),
-              const SizedBox(height: 24),
-              Text('Medications & supplements', style: textTheme.labelLarge),
-              const SizedBox(height: 8),
-              MedicationsSection(
-                medications: _medications,
-                onChanged: (v) => setState(() => _medications = v),
-              ),
-              const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextButton(
-                    onPressed: _skipToHome,
-                    child: const Text('Skip'),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Tell us about your health',
+                    style: textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Aurora.textPrimary,
+                    ),
                   ),
-                  ElevatedButton(
-                    onPressed: _finish,
-                    child: const Text('Finish'),
+                  const SizedBox(height: 8),
+                  Text(
+                    "We'll use this to personalize your experience.",
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: Aurora.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _GlassSection(
+                    title: 'Known allergens',
+                    child: AllergensSection(
+                      selected: _allergens,
+                      onChanged: (v) => setState(() => _allergens = v),
+                      aurora: true,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _GlassSection(
+                    title: 'Known conditions',
+                    child: ConditionsSection(
+                      selected: _conditions,
+                      onChanged: (v) => setState(() => _conditions = v),
+                      aurora: true,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _GlassSection(
+                    title: 'Dietary protocols',
+                    child: DietaryProtocolsSection(
+                      selected: _protocols,
+                      onChanged: (v) => setState(() => _protocols = v),
+                      aurora: true,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _GlassSection(
+                    title: 'Medications & supplements',
+                    child: MedicationsSection(
+                      medications: _medications,
+                      onChanged: (v) => setState(() => _medications = v),
+                      aurora: true,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: _skipToHome,
+                        style: TextButton.styleFrom(
+                          foregroundColor: Aurora.textMuted,
+                        ),
+                        child: const Text('Skip'),
+                      ),
+                      ElevatedButton(
+                        onPressed: _finish,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Aurora.accentGreen,
+                          foregroundColor: const Color(0xFF052E20),
+                        ),
+                        child: const Text('Finish'),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Aurora glass card wrapping a health-profile section with a white header.
+class _GlassSection extends StatelessWidget {
+  final String title;
+  final Widget child;
+
+  const _GlassSection({required this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Aurora.glassFill,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Aurora.glassBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: textTheme.labelLarge?.copyWith(
+              color: Aurora.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          child,
+        ],
       ),
     );
   }

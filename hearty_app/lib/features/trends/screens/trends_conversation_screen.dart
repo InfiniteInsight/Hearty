@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../providers/trends_conversation_provider.dart';
 
 /// Route entry for the monthly trends conversation. Opens the conversation on
@@ -35,17 +37,24 @@ class _TrendsConversationScreenState
   Widget build(BuildContext context) {
     final state = ref.watch(trendsConversationProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Monthly trends')),
-      body: switch (state.phase) {
-        TrendsConvoPhase.loading => const Center(
-            key: Key('trends-loading'),
-            child: CircularProgressIndicator(),
-          ),
-        TrendsConvoPhase.active => _ActiveView(state: state),
-        TrendsConvoPhase.closed => const _EndCard(),
-        TrendsConvoPhase.error => const _ErrorCard(),
-      },
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(title: const Text('Monthly trends')),
+          body: switch (state.phase) {
+            TrendsConvoPhase.loading => const Center(
+                key: Key('trends-loading'),
+                child: CircularProgressIndicator(),
+              ),
+            TrendsConvoPhase.active => _ActiveView(state: state),
+            TrendsConvoPhase.closed => const _EndCard(),
+            TrendsConvoPhase.error => const _ErrorCard(),
+          },
+        ),
+      ),
     );
   }
 }
@@ -91,73 +100,95 @@ class _ActiveViewState extends ConsumerState<_ActiveView> {
         padding: const EdgeInsets.all(24),
         child: ListView(
           children: [
-            // Latest assistant reply, shown big.
-            Text(
-              state.currentReply,
-              key: const Key('trends-reply'),
-              style: Theme.of(context).textTheme.titleLarge,
+            // Latest assistant (Hearty) reply, shown as a left-aligned Aurora
+            // glass bubble.
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: Aurora.glassFill,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(4),
+                    topRight: Radius.circular(18),
+                    bottomLeft: Radius.circular(18),
+                    bottomRight: Radius.circular(18),
+                  ),
+                  border: Border.all(color: Aurora.glassBorder),
+                ),
+                child: Text(
+                  state.currentReply,
+                  key: const Key('trends-reply'),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Aurora.textPrimary,
+                      ),
+                ),
+              ),
             ),
             const SizedBox(height: 24),
 
             if (verdict != null) ...[
-              Card(
-                key: const Key('trends-verdict-card'),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Mark ${verdict.categoryLabel} → ${verdict.outcomeName} '
-                        'as ${verdict.verdict}?',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          FilledButton(
-                            key: const Key('trends-verdict-confirm'),
-                            onPressed:
-                                busy ? null : () => notifier.confirmVerdict(),
-                            child: const Text('Confirm'),
+              _ProposalCard(
+                cardKey: const Key('trends-verdict-card'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Mark ${verdict.categoryLabel} → ${verdict.outcomeName} '
+                      'as ${verdict.verdict}?',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Aurora.textPrimary,
                           ),
-                          const SizedBox(width: 12),
-                          TextButton(
-                            key: const Key('trends-verdict-dismiss'),
-                            onPressed:
-                                busy ? null : () => notifier.dismissVerdict(),
-                            child: const Text('Not now'),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        FilledButton(
+                          key: const Key('trends-verdict-confirm'),
+                          onPressed:
+                              busy ? null : () => notifier.confirmVerdict(),
+                          child: const Text('Confirm'),
+                        ),
+                        const SizedBox(width: 12),
+                        TextButton(
+                          key: const Key('trends-verdict-dismiss'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Aurora.textMuted,
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                          onPressed:
+                              busy ? null : () => notifier.dismissVerdict(),
+                          child: const Text('Not now'),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
             ],
 
             if (experiment != null) ...[
-              Card(
-                key: const Key('trends-experiment-card'),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Test this — cut ${experiment.categoryLabel} for 2 weeks?',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 12),
-                      FilledButton(
-                        key: const Key('trends-experiment-chip'),
-                        onPressed:
-                            busy ? null : () => notifier.startExperiment(),
-                        child: const Text('Start experiment'),
-                      ),
-                    ],
-                  ),
+              _ProposalCard(
+                cardKey: const Key('trends-experiment-card'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Test this — cut ${experiment.categoryLabel} for 2 weeks?',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Aurora.textPrimary,
+                          ),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      key: const Key('trends-experiment-chip'),
+                      onPressed: busy ? null : () => notifier.startExperiment(),
+                      child: const Text('Start experiment'),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
@@ -167,7 +198,9 @@ class _ActiveViewState extends ConsumerState<_ActiveView> {
               Text(
                 "We're all caught up.",
                 key: const Key('trends-caught-up'),
-                style: Theme.of(context).textTheme.titleMedium,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Aurora.textSecondary,
+                    ),
               ),
               const SizedBox(height: 12),
               FilledButton(
@@ -190,9 +223,25 @@ class _ActiveViewState extends ConsumerState<_ActiveView> {
               maxLines: 4,
               textInputAction: TextInputAction.send,
               onSubmitted: busy ? null : (_) => _send(),
-              decoration: const InputDecoration(
+              style: const TextStyle(color: Aurora.textPrimary),
+              cursorColor: Aurora.accentGreen,
+              decoration: InputDecoration(
                 hintText: 'Type your reply…',
-                border: OutlineInputBorder(),
+                hintStyle: const TextStyle(color: Aurora.textMuted),
+                filled: true,
+                fillColor: Aurora.glassFill,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Aurora.glassBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Aurora.accentGreen),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Aurora.glassBorder),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -207,6 +256,29 @@ class _ActiveViewState extends ConsumerState<_ActiveView> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Aurora glass card for a proposed action (verdict / experiment). Glass fill
+/// with an emerald accent border to read as an actionable suggestion.
+class _ProposalCard extends StatelessWidget {
+  const _ProposalCard({required this.cardKey, required this.child});
+
+  final Key cardKey;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: cardKey,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Aurora.glassFill,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Aurora.accentGreen.withValues(alpha: 0.4)),
+      ),
+      child: child,
     );
   }
 }

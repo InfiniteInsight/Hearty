@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../app/theme.dart';
+import '../../app/theme/aurora_colors.dart';
 import 'license_provider.dart';
 
 /// Non-dismissable gated state shown when the server reports that the user has
@@ -21,44 +23,76 @@ class NoAccessScreen extends ConsumerWidget {
     // programmatic navigation away while the license is non-active.
     return PopScope(
       canPop: false,
-      child: Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.lock_outline, size: 56),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No active access',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                    textAlign: TextAlign.center,
+      child: Theme(
+        data: AppTheme.aurora,
+        child: DecoratedBox(
+          decoration: const BoxDecoration(gradient: Aurora.background),
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Aurora.glassFill,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Aurora.glassBorder),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.lock_outline,
+                          size: 56,
+                          color: Aurora.accentViolet,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No active access',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(color: Aurora.textPrimary),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Your account does not have an active license. '
+                          'Please contact the owner to regain access.',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: Aurora.textSecondary),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Aurora.accentGreen,
+                            foregroundColor: const Color(0xFF052E20),
+                          ),
+                          onPressed: checking
+                              ? null
+                              : () => ref.invalidate(licenseStatusProvider),
+                          child: Text(checking ? 'Checking…' : 'Check again'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          style: TextButton.styleFrom(
+                            foregroundColor: Aurora.textSecondary,
+                          ),
+                          onPressed: () async {
+                            await Supabase.instance.client.auth.signOut();
+                            await GoogleSignIn().signOut();
+                          },
+                          child: const Text('Sign out'),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Your account does not have an active license. '
-                    'Please contact the owner to regain access.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: checking
-                        ? null
-                        : () => ref.invalidate(licenseStatusProvider),
-                    child: Text(checking ? 'Checking…' : 'Check again'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: () async {
-                      await Supabase.instance.client.auth.signOut();
-                      await GoogleSignIn().signOut();
-                    },
-                    child: const Text('Sign out'),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

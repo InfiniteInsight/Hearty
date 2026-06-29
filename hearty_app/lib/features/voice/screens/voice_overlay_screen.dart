@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../models/voice_state.dart';
 import '../providers/voice_provider.dart';
 import '../widgets/prism_waveform.dart';
@@ -72,15 +74,17 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
           ref.read(voiceProvider.notifier).stopSpeaking();
         }
       },
-      child: Scaffold(
-        backgroundColor: Colors.black.withValues(alpha: 0.85),
-        body: SafeArea(
-          // Vertical padding only — horizontal padding is applied per-child so
-          // the prism visualiser row can span the full screen width (edge to
-          // edge) while the other content stays inset by 24.
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 32),
-            child: Column(
+      child: Theme(
+        data: AppTheme.aurora,
+        child: Scaffold(
+          backgroundColor: Aurora.bgBottom.withValues(alpha: 0.92),
+          body: SafeArea(
+            // Vertical padding only — horizontal padding is applied per-child so
+            // the prism visualiser row can span the full screen width (edge to
+            // edge) while the other content stays inset by 24.
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Padding(
@@ -88,7 +92,7 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
                   child: Align(
                     alignment: Alignment.topRight,
                     child: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
+                      icon: const Icon(Icons.close, color: Aurora.textSecondary),
                       onPressed: () => ref.read(voiceProvider.notifier).dismiss(),
                     ),
                   ),
@@ -108,6 +112,7 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
                 ),
               ],
             ),
+          ),
           ),
         ),
       ),
@@ -145,7 +150,7 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
       case VoiceStatus.thinking:
         return const ThinkingAnimation();
       case VoiceStatus.responding:
-        return const Icon(Icons.volume_up, color: Colors.white, size: 48);
+        return const Icon(Icons.volume_up, color: Aurora.accentGreen, size: 48);
       case VoiceStatus.idle:
         return const SizedBox.shrink();
     }
@@ -157,14 +162,14 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
         width: 56,
         child: Semantics(
           label: 'Getting ready',
-          child: const CircularProgressIndicator(color: Colors.white70),
+          child: const CircularProgressIndicator(color: Aurora.accentGreen),
         ),
       );
 
   Widget _tapToTalkButton(VoidCallback onPressed) => IconButton(
         key: const Key('tap_to_talk_button'),
         iconSize: 56,
-        icon: const Icon(Icons.mic_none, color: Colors.white),
+        icon: const Icon(Icons.mic_none, color: Aurora.accentGreen),
         tooltip: 'Tap to talk',
         onPressed: onPressed,
       );
@@ -181,7 +186,7 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
       children: [
         Text(
           text,
-          style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.5),
+          style: const TextStyle(color: Aurora.textPrimary, fontSize: 18, height: 1.5),
           textAlign: TextAlign.center,
         ),
         if (state.status == VoiceStatus.listening && text.isNotEmpty)
@@ -200,8 +205,8 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
         if (state.response.isNotEmpty)
           Text(
             state.response,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.55),
+            style: const TextStyle(
+              color: Aurora.textSecondary,
               fontSize: 16,
               height: 1.5,
             ),
@@ -209,23 +214,23 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
           ),
         if (state.micPhase == MicPhase.preparing) ...[
           const SizedBox(height: 12),
-          Text(
+          const Text(
             'Getting ready…',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+            style: TextStyle(color: Aurora.textSecondary),
           ),
         ],
         if (state.micPhase == MicPhase.paused) ...[
           const SizedBox(height: 12),
-          Text(
+          const Text(
             'Tap the mic when you’re ready',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+            style: TextStyle(color: Aurora.textSecondary),
           ),
         ],
         if (hasTranscript) ...[
           const SizedBox(height: 12),
           Text(
             state.transcript,
-            style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.5),
+            style: const TextStyle(color: Aurora.textPrimary, fontSize: 18, height: 1.5),
             textAlign: TextAlign.center,
           ),
           _buildSubmitRow(canRetry: false),
@@ -252,8 +257,8 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
             const SizedBox(width: 12),
             TextButton.icon(
               onPressed: () => ref.read(voiceProvider.notifier).startListening(),
-              icon: const Icon(Icons.refresh, color: Colors.white70),
-              label: const Text('Re-record', style: TextStyle(color: Colors.white70)),
+              icon: const Icon(Icons.refresh, color: Aurora.textSecondary),
+              label: const Text('Re-record', style: TextStyle(color: Aurora.textSecondary)),
             ),
           ],
         ],
@@ -264,18 +269,18 @@ class _VoiceOverlayScreenState extends ConsumerState<VoiceOverlayScreen> {
   Widget _buildTextInput() {
     return TextField(
       controller: _textController,
-      style: const TextStyle(color: Colors.white),
+      style: const TextStyle(color: Aurora.textPrimary),
       decoration: InputDecoration(
         hintText: 'Or type here...',
-        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+        hintStyle: const TextStyle(color: Aurora.textMuted),
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.1),
+        fillColor: Aurora.glassFill,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         suffixIcon: IconButton(
-          icon: const Icon(Icons.send, color: Colors.white),
+          icon: const Icon(Icons.send, color: Aurora.accentGreen),
           onPressed: _submitText,
         ),
       ),

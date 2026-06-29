@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../../../core/api/models/photo_analysis.dart';
 import '../../../core/api/providers/meals_provider.dart';
 import '../../logging/widgets/editable_food_list.dart';
@@ -75,8 +77,7 @@ class _PhotoReviewScreenState extends ConsumerState<PhotoReviewScreen> {
   @override
   Widget build(BuildContext context) {
     final analysis = widget.analysis;
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final textTheme = AppTheme.aurora.textTheme;
 
     // Allergen warnings are not part of the food-plate contract, but other
     // photo types may include them in the raw result map.
@@ -85,13 +86,18 @@ class _PhotoReviewScreenState extends ConsumerState<PhotoReviewScreen> {
         rawWarnings is List ? rawWarnings.whereType<String>().toList() : <String>[];
     final foods = analysis.foods;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Review Photo Results')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(title: const Text('Review Photo Results')),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
             // ── Allergen warning banner ────────────────────────────────────
             if (allergenWarnings.isNotEmpty) ...[
               Container(
@@ -150,7 +156,7 @@ class _PhotoReviewScreenState extends ConsumerState<PhotoReviewScreen> {
               Text(
                 'Correct what was eaten before saving.',
                 style: textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+                  color: Aurora.textSecondary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -165,9 +171,24 @@ class _PhotoReviewScreenState extends ConsumerState<PhotoReviewScreen> {
             // ── Editable description field ─────────────────────────────────
             TextField(
               controller: _descController,
-              decoration: const InputDecoration(
+              style: const TextStyle(color: Aurora.textPrimary),
+              decoration: InputDecoration(
                 labelText: 'Description',
-                border: OutlineInputBorder(),
+                labelStyle: const TextStyle(color: Aurora.textMuted),
+                filled: true,
+                fillColor: Aurora.glassFill,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Aurora.glassBorder),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Aurora.glassBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Aurora.accentGreen),
+                ),
               ),
               maxLines: null,
             ),
@@ -178,15 +199,18 @@ class _PhotoReviewScreenState extends ConsumerState<PhotoReviewScreen> {
             ElevatedButton(
               onPressed: _saving ? null : _save,
               style: ElevatedButton.styleFrom(
-                backgroundColor: colorScheme.primary,
-                foregroundColor: colorScheme.onPrimary,
+                backgroundColor: Aurora.accentGreen,
+                foregroundColor: const Color(0xFF052E20),
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: _saving
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFF052E20),
+                      ),
                     )
                   : const Text('Looks good — Save'),
             ),
@@ -196,9 +220,14 @@ class _PhotoReviewScreenState extends ConsumerState<PhotoReviewScreen> {
             // ── Retake button ──────────────────────────────────────────────
             TextButton(
               onPressed: _saving ? null : () => Navigator.of(context).pop(),
+              style: TextButton.styleFrom(
+                foregroundColor: Aurora.accentGreen,
+              ),
               child: const Text('Retake photo'),
             ),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );
