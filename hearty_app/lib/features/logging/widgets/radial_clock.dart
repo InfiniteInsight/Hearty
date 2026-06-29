@@ -6,6 +6,13 @@ import '../../../app/theme/aurora_colors.dart';
 /// Type of an entry orbiting the clock — drives the dot's color.
 enum ClockEntryType { meal, symptom, mood }
 
+/// Emoji shown inside an orbit dot / the tap popup, by type.
+String clockEntryEmoji(ClockEntryType type) => switch (type) {
+      ClockEntryType.meal => '🍽️',
+      ClockEntryType.symptom => '🤢',
+      ClockEntryType.mood => '😊',
+    };
+
 /// One entry placed around the dial by its time of day.
 class ClockEntry {
   /// Stable id correlating the dot to its list row (meal/symptom id).
@@ -202,6 +209,12 @@ class _OrbitDot extends StatelessWidget {
               ]
             : null,
       ),
+      child: Center(
+        child: Text(
+          clockEntryEmoji(type),
+          style: TextStyle(fontSize: size * 0.5, height: 1.0),
+        ),
+      ),
     );
   }
 }
@@ -251,6 +264,11 @@ class _TapPopup extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              Text(
+                clockEntryEmoji(entry.type),
+                style: TextStyle(fontSize: 18 * s, height: 1.0),
+              ),
+              SizedBox(width: 8 * s),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
