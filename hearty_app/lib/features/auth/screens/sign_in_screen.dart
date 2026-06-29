@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
+
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
 
@@ -63,52 +66,113 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Hearty',
-                style: textTheme.headlineLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text.rich(
+                      const TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Heart',
+                            style: TextStyle(color: Aurora.textPrimary),
+                          ),
+                          TextSpan(
+                            text: 'y',
+                            style: TextStyle(color: Aurora.accentGreen),
+                          ),
+                        ],
+                      ),
+                      style: const TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 44,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -1,
+                        height: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Your food & symptom journal',
+                      style: TextStyle(
+                        color: Aurora.textMuted,
+                        fontSize: 15,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 48),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: _isLoading ? null : Aurora.fab,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _signInWithGoogle,
+                          icon: _isLoading
+                              ? const SizedBox.shrink()
+                              : const Icon(
+                                  Icons.g_mobiledata,
+                                  color: Color(0xFF052E20),
+                                  size: 28,
+                                ),
+                          label: _isLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.4,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color(0xFF052E20),
+                                    ),
+                                  ),
+                                )
+                              : const Text(
+                                  'Continue with Google',
+                                  style: TextStyle(
+                                    color: Color(0xFF052E20),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            disabledBackgroundColor: Aurora.glassFill,
+                            minimumSize: const Size(double.infinity, 52),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (_errorMessage != null) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        _errorMessage!,
+                        style: const TextStyle(
+                          color: Aurora.accentRed,
+                          fontSize: 13,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Your food & symptom journal',
-                style: textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
-              ),
-              const SizedBox(height: 48),
-              if (_isLoading)
-                const CircularProgressIndicator()
-              else
-                ElevatedButton.icon(
-                  onPressed: _signInWithGoogle,
-                  icon: const Icon(Icons.g_mobiledata),
-                  label: const Text('Continue with Google'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
-                  ),
-                ),
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  _errorMessage!,
-                  style: textTheme.bodySmall?.copyWith(
-                    color: colorScheme.error,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ],
+            ),
           ),
         ),
       ),

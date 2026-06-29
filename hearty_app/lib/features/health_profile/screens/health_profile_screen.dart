@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../../../core/api/providers/preferences_provider.dart';
 import '../../../core/widgets/health_profile/allergens_section.dart';
 import '../../../core/widgets/health_profile/conditions_section.dart';
@@ -74,76 +76,104 @@ class _HealthProfileScreenState extends ConsumerState<HealthProfileScreen> {
     }
   }
 
-  Widget _header(String title) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-        child: Text(
-          title,
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.bold),
+  Widget _header(String title) => Text(
+        title,
+        style: const TextStyle(
+          color: Aurora.textPrimary,
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+
+  /// An Aurora glass card wrapping one category: a white section header on top
+  /// and the section's chips/field below.
+  Widget _card(String title, Widget child) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Aurora.glassFill,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Aurora.glassBorder),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _header(title),
+              const SizedBox(height: 10),
+              child,
+            ],
+          ),
         ),
       );
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Health Profile'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: _isSaving
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.check),
-                    onPressed: _save,
-                  ),
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            title: const Text('Health Profile'),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.check, color: Aurora.accentGreen),
+                        onPressed: _save,
+                      ),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _header('Allergens'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: AllergensSection(
-                selected: _allergens,
-                onChanged: (v) => setState(() => _allergens = v),
-              ),
+          body: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                _card(
+                  'Allergens',
+                  AllergensSection(
+                    aurora: true,
+                    selected: _allergens,
+                    onChanged: (v) => setState(() => _allergens = v),
+                  ),
+                ),
+                _card(
+                  'Dietary Protocols',
+                  DietaryProtocolsSection(
+                    aurora: true,
+                    selected: _protocols,
+                    onChanged: (v) => setState(() => _protocols = v),
+                  ),
+                ),
+                _card(
+                  'Conditions',
+                  ConditionsSection(
+                    aurora: true,
+                    selected: _conditions,
+                    onChanged: (v) => setState(() => _conditions = v),
+                  ),
+                ),
+                _card(
+                  'Medications & Supplements',
+                  MedicationsSection(
+                    aurora: true,
+                    medications: _medications,
+                    onChanged: (v) => setState(() => _medications = v),
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
             ),
-            _header('Dietary Protocols'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: DietaryProtocolsSection(
-                selected: _protocols,
-                onChanged: (v) => setState(() => _protocols = v),
-              ),
-            ),
-            _header('Conditions'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ConditionsSection(
-                selected: _conditions,
-                onChanged: (v) => setState(() => _conditions = v),
-              ),
-            ),
-            _header('Medications & Supplements'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: MedicationsSection(
-                medications: _medications,
-                onChanged: (v) => setState(() => _medications = v),
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
+          ),
         ),
       ),
     );

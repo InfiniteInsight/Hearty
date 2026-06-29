@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/theme/aurora_colors.dart';
 import '../../../core/api/hearty_api_client.dart';
 import '../../../core/offline/local_meal_dao.dart';
 import '../widgets/editable_food_list.dart';
@@ -80,52 +82,97 @@ class _EditMealScreenState extends ConsumerState<EditMealScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Edit Meal'),
-        actions: [
-          if (_saving)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          else
-            TextButton(onPressed: _save, child: const Text('Save')),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _descController,
-              autofocus: true,
-              minLines: 3,
-              maxLines: null,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            if (widget.initialFoods.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              Text(
-                'Foods identified',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              EditableFoodList(
-                key: _foodsKey,
-                initialFoods: widget.initialFoods,
-              ),
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            title: const Text('Edit Meal'),
+            actions: [
+              if (_saving)
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: TextButton(
+                    onPressed: _save,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Aurora.accentGreen,
+                    ),
+                    child: const Text('Save'),
+                  ),
+                ),
             ],
-          ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Aurora.glassFill,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Aurora.glassBorder),
+                  ),
+                  child: TextField(
+                    controller: _descController,
+                    autofocus: true,
+                    minLines: 3,
+                    maxLines: null,
+                    textCapitalization: TextCapitalization.sentences,
+                    style: const TextStyle(color: Aurora.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Description',
+                      labelStyle: const TextStyle(color: Aurora.textMuted),
+                      filled: true,
+                      fillColor: Aurora.glassFill,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            const BorderSide(color: Aurora.glassBorder),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            const BorderSide(color: Aurora.glassBorder),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            const BorderSide(color: Aurora.accentGreen),
+                      ),
+                    ),
+                  ),
+                ),
+                if (widget.initialFoods.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Foods identified',
+                    style: TextStyle(
+                      color: Aurora.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  EditableFoodList(
+                    key: _foodsKey,
+                    initialFoods: widget.initialFoods,
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
