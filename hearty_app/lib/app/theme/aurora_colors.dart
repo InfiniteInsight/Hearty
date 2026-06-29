@@ -23,7 +23,21 @@ class Aurora {
 
   // Text
   static const Color textPrimary = Color(0xFFFFFFFF); // headlines, "Heart" in logo
+  static const Color textSecondary = Color(0x99FFFFFF); // 0.6 — body/subtitles
   static const Color textMuted = Color(0x4DFFFFFF); // 0.3 — timestamps, dates
+
+  // Glass surfaces (cards, rows) over the dark gradient.
+  static const Color glassFill = Color(0x0DFFFFFF); // white 0.05
+  static const Color glassBorder = Color(0x14FFFFFF); // white 0.08
+
+  // FAB gradient (135°, #34D399 → #059669).
+  static const Color fabFrom = Color(0xFF34D399);
+  static const Color fabTo = Color(0xFF059669);
+  static const LinearGradient fab = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [fabFrom, fabTo],
+  );
 
   // Clock-specific
   static const Color clockNumMinor = Color(0x33FFFFFF); // 0.2 — minor clock numbers

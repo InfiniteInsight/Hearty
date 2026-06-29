@@ -10,6 +10,7 @@ import '../../../core/api/models/meal_log.dart';
 import '../../../core/api/models/symptom_log.dart';
 import '../../../core/util/meal_label.dart';
 import '../../../core/api/hearty_api_client.dart';
+import '../../../app/theme.dart';
 import '../../../app/theme/aurora_colors.dart';
 import '../widgets/radial_clock.dart';
 import '../../../core/offline/local_meal_dao.dart';
@@ -117,9 +118,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final symptomsAsync = ref.watch(symptomsProvider);
     final voiceQueueAsync = ref.watch(voiceQueueProvider);
 
-    return Scaffold(
+    return Theme(
+      data: AppTheme.aurora,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: Aurora.background),
+        child: Scaffold(
       appBar: AppBar(
-        title: const Text('Hearty'),
+        title: const _HeartyLogo(),
         actions: [
           StreamBuilder<List<ConnectivityResult>>(
             stream: _connectivityStream,
@@ -178,9 +183,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/log'),
-        child: const Icon(Icons.add),
+      floatingActionButton: Container(
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: Aurora.fab,
+          boxShadow: [
+            BoxShadow(color: Color(0x6634D399), blurRadius: 16, offset: Offset(0, 4)),
+          ],
+        ),
+        child: FloatingActionButton(
+          onPressed: () => context.push('/log'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: const Color(0xFF052E20),
+          child: const Icon(Icons.add),
+        ),
+      ),
+        ),
       ),
     );
   }
@@ -359,8 +378,7 @@ class _TimelineBody extends StatelessWidget {
         // Radial-clock header (Aurora). Phases 1–3: face + orbit entry dots +
         // tap interaction (dot glow, popup, list-row highlight). Arc labels next.
         SliverToBoxAdapter(
-          child: Container(
-            decoration: const BoxDecoration(gradient: Aurora.background),
+          child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(
               child: RadialClock(
@@ -408,20 +426,49 @@ class _TimelineBody extends StatelessWidget {
 
 /// Wraps a selected timeline row with the Aurora highlight (left accent +
 /// background tint) without shifting layout for unselected rows.
-class _RowHighlight extends StatelessWidget {
-  final bool selected;
-  final Widget child;
-
-  const _RowHighlight({required this.selected, required this.child});
+/// The split "Hearty" wordmark — white "Heart" + emerald "y" (Aurora logo).
+class _HeartyLogo extends StatelessWidget {
+  const _HeartyLogo();
 
   @override
   Widget build(BuildContext context) {
-    if (!selected) return child;
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: Color(0x1234D399), // emerald 0.07
-        border: Border(
-          left: BorderSide(color: Aurora.accentGreen, width: 3),
+    return const Text.rich(
+      TextSpan(
+        style: TextStyle(
+          fontFamily: 'Plus Jakarta Sans',
+          fontSize: 22,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.5,
+          height: 1.0,
+        ),
+        children: [
+          TextSpan(text: 'Heart', style: TextStyle(color: Aurora.textPrimary)),
+          TextSpan(text: 'y', style: TextStyle(color: Aurora.accentGreen)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Aurora "glass" card wrapping a timeline row. When [selected] it gains an
+/// emerald border + tint (the radial-clock co-selection highlight).
+class _GlassCard extends StatelessWidget {
+  final bool selected;
+  final Widget child;
+
+  const _GlassCard({this.selected = false, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: selected ? const Color(0x1A34D399) : Aurora.glassFill,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: selected ? Aurora.accentGreen : Aurora.glassBorder,
+          width: selected ? 1.5 : 1,
         ),
       ),
       child: child,
@@ -459,7 +506,7 @@ class _MealCard extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _RowHighlight(
+        _GlassCard(
           selected: selected,
           child: ListTile(
             leading: Icon(_mealTypeIcon(meal.mealType)),
@@ -513,7 +560,7 @@ class _SymptomRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return _RowHighlight(
+    return _GlassCard(
       selected: selected,
       child: ListTile(
       leading: Icon(
