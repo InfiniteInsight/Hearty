@@ -180,10 +180,13 @@ class NotificationService {
       followUpBody,
       scheduled,
       const NotificationDetails(
+        // No groupKey: this is a single replace-in-place reminder, and a lone
+        // grouped notification with no group summary can have its heads-up
+        // banner suppressed on some Android skins (so it silently lands in the
+        // shade instead of popping up).
         android: AndroidNotificationDetails(
           'hearty_meal_followup',
           'Meal Follow-Ups',
-          groupKey: 'hearty_followup_group',
         ),
       ),
       androidScheduleMode: canExact
