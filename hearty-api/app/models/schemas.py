@@ -222,6 +222,9 @@ class CheckinGap(BaseModel):
     meal_label: Optional[str] = None
     meal_time: Optional[str] = None
     meal_type: Optional[str] = None
+    # Stable identity used to dismiss this gap for the day (echoed back to
+    # POST /api/checkin/dismiss).
+    gap_key: Optional[str] = None
 
 class CheckinGapsResponse(BaseModel):
     target_date: str           # YYYY-MM-DD, the anchored day
