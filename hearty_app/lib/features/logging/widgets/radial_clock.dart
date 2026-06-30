@@ -33,14 +33,14 @@ class ClockEntry {
   /// Clock angle in degrees (0° = 12 o'clock, clockwise).
   double get angleDeg => (time.hour % 12 + time.minute / 60) * 30;
 
-  /// AM entries orbit the inner ring; PM entries the outer ring.
+  /// PM entries orbit the inner ring; AM entries the outer ring.
   bool get isAm => time.hour < 12;
 }
 
 /// Radial-clock face (Hearty UI Design Guide §"Radial Clock — Geometry", Aurora
 /// palette). Phases 1–2: rings, tick marks, clock numbers, hour/minute hands, a
-/// center digital-time readout, and orbit entry dots placed by time (AM inner /
-/// PM outer). Tap interaction and arc labels come in later phases.
+/// center digital-time readout, and orbit entry dots placed by time (PM inner /
+/// AM outer). Tap interaction and arc labels come in later phases.
 ///
 /// Geometry uses the design guide's logical-pixel radii on a square canvas of
 /// side [designSize] (278). Everything scales to whatever box it is given, so it
@@ -74,8 +74,10 @@ class RadialClock extends StatelessWidget {
   });
 
   static const double designSize = 278;
-  static const double _rAmOrbit = 60;
-  static const double _rPmOrbit = 118;
+  // Ring assignment: PM entries orbit the inner ring, AM the outer ring. Sizes
+  // follow the ring (inner = smaller dots/labels, outer = larger).
+  static const double _rInnerOrbit = 60; // PM
+  static const double _rOuterOrbit = 118; // AM
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +119,7 @@ class RadialClock extends StatelessWidget {
   }
 
   Offset _clusterCenter(_Cluster c, double s) {
-    final double r = (c.isAm ? _rAmOrbit : _rPmOrbit) * s;
+    final double r = (c.isAm ? _rOuterOrbit : _rInnerOrbit) * s;
     final double rad = c.angleDeg * math.pi / 180;
     return Offset(
       size / 2 + r * math.sin(rad),
@@ -126,7 +128,7 @@ class RadialClock extends StatelessWidget {
   }
 
   Widget _positionBubble(_Cluster c, double s) {
-    final double dotSize = (c.isAm ? 26.0 : 34.0) * s;
+    final double dotSize = (c.isAm ? 34.0 : 26.0) * s;
     final Offset center = _clusterCenter(c, s);
     final bool isSel = c.entries.any((e) => selectedIds.contains(e.id));
     return Positioned(
@@ -146,7 +148,7 @@ class RadialClock extends StatelessWidget {
   }
 
   Widget _positionPopup(_Cluster c, double s) {
-    final double dotSize = (c.isAm ? 26.0 : 34.0) * s;
+    final double dotSize = (c.isAm ? 34.0 : 26.0) * s;
     final Offset center = _clusterCenter(c, s);
     // Sit just below the bubble, centered horizontally over it.
     return Positioned(
@@ -211,8 +213,8 @@ List<_Cluster> _clusterEntries(List<ClockEntry> entries) {
   }
 
   return [
-    ...ring(entries.where((e) => e.isAm), 60, 26),
-    ...ring(entries.where((e) => !e.isAm), 118, 34),
+    ...ring(entries.where((e) => !e.isAm), 60, 26), // PM → inner ring
+    ...ring(entries.where((e) => e.isAm), 118, 34), // AM → outer ring
   ];
 }
 
@@ -707,19 +709,20 @@ class _ArcLabelsPainter extends CustomPainter {
     final Offset center = Offset(size.width / 2, size.height / 2);
     for (final c in clusters) {
       final bool isAm = c.isAm;
-      final double orbit = (isAm ? 60.0 : 118.0) * s;
+      final double orbit = (isAm ? 118.0 : 60.0) * s; // AM outer, PM inner
       final double rad = c.angleDeg * math.pi / 180;
       final Offset dot = Offset(
         center.dx + orbit * math.sin(rad),
         center.dy - orbit * math.cos(rad),
       );
-      // Text arc just outside the dot (AM r≈18, PM r≈21 — dot radius + margin).
-      final double arcR = (isAm ? 18.0 : 21.0) * s;
+      // Text arc just outside the dot (outer/AM r≈21, inner/PM r≈18 — dot
+      // radius + margin).
+      final double arcR = (isAm ? 21.0 : 18.0) * s;
       // Dots near the top use a bottom arc so the label doesn't exit the zone.
       final bool topArc = !_nearTop(c.angleDeg);
       final style = TextStyle(
         fontFamily: 'Plus Jakarta Sans',
-        fontSize: (isAm ? 7.5 : 8.0) * s,
+        fontSize: (isAm ? 8.0 : 7.5) * s,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.3 * s,
         color: _labelColor(c),
@@ -738,10 +741,11 @@ class _ArcLabelsPainter extends CustomPainter {
     final e = c.entries.first;
     final int h = e.time.hour % 12 == 0 ? 12 : e.time.hour % 12;
     final String time = '$h:${e.time.minute.toString().padLeft(2, '0')}';
-    // A merged bubble shows just the shared time. A single PM meal shows a short
-    // food name when it fits; everything else shows time.
+    // A merged bubble shows just the shared time. A single meal on the roomy
+    // outer ring (AM) shows a short food name when it fits; everything else
+    // shows time.
     if (c.entries.length == 1 &&
-        !e.isAm &&
+        e.isAm &&
         e.type == ClockEntryType.meal &&
         e.label.length <= 7) {
       return e.label;
