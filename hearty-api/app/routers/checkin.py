@@ -71,16 +71,21 @@ async def get_checkin_gaps(
         .execute()
     ).data or []
 
-    dismissed = {
-        row["gap_key"]
-        for row in (
-            supabase.table("checkin_dismissals")
-            .select("gap_key")
-            .eq("user_id", user_id)
-            .eq("target_date", date)
-            .execute()
-        ).data or []
-    }
+    # Best-effort: a dismissals query failure (e.g. table absent during a deploy
+    # window) must not 500 the whole check-in — degrade to "nothing dismissed".
+    try:
+        dismissed = {
+            row["gap_key"]
+            for row in (
+                supabase.table("checkin_dismissals")
+                .select("gap_key")
+                .eq("user_id", user_id)
+                .eq("target_date", date)
+                .execute()
+            ).data or []
+        }
+    except Exception:
+        dismissed = set()
 
     gaps = checkin_detector.detect_gaps(
         meals, symptoms, now=detect_until, dismissed=dismissed)
