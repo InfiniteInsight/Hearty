@@ -446,7 +446,12 @@ class HeartyApiClient {
           '${date.day.toString().padLeft(2, '0')}';
       final response = await _dio.get<Map<String, dynamic>>(
         '/api/checkin/gaps',
-        queryParameters: {'date': ymd},
+        queryParameters: {
+          'date': ymd,
+          // Anchor the day + waking window to the device's zone so times render
+          // in local hours (else an 8am waking-start shows as 4am at UTC-4).
+          'utc_offset_minutes': date.timeZoneOffset.inMinutes,
+        },
       );
       return CheckinGapsResult.fromJson(response.data!);
     });
