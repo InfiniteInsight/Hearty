@@ -45,7 +45,11 @@ class _DailyCheckinScreenState extends ConsumerState<DailyCheckinScreen> {
         decoration: const BoxDecoration(gradient: Aurora.background),
         child: Scaffold(
           backgroundColor: Colors.transparent,
-          appBar: AppBar(title: const Text('Daily check-in')),
+          appBar: AppBar(
+            title: const Text('A few quick questions about your day'),
+            titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle ??
+                Theme.of(context).textTheme.titleMedium,
+          ),
           body: switch (state.phase) {
             CheckinPhase.loading => const Center(
                 key: Key('checkin-loading'),

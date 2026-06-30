@@ -12,6 +12,13 @@ class CheckinGap {
   final String? windowStart;
   final String? windowEnd;
 
+  /// Meal context for meal-anchored gaps (symptom_gap / low_confidence). Lets
+  /// the client compose a specific, device-local-time question instead of the
+  /// generic [prompt]. [mealLabel] is null when the meal has no usable foods.
+  final String? mealLabel;
+  final DateTime? mealTime;
+  final String? mealType;
+
   const CheckinGap({
     required this.type,
     required this.prompt,
@@ -19,9 +26,13 @@ class CheckinGap {
     this.foodName,
     this.windowStart,
     this.windowEnd,
+    this.mealLabel,
+    this.mealTime,
+    this.mealType,
   });
 
   factory CheckinGap.fromJson(Map<String, dynamic> json) {
+    final rawMealTime = json['meal_time'] as String?;
     return CheckinGap(
       type: json['type'] as String,
       prompt: json['prompt'] as String,
@@ -29,6 +40,9 @@ class CheckinGap {
       foodName: json['food_name'] as String?,
       windowStart: json['window_start'] as String?,
       windowEnd: json['window_end'] as String?,
+      mealLabel: json['meal_label'] as String?,
+      mealTime: rawMealTime != null ? DateTime.tryParse(rawMealTime) : null,
+      mealType: json['meal_type'] as String?,
     );
   }
 }

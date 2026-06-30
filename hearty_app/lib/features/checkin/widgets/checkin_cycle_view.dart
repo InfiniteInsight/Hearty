@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../checkin_question.dart';
 import '../providers/checkin_controller.dart';
 
 /// Cycle step of the daily check-in: renders the [CheckinState.current] gap one
@@ -41,7 +42,7 @@ class CheckinCycleView extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            gap.prompt,
+            checkinQuestionText(gap),
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 24),
