@@ -117,4 +117,20 @@ void main() {
     final gap = CheckinGap(type: 'something_new', prompt: 'do the thing');
     expect(checkinQuestionText(gap), 'do the thing');
   });
+
+  test('converts a UTC meal_time to local before formatting', () {
+    // Prod sends tz-aware ISO ("…+00:00"), so meal_time arrives as UTC. The same
+    // instant given as UTC vs. already-local must render identically — i.e. the
+    // formatter applies toLocal(). On a non-UTC machine a missing toLocal()
+    // would make these diverge.
+    final instant = DateTime.utc(2026, 6, 3, 16, 30);
+    CheckinGap g(DateTime t) => CheckinGap(
+          type: 'symptom_gap',
+          prompt: 'fallback',
+          mealLabel: 'soup',
+          mealTime: t,
+        );
+    expect(checkinQuestionText(g(instant)),
+        checkinQuestionText(g(instant.toLocal())));
+  });
 }
