@@ -46,11 +46,12 @@ class _DailyCheckinScreenState extends ConsumerState<DailyCheckinScreen> {
         child: Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(
-            title: const Text('A few quick questions about your day'),
+            // "...about your day" overflows/ellipsizes the left-aligned bar on a
+            // phone (verified on-device), so the title is trimmed to fit.
+            title: const Text('A few quick questions'),
             // Explicit style (not Theme.of(context)) — this build context sits
             // ABOVE the Aurora Theme wrapper, so resolving the title style from
-            // it would pull the ambient theme's color. Sized down from the
-            // default titleLarge so the long title fits without ellipsis.
+            // it would pull the ambient theme's color.
             titleTextStyle: const TextStyle(
               color: Aurora.textPrimary,
               fontSize: 16,
