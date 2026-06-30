@@ -149,7 +149,11 @@ class CheckinController extends StateNotifier<CheckinState> {
 
   /// Leaves the preview and begins cycling at the first non-skipped gap.
   /// If every gap is skipped (or there are none) → [CheckinPhase.done].
-  void begin() {
+  ///
+  /// Any gaps the user toggled off in the preview are dismissed here (so they
+  /// don't resurface today) before cycling the rest.
+  Future<void> begin() async {
+    await _dismissSkipped();
     final start = _firstUnskipped();
     if (start == null) {
       state = state.copyWith(phase: CheckinPhase.done);
@@ -209,15 +213,36 @@ class CheckinController extends StateNotifier<CheckinState> {
     _advance();
   }
 
-  /// Skips the current gap. For a `symptom_gap` this spends its one evening
-  /// retry server-side; food/meal gaps just advance with no server call.
+  /// Skips the current gap. For a `symptom_gap` this also spends its one evening
+  /// retry server-side. Every skipped gap is dismissed so it doesn't resurface
+  /// today (a genuinely new gap still appears).
   Future<void> skipCurrent() async {
     final gap = state.current;
     if (gap == null) return;
     if (gap.type == 'symptom_gap') {
       await _api.skipSymptomGap(mealId: gap.mealId!);
     }
+    await _dismiss(gap);
     _advance();
+  }
+
+  /// Dismisses [gap] for the reviewed day (best-effort — a failed call just
+  /// means the gap may resurface). No-op when the gap carries no key.
+  Future<void> _dismiss(CheckinGap gap) async {
+    final key = gap.gapKey;
+    if (key == null) return;
+    try {
+      await _api.dismissCheckinGap(date: state.targetDate, gapKey: key);
+    } catch (_) {
+      // Best-effort; swallow so the review flow is never blocked by it.
+    }
+  }
+
+  /// Dismisses every gap the user toggled off during the preview.
+  Future<void> _dismissSkipped() async {
+    for (final i in state.skipped) {
+      if (i >= 0 && i < state.gaps.length) await _dismiss(state.gaps[i]);
+    }
   }
 
   /// First gap index not in the skip set, or null if none.

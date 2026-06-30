@@ -71,11 +71,42 @@ async def get_checkin_gaps(
         .execute()
     ).data or []
 
-    gaps = checkin_detector.detect_gaps(meals, symptoms, now=detect_until)
+    # Best-effort: a dismissals query failure (e.g. table absent during a deploy
+    # window) must not 500 the whole check-in — degrade to "nothing dismissed".
+    try:
+        dismissed = {
+            row["gap_key"]
+            for row in (
+                supabase.table("checkin_dismissals")
+                .select("gap_key")
+                .eq("user_id", user_id)
+                .eq("target_date", date)
+                .execute()
+            ).data or []
+        }
+    except Exception:
+        dismissed = set()
+
+    gaps = checkin_detector.detect_gaps(
+        meals, symptoms, now=detect_until, dismissed=dismissed)
     return CheckinGapsResponse(
         target_date=date, expired=False,
         gaps=[CheckinGap(**g) for g in gaps],
     )
+
+
+@router.post("/api/checkin/dismiss", status_code=200)
+async def dismiss_checkin_gap(body: dict, user=Depends(get_current_user)) -> dict:
+    """Record that the user skipped a gap during the day's review so the gaps
+    endpoint filters it out. Idempotent (upsert on the natural key)."""
+    row = {
+        "user_id": user["id"],
+        "target_date": body["date"],
+        "gap_key": body["gap_key"],
+    }
+    supabase.table("checkin_dismissals") \
+        .upsert(row, on_conflict="user_id,target_date,gap_key").execute()
+    return {"ok": True}
 
 
 @router.post("/api/checkin/resolve/symptom", status_code=200)

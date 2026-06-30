@@ -63,6 +63,11 @@ class _Table:
         self._op = "insert"
         return self
 
+    def upsert(self, rows, *a, **k):
+        self.rec.inserts.append((self.name, rows))
+        self._op = "upsert"
+        return self
+
     def update(self, vals, *a, **k):
         self.rec.updates.append((self.name, vals))
         self._op = "update"
@@ -140,6 +145,43 @@ def test_gaps_endpoint_passes_client_timezone_to_detector(monkeypatch):
     r = client.get(f"/api/checkin/gaps?date={today}&utc_offset_minutes=-240")
     assert r.status_code == 200
     assert captured["now"].utcoffset() == timedelta(minutes=-240)
+    _clear()
+
+
+def test_dismiss_endpoint_upserts_row(monkeypatch):
+    rec = _Recorder()
+    _auth()
+    monkeypatch.setattr(checkin_module, "supabase", _RecSupa(rec))
+    client = TestClient(app)
+    r = client.post("/api/checkin/dismiss",
+                    json={"date": "2026-06-29", "gap_key": "food:m1:rice"})
+    assert r.status_code == 200
+    table, row = next((t, r_) for t, r_ in rec.inserts if t == "checkin_dismissals")
+    assert row == {"user_id": "u1", "target_date": "2026-06-29",
+                   "gap_key": "food:m1:rice"}
+    _clear()
+
+
+def test_gaps_endpoint_loads_and_passes_dismissals(monkeypatch):
+    today = datetime.now(timezone.utc).date().isoformat()
+    captured = {}
+    _auth()
+
+    class _SupaDis:
+        def table(self, name):
+            if name == "checkin_dismissals":
+                return _Q([{"gap_key": "symptom:m1"}])
+            return _Q([])
+    monkeypatch.setattr(checkin_module, "supabase", _SupaDis())
+
+    def _capture(meals, symptoms, now, **k):
+        captured["dismissed"] = k.get("dismissed")
+        return []
+    monkeypatch.setattr(checkin_module.checkin_detector, "detect_gaps", _capture)
+    client = TestClient(app)
+    r = client.get(f"/api/checkin/gaps?date={today}")
+    assert r.status_code == 200
+    assert captured["dismissed"] == {"symptom:m1"}
     _clear()
 
 

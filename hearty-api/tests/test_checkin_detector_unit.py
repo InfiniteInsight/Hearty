@@ -186,6 +186,41 @@ def test_meal_label_null_when_no_foods():
     assert a["prompt"] == "How did your stomach feel after that meal?"
 
 
+def test_each_gap_carries_a_deterministic_gap_key():
+    meals = [
+        {"id": "m1", "logged_at": _dt(13).isoformat(), "meal_type": "lunch",
+         "foods": [{"name": "buldak ramen", "confidence": 0.4}]},
+    ]
+    gaps = detect_gaps(meals, symptoms=[], now=_dt(22))
+    by_type = {g["type"]: g for g in gaps}
+    assert by_type["symptom_gap"]["gap_key"] == "symptom:m1"
+    assert by_type["low_confidence"]["gap_key"] == "food:m1:buldak ramen"
+    chunk = next(g for g in gaps if g["type"] == "missing_chunk")
+    assert chunk["gap_key"] == f"chunk:{chunk['window_start']}"
+
+
+def test_dismissed_gap_keys_are_filtered_out():
+    meals = [{"id": "m1", "logged_at": _dt(13).isoformat(),
+              "foods": [{"name": "x"}], "followup_status": None}]
+    gaps = detect_gaps(meals, symptoms=[], now=_dt(22),
+                       dismissed={"symptom:m1"})
+    assert all(g["type"] != "symptom_gap" for g in gaps)
+    assert any(g["type"] == "missing_chunk" for g in gaps)
+
+
+def test_dismissing_one_gap_does_not_hide_a_new_one():
+    # A new meal (m2) produces a fresh symptom gap with a different key, so it is
+    # still surfaced even though m1's gap was dismissed.
+    meals = [
+        {"id": "m1", "logged_at": _dt(13).isoformat(), "foods": [{"name": "x"}]},
+        {"id": "m2", "logged_at": _dt(15).isoformat(), "foods": [{"name": "y"}]},
+    ]
+    gaps = detect_gaps(meals, symptoms=[], now=_dt(22),
+                       dismissed={"symptom:m1"})
+    sym = [g["meal_id"] for g in gaps if g["type"] == "symptom_gap"]
+    assert sym == ["m2"]
+
+
 def test_interval_exactly_at_threshold_is_not_flagged():
     # 8:00 and 13:00 = exactly 5h; strict `>` means no gap. (8:00 == waking_start,
     # so no leading gap; trailing 13:00->14:00 is 1h.)

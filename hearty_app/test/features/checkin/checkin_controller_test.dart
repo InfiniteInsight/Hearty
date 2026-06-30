@@ -22,6 +22,7 @@ class FakeHeartyApiClient implements HeartyApiClient {
   final List<String> skipSymptomMealIds = [];
   final List<Map<String, dynamic>> resolveFoodCalls = [];
   final List<Map<String, dynamic>> resolveMealCalls = [];
+  final List<Map<String, dynamic>> dismissCalls = [];
 
   void setGaps(CheckinGapsResult result) => _gapsResult = result;
 
@@ -77,25 +78,40 @@ class FakeHeartyApiClient implements HeartyApiClient {
     resolveMealCalls.add({'description': description, 'loggedAt': loggedAt});
   }
 
+  @override
+  Future<void> dismissCheckinGap({
+    required String date,
+    required String gapKey,
+  }) async {
+    dismissCalls.add({'date': date, 'gapKey': gapKey});
+  }
+
   // Any other client method being hit is a test failure, not a silent no-op.
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-CheckinGap _symptom(String mealId) =>
-    CheckinGap(type: 'symptom_gap', prompt: 'how did you feel?', mealId: mealId);
+CheckinGap _symptom(String mealId, {String? gapKey}) => CheckinGap(
+      type: 'symptom_gap',
+      prompt: 'how did you feel?',
+      mealId: mealId,
+      gapKey: gapKey,
+    );
 
-CheckinGap _lowConfidence(String mealId, String foodName) => CheckinGap(
+CheckinGap _lowConfidence(String mealId, String foodName, {String? gapKey}) =>
+    CheckinGap(
       type: 'low_confidence',
       prompt: 'was it $foodName?',
       mealId: mealId,
       foodName: foodName,
+      gapKey: gapKey,
     );
 
-CheckinGap _missingChunk({String? windowStart}) => CheckinGap(
+CheckinGap _missingChunk({String? windowStart, String? gapKey}) => CheckinGap(
       type: 'missing_chunk',
       prompt: 'anything around then?',
       windowStart: windowStart,
+      gapKey: gapKey,
     );
 
 CheckinGapsResult _result({
@@ -170,7 +186,7 @@ void main() {
       await c.load();
 
       c.toggleSkip(0); // skip the first gap
-      c.begin();
+      await c.begin();
 
       expect(c.state.phase, CheckinPhase.cycling);
       expect(c.state.index, 1);
@@ -185,7 +201,7 @@ void main() {
       await c.load();
 
       c.skipAll();
-      c.begin();
+      await c.begin();
 
       expect(c.state.phase, CheckinPhase.done);
       expect(c.state.current, isNull);
@@ -200,7 +216,7 @@ void main() {
 
       c.toggleSkip(0);
       c.toggleSkip(0); // back on
-      c.begin();
+      await c.begin();
 
       expect(c.state.index, 0);
     });
@@ -214,7 +230,7 @@ void main() {
       );
       final c = CheckinController(api, date: date);
       await c.load();
-      c.begin();
+      await c.begin();
 
       await c.resolveSymptom(rawDescription: 'bloated', severity: 3);
 
@@ -238,7 +254,7 @@ void main() {
       );
       final c = CheckinController(api, date: date);
       await c.load();
-      c.begin();
+      await c.begin();
 
       await c.confirmFood();
 
@@ -257,7 +273,7 @@ void main() {
       );
       final c = CheckinController(api, date: date);
       await c.load();
-      c.begin();
+      await c.begin();
 
       await c.logMeal('a sandwich');
 
@@ -274,7 +290,7 @@ void main() {
       );
       final c = CheckinController(api, date: date);
       await c.load();
-      c.begin();
+      await c.begin();
 
       await c.skipCurrent();
 
@@ -289,7 +305,7 @@ void main() {
       );
       final c = CheckinController(api, date: date);
       await c.load();
-      c.begin();
+      await c.begin();
 
       await c.skipCurrent();
 
@@ -305,11 +321,63 @@ void main() {
     );
     final c = CheckinController(api, date: date);
     await c.load();
-    c.begin();
+    await c.begin();
 
     await c.skipCurrent();
 
     expect(c.state.phase, CheckinPhase.done);
     expect(c.state.current, isNull);
+  });
+
+  group('dismissals', () {
+    test('skipping a gap dismisses it for the reviewed day', () async {
+      final api = FakeHeartyApiClient(
+        gapsResult: _result(gaps: [
+          _lowConfidence('m2', 'rice', gapKey: 'food:m2:rice'),
+          _missingChunk(gapKey: 'chunk:x'),
+        ]),
+      );
+      final c = CheckinController(api, date: date);
+      await c.load();
+      await c.begin();
+
+      await c.skipCurrent();
+
+      expect(api.dismissCalls.single,
+          {'date': '2026-06-13', 'gapKey': 'food:m2:rice'});
+    });
+
+    test('preview-skipped gaps are dismissed when the review begins', () async {
+      final api = FakeHeartyApiClient(
+        gapsResult: _result(gaps: [
+          _symptom('m1', gapKey: 'symptom:m1'),
+          _lowConfidence('m2', 'rice', gapKey: 'food:m2:rice'),
+        ]),
+      );
+      final c = CheckinController(api, date: date);
+      await c.load();
+      c.skipAll();
+
+      await c.begin();
+
+      expect(c.state.phase, CheckinPhase.done);
+      expect(api.dismissCalls.map((d) => d['gapKey']).toSet(),
+          {'symptom:m1', 'food:m2:rice'});
+    });
+
+    test('answering a gap does not dismiss it (it resolves server-side)',
+        () async {
+      final api = FakeHeartyApiClient(
+        gapsResult: _result(gaps: [_symptom('m1', gapKey: 'symptom:m1')]),
+      );
+      final c = CheckinController(api, date: date);
+      await c.load();
+      await c.begin();
+
+      await c.resolveSymptom(rawDescription: 'a bit bloated', severity: 3);
+
+      expect(api.resolveSymptomCalls, hasLength(1));
+      expect(api.dismissCalls, isEmpty);
+    });
   });
 }

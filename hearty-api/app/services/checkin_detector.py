@@ -131,15 +131,37 @@ def _detect_low_confidence(meals):
     return gaps
 
 
+def _gap_key(g) -> str:
+    """A stable identity for a gap, used to dismiss it for the day. Deterministic
+    given the underlying data, so the same gap computed on a later request hashes
+    to the same key (and a genuinely new gap gets a different one)."""
+    t = g["type"]
+    if t == "symptom_gap":
+        return f"symptom:{g['meal_id']}"
+    if t == "low_confidence":
+        return f"food:{g['meal_id']}:{g.get('food_name', '')}"
+    if t == "missing_chunk":
+        return f"chunk:{g['window_start']}"
+    return f"{t}:{g.get('prompt', '')}"
+
+
 def detect_gaps(meals, symptoms, now, *, waking_start_hour=8,
-                waking_end_hour=22, follow_up_status=None):
+                waking_end_hour=22, follow_up_status=None, dismissed=None):
     """Return gaps ordered by priority (A -> C -> D), then by recency within type.
+
+    Each gap carries a ``gap_key`` (see ``_gap_key``). Gaps whose key is in
+    ``dismissed`` (a set the user skipped earlier today) are filtered out, so a
+    skipped gap stays gone while a new gap still surfaces.
 
     follow_up_status: optional dict meal_id -> 'answered'|'dismissed'|'pending'
     (used by gap A; ignored until then)."""
+    dismissed = dismissed or set()
     gaps = []
     gaps += _detect_symptom_gaps(meals, symptoms)
     gaps += _detect_low_confidence(meals)
     gaps += _detect_missing_chunks(meals, now, waking_start_hour, waking_end_hour)
+    for g in gaps:
+        g["gap_key"] = _gap_key(g)
+    gaps = [g for g in gaps if g["gap_key"] not in dismissed]
     gaps.sort(key=lambda g: _PRIORITY[g["type"]])
     return gaps
