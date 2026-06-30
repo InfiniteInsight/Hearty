@@ -45,11 +45,13 @@ class Aurora {
   static const Color tickMinor = Color(0x1F34D399); // emerald 0.12
   static const Color tickMajor = Color(0x4D34D399); // emerald ~0.3 (major ticks)
 
-  // Rings (from arc-labels companion spec)
-  static const Color ringOuter = Color(0x3834D399); // 0.22 emerald — PM/outer
+  // Rings (from arc-labels companion spec). Tints follow the AM/PM color
+  // language (violet = AM, emerald = PM), matching the dots in each zone:
+  // AM dots orbit the OUTER ring (violet), PM dots the INNER ring (emerald).
+  static const Color ringOuter = Color(0x388B5CF6); // 0.22 violet — AM/outer
   static const Color ringMid = Color(0x1234D399); // 0.07 emerald — reference
-  static const Color ringInner = Color(0x598B5CF6); // 0.35 violet — AM/inner
-  static const Color ringInnerFill = Color(0x1A8B5CF6); // 0.1 violet
+  static const Color ringInner = Color(0x5934D399); // 0.35 emerald — PM/inner
+  static const Color ringInnerFill = Color(0x1A34D399); // 0.1 emerald
 
   // Orbit entry dots (arc-labels companion spec §2). AM dots sit in the violet
   // inner zone; PM dots in the emerald outer zone. Fill = soft tint, border = stronger.

@@ -517,9 +517,9 @@ class _RadialClockPainter extends CustomPainter {
   _RadialClockPainter({required this.time});
 
   // Design-guide radii (logical px on a 278 canvas).
-  static const double _rInner = 45; // AM ring
+  static const double _rInner = 45; // PM ring (emerald)
   static const double _rMid = 80; // reference ring
-  static const double _rOuter = 108; // PM ring
+  static const double _rOuter = 108; // AM ring (violet)
   static const double _rNumbers = 88;
   static const double _rTick = 103;
   static const double _hourHandLen = 38;
@@ -726,6 +726,12 @@ class _ArcLabelsPainter extends CustomPainter {
         fontWeight: FontWeight.w700,
         letterSpacing: 0.3 * s,
         color: _labelColor(c),
+        // Dark halo so the tag stays legible where it crosses the clock numbers
+        // or rings (the tag layer paints on top of the dial).
+        shadows: [
+          Shadow(color: Aurora.bgBottom, blurRadius: 3.0 * s),
+          Shadow(color: Aurora.bgBottom, blurRadius: 2.0 * s),
+        ],
       );
       _paintArcText(canvas, dot, arcR, _labelFor(c), style, topArc: topArc);
     }
