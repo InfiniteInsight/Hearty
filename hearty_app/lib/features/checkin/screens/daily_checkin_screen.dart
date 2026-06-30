@@ -45,7 +45,18 @@ class _DailyCheckinScreenState extends ConsumerState<DailyCheckinScreen> {
         decoration: const BoxDecoration(gradient: Aurora.background),
         child: Scaffold(
           backgroundColor: Colors.transparent,
-          appBar: AppBar(title: const Text('Daily check-in')),
+          appBar: AppBar(
+            title: const Text('A few quick questions about your day'),
+            // Explicit style (not Theme.of(context)) — this build context sits
+            // ABOVE the Aurora Theme wrapper, so resolving the title style from
+            // it would pull the ambient theme's color. Sized down from the
+            // default titleLarge so the long title fits without ellipsis.
+            titleTextStyle: const TextStyle(
+              color: Aurora.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           body: switch (state.phase) {
             CheckinPhase.loading => const Center(
                 key: Key('checkin-loading'),

@@ -48,7 +48,7 @@ async def get_checkin_gaps(
 
     meals = (
         supabase.table("meals")
-        .select("id, foods, logged_at, followup_status")
+        .select("id, foods, logged_at, followup_status, meal_type")
         .eq("user_id", user_id)
         .gte("logged_at", day_start.isoformat())
         .lte("logged_at", day_end.isoformat())

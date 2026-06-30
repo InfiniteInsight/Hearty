@@ -202,6 +202,37 @@ void main() {
         findsOneWidget);
   });
 
+  testWidgets('renders the composed, meal-specific question when context is present',
+      (tester) async {
+    final gap = CheckinGap(
+      type: 'symptom_gap',
+      prompt: 'How did your stomach feel after that meal?',
+      mealId: 'm1',
+      mealLabel: 'grilled chicken salad',
+      mealType: 'lunch',
+      mealTime: DateTime(2026, 6, 13, 12, 30),
+    );
+    await _pump(tester, result: _result(gaps: [gap]));
+
+    // Specific question shows in the preview list (not the generic prompt).
+    expect(
+      find.text('How did your stomach feel after your grilled chicken salad — '
+          'lunch, around 12:30 PM?'),
+      findsOneWidget,
+    );
+    expect(find.text('How did your stomach feel after that meal?'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('checkin-begin')));
+    await tester.pumpAndSettle();
+
+    // ...and again in the cycle step.
+    expect(
+      find.text('How did your stomach feel after your grilled chicken salad — '
+          'lunch, around 12:30 PM?'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('fetch throws → error card, retry re-runs load', (tester) async {
     final api = await _pump(tester, result: null, throwOnFetch: true);
 

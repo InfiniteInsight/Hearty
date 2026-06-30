@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../checkin_question.dart';
 import '../providers/checkin_controller.dart';
 
 /// Preview step of the daily check-in: lists every gap (already in backend
@@ -41,7 +42,7 @@ class CheckinPreviewView extends ConsumerWidget {
                   child: SwitchListTile(
                     key: Key('checkin-preview-toggle-$i'),
                     title: Text(
-                      gap.prompt,
+                      checkinQuestionText(gap),
                       style: skipped
                           ? TextStyle(
                               decoration: TextDecoration.lineThrough,
