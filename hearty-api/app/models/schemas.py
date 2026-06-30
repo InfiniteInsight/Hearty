@@ -218,6 +218,10 @@ class CheckinGap(BaseModel):
     food_name: Optional[str] = None
     window_start: Optional[str] = None
     window_end: Optional[str] = None
+    # Meal context for client-composed, specific questions (local-time rendered).
+    meal_label: Optional[str] = None
+    meal_time: Optional[str] = None
+    meal_type: Optional[str] = None
 
 class CheckinGapsResponse(BaseModel):
     target_date: str           # YYYY-MM-DD, the anchored day

@@ -124,6 +124,53 @@ def test_meal_before_waking_window_does_not_flag_spurious_gap():
         (_dt(12, 30).isoformat(), _dt(22).isoformat())
 
 
+def test_symptom_gap_carries_meal_context():
+    meals = [{"id": "m1", "logged_at": _dt(12, 30).isoformat(),
+              "meal_type": "lunch",
+              "foods": [{"name": "grilled chicken salad"}]}]
+    gaps = detect_gaps(meals, symptoms=[], now=_dt(22))
+    a = [g for g in gaps if g["type"] == "symptom_gap"][0]
+    assert a["meal_label"] == "grilled chicken salad"
+    assert a["meal_time"] == _dt(12, 30).isoformat()
+    assert a["meal_type"] == "lunch"
+
+
+def test_low_confidence_carries_meal_context():
+    meals = [{"id": "m1", "logged_at": _dt(13).isoformat(), "meal_type": "snack",
+              "foods": [{"name": "buldak ramen", "confidence": 0.4}]}]
+    gaps = detect_gaps(meals, symptoms=[], now=_dt(22))
+    c = [g for g in gaps if g["type"] == "low_confidence"][0]
+    assert c["meal_label"] == "buldak ramen"
+    assert c["meal_time"] == _dt(13).isoformat()
+    assert c["meal_type"] == "snack"
+
+
+def test_meal_label_joins_two_or_three_foods():
+    meals = [{"id": "m1", "logged_at": _dt(18).isoformat(),
+              "foods": [{"name": "chicken"}, {"name": "rice"}, {"name": "broccoli"}]}]
+    gaps = detect_gaps(meals, symptoms=[], now=_dt(22))
+    a = [g for g in gaps if g["type"] == "symptom_gap"][0]
+    assert a["meal_label"] == "chicken, rice, broccoli"
+
+
+def test_meal_label_caps_long_lists_with_more():
+    meals = [{"id": "m1", "logged_at": _dt(18).isoformat(),
+              "foods": [{"name": "a"}, {"name": "b"}, {"name": "c"},
+                        {"name": "d"}, {"name": "e"}]}]
+    gaps = detect_gaps(meals, symptoms=[], now=_dt(22))
+    a = [g for g in gaps if g["type"] == "symptom_gap"][0]
+    assert a["meal_label"] == "a, b, c +2 more"
+
+
+def test_meal_label_null_when_no_foods():
+    meals = [{"id": "m1", "logged_at": _dt(18).isoformat(), "foods": []}]
+    gaps = detect_gaps(meals, symptoms=[], now=_dt(22))
+    a = [g for g in gaps if g["type"] == "symptom_gap"][0]
+    assert a["meal_label"] is None
+    # prompt stays as the fallback the client renders when label is null.
+    assert a["prompt"] == "How did your stomach feel after that meal?"
+
+
 def test_interval_exactly_at_threshold_is_not_flagged():
     # 8:00 and 13:00 = exactly 5h; strict `>` means no gap. (8:00 == waking_start,
     # so no leading gap; trailing 13:00->14:00 is 1h.)
