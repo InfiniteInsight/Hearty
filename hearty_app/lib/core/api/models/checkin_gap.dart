@@ -19,6 +19,10 @@ class CheckinGap {
   final DateTime? mealTime;
   final String? mealType;
 
+  /// Stable identity used to dismiss this gap for the day (echoed back to
+  /// `POST /api/checkin/dismiss`).
+  final String? gapKey;
+
   const CheckinGap({
     required this.type,
     required this.prompt,
@@ -29,6 +33,7 @@ class CheckinGap {
     this.mealLabel,
     this.mealTime,
     this.mealType,
+    this.gapKey,
   });
 
   factory CheckinGap.fromJson(Map<String, dynamic> json) {
@@ -43,6 +48,7 @@ class CheckinGap {
       mealLabel: json['meal_label'] as String?,
       mealTime: rawMealTime != null ? DateTime.tryParse(rawMealTime) : null,
       mealType: json['meal_type'] as String?,
+      gapKey: json['gap_key'] as String?,
     );
   }
 }

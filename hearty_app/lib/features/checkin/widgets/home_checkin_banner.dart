@@ -43,7 +43,12 @@ class HomeCheckinBanner extends ConsumerWidget {
     return CheckinBannerView(
       key: const Key('home-checkin-banner'),
       count: gaps.gaps.length,
-      onTap: () => context.push('/checkin?date=${_todayYmd()}'),
+      onTap: () async {
+        // Refresh the gap count on return so answered/dismissed gaps drop off
+        // (and the banner hides when nothing's left).
+        await context.push('/checkin?date=${_todayYmd()}');
+        ref.invalidate(checkinGapsTodayProvider);
+      },
     );
   }
 }

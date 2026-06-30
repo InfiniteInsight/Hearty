@@ -504,6 +504,21 @@ class HeartyApiClient {
     });
   }
 
+  /// Records that the user skipped a gap during the day's review so it is no
+  /// longer surfaced for [date] (YYYY-MM-DD). A genuinely new gap (different
+  /// [gapKey]) still appears.
+  Future<void> dismissCheckinGap({
+    required String date,
+    required String gapKey,
+  }) {
+    return _call(() async {
+      await _dio.post<Map<String, dynamic>>(
+        '/api/checkin/dismiss',
+        data: <String, dynamic>{'date': date, 'gap_key': gapKey},
+      );
+    });
+  }
+
   /// Resolves a low-confidence food gap — confirm or correct the food guess.
   Future<void> resolveFoodGap({
     required String mealId,
