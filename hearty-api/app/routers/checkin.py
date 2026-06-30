@@ -30,20 +30,28 @@ CHECKIN_EXPIRY_HOURS = float(os.environ.get("CHECKIN_EXPIRY_HOURS", "48"))
 @router.get("/api/checkin/gaps", status_code=200)
 async def get_checkin_gaps(
     date: str = Query(..., description="Target day, YYYY-MM-DD (day-anchored)"),
+    utc_offset_minutes: int = Query(
+        0, description="Client UTC offset in minutes (e.g. -240 for EDT). The "
+        "target day and the waking window are anchored to this zone so times "
+        "render in the user's local clock."),
     user=Depends(get_current_user),
 ) -> CheckinGapsResponse:
     user_id = user["id"]
-    now = datetime.now(timezone.utc)
+    # Anchor the day + waking window to the user's local zone. Without this the
+    # 8am-10pm waking window was built in UTC and rendered shifted on-device
+    # (e.g. an 8am start showing as 4am at UTC-4).
+    tz = timezone(timedelta(minutes=utc_offset_minutes))
+    now = datetime.now(timezone.utc).astimezone(tz)
     target = date_cls.fromisoformat(date)
 
-    # 48h expiry: anchored to the END of the target day.
+    # 48h expiry: anchored to the END of the (local) target day.
     day_end = datetime(target.year, target.month, target.day, 23, 59, 59,
-                       tzinfo=timezone.utc)
+                       tzinfo=tz)
     if now - day_end > timedelta(hours=CHECKIN_EXPIRY_HOURS):
         return CheckinGapsResponse(target_date=date, expired=True, gaps=[])
 
     day_start = datetime(target.year, target.month, target.day, 0, 0, 0,
-                         tzinfo=timezone.utc)
+                         tzinfo=tz)
     detect_until = min(now, day_end)  # never the unlived part of today
 
     meals = (

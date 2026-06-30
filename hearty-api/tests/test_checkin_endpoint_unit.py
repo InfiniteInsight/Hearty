@@ -123,6 +123,26 @@ def test_gaps_endpoint_returns_queue(monkeypatch):
     _clear()
 
 
+def test_gaps_endpoint_passes_client_timezone_to_detector(monkeypatch):
+    # utc_offset_minutes must reach the detector as a tz-aware local `now`, so
+    # the waking window is anchored to the user's zone (no 4am artifact).
+    from datetime import timedelta
+    today = datetime.now(timezone.utc).date().isoformat()
+    captured = {}
+    _auth()
+    monkeypatch.setattr(checkin_module, "supabase", _Supa())
+
+    def _capture(meals, symptoms, now, **k):
+        captured["now"] = now
+        return []
+    monkeypatch.setattr(checkin_module.checkin_detector, "detect_gaps", _capture)
+    client = TestClient(app)
+    r = client.get(f"/api/checkin/gaps?date={today}&utc_offset_minutes=-240")
+    assert r.status_code == 200
+    assert captured["now"].utcoffset() == timedelta(minutes=-240)
+    _clear()
+
+
 def test_gaps_endpoint_expires_old_dates(monkeypatch):
     _auth()
     monkeypatch.setattr(checkin_module, "supabase", _Supa())

@@ -35,8 +35,8 @@ void main() {
     );
   });
 
-  // Sample day from the arc-labels companion spec: AM entries (inner ring)
-  // and PM entries (outer ring).
+  // Sample day from the arc-labels companion spec: AM entries (outer ring)
+  // and PM entries (inner ring).
   final sampleEntries = [
     ClockEntry(id: 'breakfast', label: 'Breakfast', time: DateTime(2026, 6, 28, 8, 0), type: ClockEntryType.meal),
     ClockEntry(id: 'coffee', label: 'Coffee', time: DateTime(2026, 6, 28, 9, 0), type: ClockEntryType.meal),
@@ -107,9 +107,9 @@ void main() {
         ),
       ),
     );
-    // Tap the Lunch dot — offset (+31, -114) from clock center per the spec.
+    // Lunch is 12:30 PM → inner ring (R=60) at ~15°. Offset ≈ (+16, -58).
     final center = tester.getCenter(find.byType(RadialClock));
-    await tester.tapAt(center + const Offset(31, -114));
+    await tester.tapAt(center + const Offset(16, -58));
     await tester.pump();
     expect(selected, {'lunch'});
   });
@@ -157,10 +157,10 @@ void main() {
         ),
       ),
     );
-    // Bubble center for 1:04 PM (angle ≈ 32°, R=118): offset ≈ (+62, -100).
+    // Bubble center for 1:04 PM (angle ≈ 32°) → inner ring (R=60): offset ≈ (+32, -51).
     final center = tester.getCenter(find.byType(RadialClock));
     // Tap anywhere on the merged bubble → both entries selected.
-    await tester.tapAt(center + const Offset(62, -100));
+    await tester.tapAt(center + const Offset(32, -51));
     await tester.pump();
     expect(selected, {'liquidiv', 'reflux'});
   });

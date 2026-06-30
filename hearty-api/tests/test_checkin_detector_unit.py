@@ -1,9 +1,24 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from app.services.checkin_detector import detect_gaps, MISSING_CHUNK_HOURS
 
 
 def _dt(h, m=0):
     return datetime(2026, 6, 3, h, m, tzinfo=timezone.utc)
+
+
+def test_waking_window_follows_the_timezone_of_now():
+    # When `now` is tz-aware in the user's local zone, the missing-chunk window
+    # must be anchored to local waking hours — NOT shifted by the UTC offset.
+    # (Regression: a UTC `now` made the 8am waking-start render as 4am at UTC-4.)
+    eastern = timezone(timedelta(hours=-4))
+    now = datetime(2026, 6, 3, 22, 0, tzinfo=eastern)  # 10pm local
+    gaps = detect_gaps([], symptoms=[], now=now,
+                       waking_start_hour=8, waking_end_hour=22)
+    d = [g for g in gaps if g["type"] == "missing_chunk"]
+    assert len(d) == 1
+    start = datetime.fromisoformat(d[0]["window_start"])
+    assert start.hour == 8                      # 8am, not 4am
+    assert start.utcoffset() == timedelta(hours=-4)  # in the user's zone
 
 
 def test_missing_chunks_between_and_after_meals():
