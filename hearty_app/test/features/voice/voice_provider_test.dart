@@ -576,6 +576,40 @@ void main() {
         'about a 4 out of 10',
       );
     });
+
+    test('strips markdown emphasis so the symbols are not spoken', () {
+      expect(
+        VoiceNotifier.prepareForSpeech('That was **important** to note'),
+        'That was important to note',
+      );
+      expect(VoiceNotifier.prepareForSpeech('a *little* `code` ~~gone~~'),
+          'a little code gone');
+    });
+
+    test('reads "IV" as the letters, not the word "I\'ve"', () {
+      expect(VoiceNotifier.prepareForSpeech('You logged Liquid IV'),
+          'You logged Liquid I.V.');
+      expect(VoiceNotifier.prepareForSpeech('after the IV. drip'),
+          'after the I.V. drip');
+      // Doesn't mangle ordinary words that merely contain "iv".
+      expect(VoiceNotifier.prepareForSpeech('give it a rest'),
+          'give it a rest');
+    });
+
+    test('combines markdown + IV + range cleanup', () {
+      expect(
+        VoiceNotifier.prepareForSpeech('**Liquid IV** rated 1-10'),
+        'Liquid I.V. rated 1 to 10',
+      );
+    });
+  });
+
+  group('stripMarkdown', () {
+    test('removes emphasis markers, keeps words, collapses spaces', () {
+      expect(VoiceNotifier.stripMarkdown('**bold** and *italic*'),
+          'bold and italic');
+      expect(VoiceNotifier.stripMarkdown('plain text'), 'plain text');
+    });
   });
 
   group('replyIsQuestion', () {
