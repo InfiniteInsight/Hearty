@@ -452,7 +452,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   void setResponse(String response, {bool askFollowUp = true, String? mealId}) {
     state = state.copyWith(
       status: VoiceStatus.responding,
-      response: response,
+      // Clean markdown for the on-screen reply too, so "**bold**" isn't shown
+      // with literal asterisks. (TTS re-normalizes in prepareForSpeech.)
+      response: stripMarkdown(response),
       pendingMealId: mealId ?? state.pendingMealId,
     );
     _speakResponse(response, askFollowUp);
@@ -474,6 +476,13 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   @visibleForTesting
   static String prepareForSpeech(String text) {
     text = _stripEmojis(text);
+    // Drop markdown markers so TTS doesn't read them (an LLM reply with
+    // "**important**" was spoken as "asterisk asterisk important...").
+    text = stripMarkdown(text);
+    // "IV" → "I.V." so TTS says the letters (intravenous / "Liquid I.V.")
+    // instead of the word "I've". Also absorbs a trailing period so "IV."
+    // doesn't become "I.V..".
+    text = text.replaceAll(RegExp(r'\bIV\b\.?'), 'I.V.');
     // "4/10" → "4 out of 10" so TTS doesn't read it as a fraction
     text = text.replaceAllMapped(
       RegExp(r'(\d+)/(\d+)'),
@@ -486,6 +495,18 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       (m) => '${m[1]} to ${m[2]}',
     );
     return text;
+  }
+
+  /// Removes inline markdown markers (**bold**, *italic*, `code`, ~~strike~~)
+  /// while keeping the wrapped words. Used for TTS (so the symbols aren't
+  /// spoken) and the on-screen reply (so it isn't littered with asterisks).
+  /// Exposed for unit testing.
+  @visibleForTesting
+  static String stripMarkdown(String text) {
+    return text
+        .replaceAll(RegExp(r'[*`~]'), '')
+        .replaceAll(RegExp(r'  +'), ' ')
+        .trim();
   }
 
   /// True when Hearty's reply is itself a question (keeps the conversation open
